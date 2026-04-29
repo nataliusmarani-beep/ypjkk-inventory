@@ -1,7 +1,8 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { api } from '../api.js';
 import Modal from '../components/shared/Modal.jsx';
 import ConfirmDialog from '../components/shared/ConfirmDialog.jsx';
+import { parseCSV, downloadTemplate } from '../utils/download.js';
 
 const ROLES       = ['Manager','Storekeeper','Teacher','Other'];
 const UNIT_SCHOOLS = ['All','PAUD','SD','SMP'];
@@ -22,6 +23,31 @@ export default function UsersPage({ user: currentUser, showToast }) {
   const [loading, setLoading] = useState(true);
   const [search,  setSearch]  = useState('');
   const [roleFilter, setRoleFilter] = useState('');
+
+  const importRef = useRef();
+  const [importing, setImporting] = useState(false);
+
+  const USER_HEADERS = ['name','email','role','unit_school','location','store_category','password'];
+  const USER_SAMPLE  = { name:'Budi Santoso', email:'budi@ypj.sch.id', role:'Teacher', unit_school:'SD', location:'SD SMP YPJ KK', store_category:'', password:'YPJ2025' };
+
+  const handleImportFile = async (e) => {
+    const file = e.target.files?.[0];
+    e.target.value = '';
+    if (!file) return;
+    const text = await file.text();
+    const rows = parseCSV(text);
+    if (!rows.length) { showToast('CSV is empty or invalid.', 'error'); return; }
+    setImporting(true);
+    try {
+      const res = await api.importUsers(rows);
+      const msg = `Imported ${res.imported} user(s), skipped ${res.skipped} duplicate(s).` +
+        (res.errors.length ? ` ${res.errors.length} error(s).` : '');
+      showToast(msg, res.imported > 0 ? 'success' : 'error');
+      if (res.errors.length) console.warn('Import errors:', res.errors);
+      load();
+    } catch (err) { showToast(err.message, 'error'); }
+    setImporting(false);
+  };
 
   const [modal,   setModal]   = useState(null); // 'add' | 'edit' | 'password' | 'delete'
   const [target,  setTarget]  = useState(null); // user being edited/deleted
@@ -127,7 +153,14 @@ export default function UsersPage({ user: currentUser, showToast }) {
           <div className="page-title">👥 User Management</div>
           <div className="page-subtitle">{users.length} registered users</div>
         </div>
-        <button className="btn btn-primary" onClick={openAdd}>➕ Add User</button>
+        <div style={{ display:'flex', gap:8 }}>
+          <button className="btn btn-secondary" onClick={() => downloadTemplate(USER_HEADERS, USER_SAMPLE, 'users-template.csv')}>⬇ Template</button>
+          <button className="btn btn-secondary" onClick={() => importRef.current.click()} disabled={importing}>
+            {importing ? 'Importing...' : '📂 Import CSV'}
+          </button>
+          <input ref={importRef} type="file" accept=".csv" style={{ display:'none' }} onChange={handleImportFile} />
+          <button className="btn btn-primary" onClick={openAdd}>➕ Add User</button>
+        </div>
       </div>
 
       {/* role summary chips */}

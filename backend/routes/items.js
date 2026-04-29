@@ -113,6 +113,51 @@ router.put('/:id', (req, res) => {
   res.json(updated);
 });
 
+// POST /api/items/import
+router.post('/import', (req, res) => {
+  const { rows } = req.body;
+  if (!Array.isArray(rows) || rows.length === 0)
+    return res.status(400).json({ error: 'No rows provided.' });
+  if (rows.length > 500)
+    return res.status(400).json({ error: 'Maximum 500 rows per import.' });
+
+  const insert = db.prepare(`
+    INSERT OR IGNORE INTO items
+      (name, code, category, store_category, location, unit_school, quantity, max_quantity, unit_name, min_threshold, condition, description)
+    VALUES (?,?,?,?,?,?,?,?,?,?,?,?)
+  `);
+
+  let imported = 0, skipped = 0;
+  const errors = [];
+
+  const run = db.transaction(() => {
+    rows.forEach((r, i) => {
+      const rowNum = i + 2;
+      if (!r.name?.trim())     { errors.push(`Row ${rowNum}: name is required.`); return; }
+      if (!CATEGORIES.includes(r.category)) { errors.push(`Row ${rowNum}: invalid category "${r.category}".`); return; }
+
+      const qty    = parseInt(r.quantity)     || 0;
+      const maxQty = parseInt(r.max_quantity) || qty;
+      const minThr = parseInt(r.min_threshold) || 1;
+      const cat    = STORE_CATS.includes(r.store_category) ? r.store_category : 'Supplies';
+      const loc    = LOCATIONS.includes(r.location)        ? r.location        : 'SD SMP YPJ KK';
+      const unit   = UNIT_SCHOOLS.includes(r.unit_school)  ? r.unit_school     : 'All';
+      const uname  = UNIT_NAMES.includes(r.unit_name)      ? r.unit_name       : 'pcs';
+      const cond   = CONDITIONS.includes(r.condition)      ? r.condition       : 'Good';
+
+      const result = insert.run(
+        r.name.trim(), r.code?.trim() || null, r.category,
+        cat, loc, unit, qty, maxQty, uname, minThr, cond,
+        r.description?.trim() || null
+      );
+      result.changes ? imported++ : skipped++;
+    });
+  });
+
+  run();
+  res.json({ imported, skipped, errors });
+});
+
 // DELETE /api/items/:id
 router.delete('/:id', (req, res) => {
   const item = db.prepare('SELECT id FROM items WHERE id=?').get(req.params.id);

@@ -1,9 +1,10 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { api } from '../api.js';
 import Modal from '../components/shared/Modal.jsx';
 import ConfirmDialog from '../components/shared/ConfirmDialog.jsx';
 import ItemForm from '../components/Inventory/ItemForm.jsx';
+import { parseCSV, downloadTemplate } from '../utils/download.js';
 
 const CAT_EMOJI = {
   'Stationery':'📝','Housekeeping':'🧹','Learning Tools':'📚','Groceries':'🛒',
@@ -30,6 +31,30 @@ export default function InventoryPage({ role, user, showToast }) {
   const [meta, setMeta] = useState(null);
 
   const isAdmin = role === 'Manager' || role === 'Storekeeper';
+  const importRef = useRef();
+  const [importing, setImporting] = useState(false);
+
+  const ITEM_HEADERS = ['name','code','category','store_category','location','unit_school','quantity','max_quantity','unit_name','min_threshold','condition','description'];
+  const ITEM_SAMPLE  = { name:'Spidol Whiteboard', code:'STN-001', category:'Stationery', store_category:'Supplies', location:'SD SMP YPJ KK', unit_school:'All', quantity:'20', max_quantity:'50', unit_name:'pcs', min_threshold:'5', condition:'Good', description:'Optional note' };
+
+  const handleImportFile = async (e) => {
+    const file = e.target.files?.[0];
+    e.target.value = '';
+    if (!file) return;
+    const text = await file.text();
+    const rows = parseCSV(text);
+    if (!rows.length) { showToast('CSV is empty or invalid.', 'error'); return; }
+    setImporting(true);
+    try {
+      const res = await api.importItems(rows);
+      const msg = `Imported ${res.imported} item(s), skipped ${res.skipped} duplicate(s).` +
+        (res.errors.length ? ` ${res.errors.length} error(s).` : '');
+      showToast(msg, res.imported > 0 ? 'success' : 'error');
+      if (res.errors.length) console.warn('Import errors:', res.errors);
+      load();
+    } catch (err) { showToast(err.message, 'error'); }
+    setImporting(false);
+  };
 
   // Use explicit location set by admin; fallback to unit_school mapping
   const storeLocation = (() => {
@@ -83,7 +108,14 @@ export default function InventoryPage({ role, user, showToast }) {
           </div>
         </div>
         {isAdmin && (
-          <button className="btn btn-primary" onClick={() => navigate('/add-item')}>➕ Add Item</button>
+          <div style={{ display:'flex', gap:8 }}>
+            <button className="btn btn-secondary" onClick={() => downloadTemplate(ITEM_HEADERS, ITEM_SAMPLE, 'items-template.csv')}>⬇ Template</button>
+            <button className="btn btn-secondary" onClick={() => importRef.current.click()} disabled={importing}>
+              {importing ? 'Importing...' : '📂 Import CSV'}
+            </button>
+            <input ref={importRef} type="file" accept=".csv" style={{ display:'none' }} onChange={handleImportFile} />
+            <button className="btn btn-primary" onClick={() => navigate('/add-item')}>➕ Add Item</button>
+          </div>
         )}
       </div>
 

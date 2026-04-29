@@ -56,10 +56,12 @@ export const api = {
 
   // Users (Manager only)
   getUsers:      (p)      => request(`/users${qs(p)}`),
-  createUser:    (b)      => request('/users',       { method: 'POST',   body: JSON.stringify(b) }),
-  updateUser:    (id, b)  => request(`/users/${id}`, { method: 'PUT',    body: JSON.stringify(b) }),
+  createUser:    (b)      => request('/users',         { method: 'POST',   body: JSON.stringify(b) }),
+  updateUser:    (id, b)  => request(`/users/${id}`,   { method: 'PUT',    body: JSON.stringify(b) }),
   resetPassword: (id, b)  => request(`/users/${id}/password`, { method: 'PUT', body: JSON.stringify(b) }),
-  deleteUser:    (id)     => request(`/users/${id}`, { method: 'DELETE' }),
+  deleteUser:    (id)     => request(`/users/${id}`,   { method: 'DELETE' }),
+  importUsers:   (rows)   => request('/users/import',  { method: 'POST',   body: JSON.stringify({ rows }) }),
+  importItems:   (rows)   => request('/items/import',  { method: 'POST',   body: JSON.stringify({ rows }) }),
 
   // Activity log (Manager only)
   getActivity: (p) => request(`/activity${qs(p)}`),

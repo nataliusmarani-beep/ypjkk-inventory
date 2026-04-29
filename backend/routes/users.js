@@ -136,6 +136,55 @@ router.put('/:id/password', (req, res) => {
   }
 });
 
+// ── POST /api/users/import ─────────────────────────────────────────────────
+router.post('/import', async (req, res) => {
+  try {
+    const { rows } = req.body;
+    if (!Array.isArray(rows) || rows.length === 0)
+      return res.status(400).json({ error: 'No rows provided.' });
+    if (rows.length > 200)
+      return res.status(400).json({ error: 'Maximum 200 users per import.' });
+
+    const validRoles = ['Manager','Storekeeper','Teacher','Other'];
+    const validUnits = ['All','PAUD','SD','SMP'];
+    const validLocs  = ['','PAUD YPJ KK','SD SMP YPJ KK'];
+    const validCats  = ['','Supplies','Teacher Resources','Sport & Uniform'];
+
+    let imported = 0, skipped = 0;
+    const errors = [];
+
+    for (let i = 0; i < rows.length; i++) {
+      const r = rows[i];
+      const rowNum = i + 2;
+
+      if (!r.name?.trim())     { errors.push(`Row ${rowNum}: name is required.`); continue; }
+      if (!r.email?.trim())    { errors.push(`Row ${rowNum}: email is required.`); continue; }
+      if (!r.password?.trim()) { errors.push(`Row ${rowNum}: password is required.`); continue; }
+      if (!validRoles.includes(r.role)) { errors.push(`Row ${rowNum}: invalid role "${r.role}".`); continue; }
+
+      const email = r.email.trim().toLowerCase();
+      const existing = db.prepare('SELECT id FROM users WHERE email = ?').get(email);
+      if (existing) { skipped++; continue; }
+
+      const hash = bcrypt.hashSync(r.password.trim(), 10);
+      const unit = validUnits.includes(r.unit_school) ? r.unit_school : 'All';
+      const loc  = validLocs.includes(r.location)     ? r.location    : null;
+      const cat  = validCats.includes(r.store_category) ? r.store_category : null;
+
+      db.prepare(`
+        INSERT INTO users (name, email, role, unit_school, location, store_category, password_hash)
+        VALUES (?,?,?,?,?,?,?)
+      `).run(r.name.trim(), email, r.role, unit, loc || null, cat || null, hash);
+      imported++;
+    }
+
+    res.json({ imported, skipped, errors });
+  } catch (err) {
+    console.error('POST /users/import error:', err.message);
+    res.status(500).json({ error: err.message });
+  }
+});
+
 // ── DELETE /api/users/:id ──────────────────────────────────────────────────
 router.delete('/:id', (req, res) => {
   try {
