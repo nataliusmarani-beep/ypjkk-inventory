@@ -1,0 +1,15 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(npm install *)",
+      "Bash(timeout 5 node server.js)",
+      "Bash(curl -s http://localhost:3001/api/items)",
+      "Bash(kill %1)",
+      "Bash(node seed.js)",
+      "Bash(node -e \"const {DatabaseSync}=require\\('node:sqlite'\\);const db=new DatabaseSync\\('database.sqlite'\\);const rows=db.prepare\\('SELECT category, COUNT\\(*\\) as n FROM items GROUP BY category ORDER BY category'\\).all\\(\\);rows.forEach\\(r=>console.log\\(r.category.padEnd\\(20\\), r.n\\)\\);console.log\\('---'\\);console.log\\('Total:', db.prepare\\('SELECT COUNT\\(*\\) as n FROM items'\\).get\\(\\).n\\);\")",
+      "Bash(node -e ' *)",
+      "Bash(node -e \"const xlsx = require\\('./node_modules/xlsx/dist/xlsx.full.min.js'\\); console.log\\('ok'\\)\")",
+      "Bash(node -e \"import\\('xlsx'\\).then\\(m => console.log\\('ESM ok:', Object.keys\\(m\\).slice\\(0,3\\)\\)\\)\")"
+    ]
+  }
+}
