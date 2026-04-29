@@ -46,13 +46,16 @@ export default function DashboardPage({ role, user, showToast }) {
     }).catch(() => {});
   }, []);
 
-  const today = new Date().toLocaleDateString('en-GB', { weekday:'long', day:'numeric', month:'long', year:'numeric' });
+  const now = new Date();
+  const hour = now.getHours();
+  const greeting = hour < 5 ? 'Good night' : hour < 12 ? 'Good morning' : hour < 17 ? 'Good afternoon' : hour < 21 ? 'Good evening' : 'Good night';
+  const today = now.toLocaleDateString('en-GB', { weekday:'long', day:'numeric', month:'long', year:'numeric' });
 
   return (
     <div>
       <div className="page-header">
         <div>
-          <div className="page-title">Good morning, {user?.name?.split(' ')[0]}! 👋</div>
+          <div className="page-title">{greeting}, {user?.name?.split(' ')[0]}! 👋</div>
           <div className="page-subtitle">{today} — YPJ KK Campus</div>
         </div>
         {isAdmin && (
