@@ -5,8 +5,10 @@ const db      = require('../db');
 
 const router = express.Router();
 
-const DB_PATH      = path.join(__dirname, '..', 'database.sqlite');
-const BACKUPS_DIR  = path.join(__dirname, '..', 'backups');
+const DB_PATH      = process.env.DB_PATH || path.join(__dirname, '..', 'database.sqlite');
+const BACKUPS_DIR  = process.env.DB_PATH
+  ? path.join(path.dirname(process.env.DB_PATH), 'backups')
+  : path.join(__dirname, '..', 'backups');
 const MAX_BACKUPS  = 14;  // keep 2 weeks of daily backups
 
 function managerOnly(req, res, next) {

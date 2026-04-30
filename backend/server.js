@@ -12,6 +12,9 @@ const { registerWebhook } = require('./telegram');
 
 const app = express();
 
+// ── Trust Railway's proxy (required for rate limiter + real IP) ───────────
+app.set('trust proxy', 1);
+
 // ── Security headers ────────────────────────────────────────────────────────
 app.use(helmet({
   crossOriginResourcePolicy: { policy: 'same-site' },
