@@ -1,15 +1,30 @@
 require('dotenv').config();
-const nodemailer = require('nodemailer');
 
-const transporter = nodemailer.createTransport({
-  host:   process.env.SMTP_HOST,
-  port:   Number(process.env.SMTP_PORT) || 587,
-  secure: process.env.SMTP_SECURE === 'true',
-  auth:   { user: process.env.SMTP_USER, pass: process.env.SMTP_PASS },
-  family: 4,   // force IPv4 — Railway IPv6 can't reach smtp.gmail.com
-});
+// ── Resend HTTP API (replaces nodemailer SMTP to avoid Railway IPv6 issues) ──
+// Docs: https://resend.com/docs/api-reference/emails/send-email
+const RESEND_API_KEY = process.env.RESEND_API_KEY;
+const FROM_NAME      = 'YPJ KK Storekeeper';
+const FROM_DOMAIN    = process.env.MAIL_FROM_DOMAIN || 'ypj.sch.id';   // your verified Resend domain
+const FROM           = `"${FROM_NAME}" <noreply@${FROM_DOMAIN}>`;
 
-const FROM = `"YPJ KK Storekeeper" <${process.env.SMTP_USER}>`;
+async function send({ to, subject, html }) {
+  if (!RESEND_API_KEY) {
+    console.warn('[mailer] RESEND_API_KEY not set — skipping email to', to);
+    return;
+  }
+  const res = await fetch('https://api.resend.com/emails', {
+    method:  'POST',
+    headers: {
+      'Authorization': `Bearer ${RESEND_API_KEY}`,
+      'Content-Type':  'application/json',
+    },
+    body: JSON.stringify({ from: FROM, to, subject, html }),
+  });
+  if (!res.ok) {
+    const body = await res.text().catch(() => '');
+    throw new Error(`Resend API ${res.status}: ${body}`);
+  }
+}
 
 // ── Helpers ────────────────────────────────────────────────────────────────
 const table = (rows) => `
@@ -53,10 +68,7 @@ const wrap = (body) => `
     </div>
   </div>`;
 
-const send = (opts) => transporter.sendMail({ from: FROM, ...opts });
-
 // ── 1. Request Submitted ───────────────────────────────────────────────────
-// Sent to the requester immediately after their cart is submitted.
 async function sendRequestSubmitted({ requesterName, requesterEmail, items, type, purpose, returnDate, groupId }) {
   if (!requesterEmail) return;
   const typeLabel = type === 'borrow' ? 'Borrow (must be returned)' : 'Used-up';
@@ -83,7 +95,7 @@ async function sendRequestSubmitted({ requesterName, requesterEmail, items, type
         ⏳ You will receive another email once the storekeeper has reviewed your request.
       </div>
     `),
-  });
+  }).catch(e => console.error('Submission email failed:', e.message));
 }
 
 // ── 2. Request Approved ────────────────────────────────────────────────────
@@ -106,7 +118,7 @@ async function sendRequestApproved({ requesterName, requesterEmail, itemName, qu
         ✅ Please collect your item from the storeroom.${type === 'borrow' ? ' Remember to return it by the due date.' : ''}
       </div>
     `),
-  });
+  }).catch(e => console.error('Approval email failed:', e.message));
 }
 
 // ── 3. Request Rejected ────────────────────────────────────────────────────
@@ -127,11 +139,10 @@ async function sendRequestRejected({ requesterName, requesterEmail, itemName, qu
         ❌ Please contact the storekeeper or submit a new request if needed.
       </div>
     `),
-  });
+  }).catch(e => console.error('Rejection email failed:', e.message));
 }
 
 // ── 4. Low Stock Alert ─────────────────────────────────────────────────────
-// Sent to all active Managers and Storekeepers when an item drops below threshold.
 async function sendLowStockAlert({ itemName, itemCode, category, location, quantity, minThreshold, unitName, recipients }) {
   if (!recipients || recipients.length === 0) return;
 
@@ -171,7 +182,6 @@ async function sendLowStockAlert({ itemName, itemCode, category, location, quant
 }
 
 // ── 5. Request Forwarded ───────────────────────────────────────────────────
-// Sent to all active Managers when a Storekeeper forwards a request.
 async function sendRequestForwarded({ storekeepName, requesterName, items, purpose, forwardedNote, recipients }) {
   if (!recipients || recipients.length === 0) return;
   const itemList2 = items.map(i => `${i.item_name} × ${i.quantity} ${i.unit_name || ''}`).join(', ');
@@ -198,7 +208,7 @@ async function sendRequestForwarded({ storekeepName, requesterName, items, purpo
   );
 }
 
-// ── 6. Checkout / Checkin stubs (used by routes/transactions.js) ───────────
+// ── 6. Checkout / Checkin stubs ────────────────────────────────────────────
 async function sendCheckoutConfirmation() {}
 async function sendCheckinConfirmation()  {}
 
