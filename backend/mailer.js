@@ -169,7 +169,35 @@ async function sendLowStockAlert({ itemName, itemCode, category, location, quant
   );
 }
 
-// ── 5. Checkout / Checkin stubs (used by routes/transactions.js) ───────────
+// ── 5. Request Forwarded ───────────────────────────────────────────────────
+// Sent to all active Managers when a Storekeeper forwards a request.
+async function sendRequestForwarded({ storekeepName, requesterName, items, purpose, forwardedNote, recipients }) {
+  if (!recipients || recipients.length === 0) return;
+  const itemList2 = items.map(i => `${i.item_name} × ${i.quantity} ${i.unit_name || ''}`).join(', ');
+  const html = wrap(`
+    <p>Dear Manager,</p>
+    <p>A request has been <strong style="color:#7c3aed">forwarded to you</strong> for approval by the storekeeper.</p>
+    ${table([
+      ['Forwarded By', storekeepName || 'Storekeeper'],
+      ['Requester',    requesterName],
+      ['Items',        itemList2],
+      ...(purpose       ? [['Purpose',        purpose]]       : []),
+      ...(forwardedNote ? [['Storekeeper Note', forwardedNote]] : []),
+    ])}
+    <div style="background:#f5f3ff;border-left:4px solid #7c3aed;padding:12px 16px;border-radius:4px;font-size:13px;color:#6d28d9">
+      📨 Please log in to the inventory system to review and approve or reject this request.
+    </div>
+  `);
+  await Promise.all(
+    recipients.map(r => send({
+      to:      r.email,
+      subject: `[YPJ KK Inventory] 📨 Request forwarded for your approval`,
+      html,
+    }).catch(e => console.error(`Forward email to ${r.email} failed:`, e.message)))
+  );
+}
+
+// ── 6. Checkout / Checkin stubs (used by routes/transactions.js) ───────────
 async function sendCheckoutConfirmation() {}
 async function sendCheckinConfirmation()  {}
 
@@ -178,6 +206,7 @@ module.exports = {
   sendRequestApproved,
   sendRequestRejected,
   sendLowStockAlert,
+  sendRequestForwarded,
   sendCheckoutConfirmation,
   sendCheckinConfirmation,
 };

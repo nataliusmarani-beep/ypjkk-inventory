@@ -63,6 +63,10 @@ export const api = {
   importUsers:   (rows)   => request('/users/import',  { method: 'POST',   body: JSON.stringify({ rows }) }),
   importItems:   (rows)   => request('/items/import',  { method: 'POST',   body: JSON.stringify({ rows }) }),
 
+  // Own profile (any role)
+  getMe:      ()  => request('/users/me'),
+  updateMe:   (b) => request('/users/me', { method: 'PUT', body: JSON.stringify(b) }),
+
   // Activity log (Manager only)
   getActivity: (p) => request(`/activity${qs(p)}`),
 

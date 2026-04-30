@@ -8,6 +8,7 @@ const path         = require('path');
 const fs           = require('fs');
 const requireAuth  = require('./middleware/auth');
 const { createBackup } = require('./routes/backup');
+const { registerWebhook } = require('./telegram');
 
 const app = express();
 
@@ -47,21 +48,21 @@ const apiLimiter = rateLimit({
 });
 
 // ── Routes ──────────────────────────────────────────────────────────────────
-app.use('/api/auth/login', loginLimiter);         // rate-limit login specifically
-app.use('/api',            apiLimiter);           // general rate limit on all /api
+app.use('/api/auth/login',      loginLimiter);
+app.use('/api',                 apiLimiter);
 
-app.use('/api/auth',     require('./routes/auth'));           // public (login/logout/me)
-app.use('/api/items',    requireAuth, require('./routes/items'));
-app.use('/api/requests', requireAuth, require('./routes/requests'));
-app.use('/api/users',    requireAuth, require('./routes/users'));
-app.use('/api/activity', requireAuth, require('./routes/activity'));
-app.use('/api/backup',   requireAuth, require('./routes/backup').router);
+app.use('/api/auth',            require('./routes/auth'));
+app.use('/api/telegram',        require('./routes/telegram'));   // public — Telegram webhook
+app.use('/api/items',           requireAuth, require('./routes/items'));
+app.use('/api/requests',        requireAuth, require('./routes/requests'));
+app.use('/api/users',           requireAuth, require('./routes/users'));
+app.use('/api/activity',        requireAuth, require('./routes/activity'));
+app.use('/api/backup',          requireAuth, require('./routes/backup').router);
 
 // ── Serve React frontend in production ────────────────────────────────────
 const DIST = path.join(__dirname, '..', 'frontend', 'dist');
 if (process.env.NODE_ENV === 'production' && fs.existsSync(DIST)) {
   app.use(express.static(DIST));
-  // All non-API routes serve index.html (React Router handles them)
   app.get(/^(?!\/api).*$/, (req, res) => {
     res.sendFile(path.join(DIST, 'index.html'));
   });
@@ -70,7 +71,6 @@ if (process.env.NODE_ENV === 'production' && fs.existsSync(DIST)) {
 // ── Error handler ─────────────────────────────────────────────────────────
 app.use((err, req, res, next) => {
   console.error(err.message);
-  // Never leak stack traces to the client in production
   res.status(err.status || 500).json({
     error: process.env.NODE_ENV === 'production' ? 'Internal server error.' : err.message,
   });
@@ -87,6 +87,11 @@ function runAutoBackup() {
 }
 runAutoBackup();
 setInterval(runAutoBackup, 24 * 60 * 60 * 1000);
+
+// ── Register Telegram webhook (production only) ───────────────────────────
+if (process.env.NODE_ENV === 'production' && process.env.FRONTEND_URL) {
+  registerWebhook(process.env.FRONTEND_URL);
+}
 
 // ── Start ─────────────────────────────────────────────────────────────────
 const PORT = process.env.PORT || 3001;

@@ -8,6 +8,28 @@ function adminOnly(req, res, next) {
   if (req.user?.role !== 'Manager') return res.status(403).json({ error: 'Manager access required.' });
   next();
 }
+// ── PUT /api/users/me — any logged-in user can save their Telegram Chat ID ──
+// Must be declared BEFORE adminOnly middleware
+router.put('/me', (req, res) => {
+  try {
+    const id = req.user.id;
+    const { telegram_chat_id } = req.body;
+    db.prepare(`UPDATE users SET telegram_chat_id = ? WHERE id = ?`)
+      .run(telegram_chat_id?.trim() || null, id);
+    const user = db.prepare(`SELECT ${PUBLIC_COLS}, telegram_chat_id FROM users WHERE id = ?`).get(id);
+    res.json(user);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// ── GET /api/users/me — return own profile including telegram_chat_id ───────
+router.get('/me', (req, res) => {
+  const user = db.prepare(`SELECT ${PUBLIC_COLS}, telegram_chat_id FROM users WHERE id = ?`).get(req.user.id);
+  if (!user) return res.status(404).json({ error: 'User not found.' });
+  res.json(user);
+});
+
 router.use(adminOnly);
 
 const PUBLIC_COLS = 'id, name, email, role, unit_school, location, store_category, is_active, created_at';

@@ -93,6 +93,9 @@ if (userSchema && userSchema.sql.includes("'Admin'")) {
 }
 
 // Migrations for existing databases
+const userCols = db.prepare(`PRAGMA table_info(users)`).all().map(c => c.name);
+if (!userCols.includes('telegram_chat_id')) db.exec(`ALTER TABLE users ADD COLUMN telegram_chat_id TEXT`);
+
 const reqCols = db.prepare(`PRAGMA table_info(requests)`).all().map(c => c.name);
 if (!reqCols.includes('group_id'))       db.exec(`ALTER TABLE requests ADD COLUMN group_id TEXT`);
 if (!reqCols.includes('category'))       db.exec(`ALTER TABLE requests ADD COLUMN category TEXT`);

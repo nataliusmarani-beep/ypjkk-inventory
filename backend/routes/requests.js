@@ -1,10 +1,23 @@
 const express = require('express');
 const db = require('../db');
-const { sendRequestSubmitted, sendRequestApproved, sendRequestRejected, sendLowStockAlert } = require('../mailer');
+const { sendRequestSubmitted, sendRequestApproved, sendRequestRejected, sendLowStockAlert, sendRequestForwarded } = require('../mailer');
+const { sendTelegram, sendTelegramToMany } = require('../telegram');
 
-// Fetch active Manager + Storekeeper emails for low-stock alerts
+// Fetch active Manager + Storekeeper records
 function getStockAlertRecipients() {
-  return db.prepare(`SELECT name, email FROM users WHERE role IN ('Manager','Storekeeper') AND is_active = 1`).all();
+  return db.prepare(`SELECT name, email, telegram_chat_id FROM users WHERE role IN ('Manager','Storekeeper') AND is_active = 1`).all();
+}
+
+// Fetch active Managers only (for forwarding notifications)
+function getManagerRecipients() {
+  return db.prepare(`SELECT name, email, telegram_chat_id FROM users WHERE role = 'Manager' AND is_active = 1`).all();
+}
+
+// Look up a user's telegram_chat_id by email
+function getTelegramId(email) {
+  if (!email) return null;
+  const u = db.prepare(`SELECT telegram_chat_id FROM users WHERE LOWER(email) = LOWER(?) AND is_active = 1`).get(email);
+  return u?.telegram_chat_id || null;
 }
 
 // Fire low-stock alert if item dropped below threshold after a stock deduction
@@ -12,6 +25,8 @@ function checkAndAlertLowStock(itemId) {
   const item = db.prepare(`SELECT name, code, category, location, quantity, min_threshold, unit_name FROM items WHERE id = ?`).get(itemId);
   if (!item || item.quantity >= item.min_threshold) return;
   const recipients = getStockAlertRecipients();
+
+  // Email
   sendLowStockAlert({
     itemName:     item.name,
     itemCode:     item.code,
@@ -22,6 +37,17 @@ function checkAndAlertLowStock(itemId) {
     unitName:     item.unit_name,
     recipients,
   }).catch(e => console.error('Low-stock alert failed:', e.message));
+
+  // Telegram
+  const isOut = item.quantity === 0;
+  const tgMsg = `${isOut ? '🔴' : '⚠️'} <b>${isOut ? 'OUT OF STOCK' : 'LOW STOCK ALERT'}</b>\n\n` +
+    `<b>${item.name}</b>\n` +
+    `📦 Current stock: <b>${item.quantity} ${item.unit_name}</b>\n` +
+    `⚡ Minimum: ${item.min_threshold} ${item.unit_name}\n` +
+    `📍 Location: ${item.location}\n\n` +
+    `Please restock as soon as possible.`;
+  sendTelegramToMany(recipients.map(r => r.telegram_chat_id).filter(Boolean), tgMsg)
+    .catch(e => console.error('[telegram] low-stock alert failed:', e.message));
 }
 
 const router = express.Router();
@@ -132,7 +158,7 @@ router.post('/cart', (req, res) => {
     const created = db.prepare(`${withItem} WHERE r.group_id = ? ORDER BY r.id`).all(group_id);
     res.status(201).json({ group_id, items: created });
 
-    // Notify requester that their submission is pending approval
+    // Email requester
     sendRequestSubmitted({
       requesterName:  requester_name.trim(),
       requesterEmail: requester_email.trim(),
@@ -142,6 +168,30 @@ router.post('/cart', (req, res) => {
       returnDate:     return_date || null,
       groupId:        group_id,
     }).catch(e => console.error('Submission email failed:', e.message));
+
+    // Telegram requester
+    const reqTgId = getTelegramId(requester_email.trim());
+    if (reqTgId) {
+      const itemsSummary = created.map(r => `• ${r.item_name} × ${r.quantity} ${r.unit_name}`).join('\n');
+      sendTelegram(reqTgId,
+        `📋 <b>Request Submitted</b>\n\nYour request is pending approval.\n\n${itemsSummary}\n\n` +
+        `Type: ${type === 'borrow' ? 'Borrow' : 'Used-up'}${purpose ? `\nPurpose: ${purpose}` : ''}\n\n` +
+        `⏳ You will be notified once it's reviewed.`
+      ).catch(() => {});
+    }
+
+    // Telegram to all Storekeepers + Managers (approvers)
+    const approvers = getStockAlertRecipients();
+    const approverTgIds = approvers.map(r => r.telegram_chat_id).filter(Boolean);
+    if (approverTgIds.length) {
+      const itemsSummary = created.map(r => `• ${r.item_name} × ${r.quantity} ${r.unit_name}`).join('\n');
+      sendTelegramToMany(approverTgIds,
+        `🔔 <b>New Request Pending Approval</b>\n\n` +
+        `From: <b>${requester_name.trim()}</b>\n${itemsSummary}\n\n` +
+        `Type: ${type === 'borrow' ? 'Borrow' : 'Used-up'}${purpose ? `\nPurpose: ${purpose}` : ''}\n\n` +
+        `👉 Open the app to review: kkinventory.ypj.sch.id/approvals`
+      ).catch(() => {});
+    }
   } catch (err) {
     db.exec('ROLLBACK');
     res.status(err.status || 500).json({ error: err.message });
@@ -204,9 +254,11 @@ router.put('/groups/:groupId/approve', (req, res) => {
     // Low-stock alerts for any item that dropped below threshold
     for (const row of rows) checkAndAlertLowStock(row.item_id);
 
-    // Send one email for the whole group
-    const first = rows[0];
+    const first    = rows[0];
     const itemList = rows.map(r => `${r.item_name} × ${r.quantity} ${r.unit_name}`).join(', ');
+    const itemsBullet = rows.map(r => `• ${r.item_name} × ${r.quantity} ${r.unit_name}`).join('\n');
+
+    // Email
     sendRequestApproved({
       requesterName:  first.requester_name,
       requesterEmail: first.requester_email,
@@ -214,7 +266,17 @@ router.put('/groups/:groupId/approve', (req, res) => {
       quantity:       rows.reduce((s, r) => s + r.quantity, 0),
       type:           first.type,
       returnDate:     first.return_date,
+      approvalNotes:  notes || null,
     }).catch(e => console.error('Approval email failed:', e.message));
+
+    // Telegram
+    const tgId = getTelegramId(first.requester_email);
+    if (tgId) sendTelegram(tgId,
+      `✅ <b>Request Approved!</b>\n\n${itemsBullet}` +
+      `${notes ? `\n\n📝 Note: ${notes}` : ''}\n\n` +
+      `Please collect your item(s) from the storeroom.` +
+      `${first.type === 'borrow' ? ' Remember to return by the due date.' : ''}`
+    ).catch(() => {});
 
     res.json({ group_id: groupId, approved: rows.length });
   } catch (err) {
@@ -235,6 +297,9 @@ router.put('/groups/:groupId/reject', (req, res) => {
 
   const first = rows[0];
   const itemList = rows.map(r => `${r.item_name} × ${r.quantity}`).join(', ');
+  const itemsBullet = rows.map(r => `• ${r.item_name} × ${r.quantity}`).join('\n');
+
+  // Email
   sendRequestRejected({
     requesterName:  first.requester_name,
     requesterEmail: first.requester_email,
@@ -242,6 +307,14 @@ router.put('/groups/:groupId/reject', (req, res) => {
     quantity:       rows.reduce((s, r) => s + r.quantity, 0),
     notes,
   }).catch(e => console.error('Rejection email failed:', e.message));
+
+  // Telegram
+  const tgId = getTelegramId(first.requester_email);
+  if (tgId) sendTelegram(tgId,
+    `❌ <b>Request Not Approved</b>\n\n${itemsBullet}` +
+    `${notes ? `\n\n📝 Reason: ${notes}` : ''}\n\n` +
+    `Please contact the storekeeper or submit a new request if needed.`
+  ).catch(() => {});
 
   res.json({ group_id: groupId, rejected: rows.length });
 });
@@ -251,13 +324,36 @@ router.put('/groups/:groupId/forward', (req, res) => {
   const { forwarded_note } = req.body || {};
   const { groupId } = req.params;
 
-  const rows = db.prepare(`SELECT id FROM requests WHERE group_id = ? AND status = 'pending'`).all(groupId);
-  if (rows.length === 0) return res.status(404).json({ error: 'No pending items in this group.' });
+  const fullRows = db.prepare(`${withItem} WHERE r.group_id = ? AND r.status = 'pending'`).all(groupId);
+  if (fullRows.length === 0) return res.status(404).json({ error: 'No pending items in this group.' });
 
   db.prepare(`UPDATE requests SET forwarded = 1, forwarded_note = ? WHERE group_id = ? AND status = 'pending'`)
     .run(forwarded_note || null, groupId);
 
-  res.json({ group_id: groupId, forwarded: rows.length });
+  res.json({ group_id: groupId, forwarded: fullRows.length });
+
+  // Notify managers via email + Telegram
+  const managers   = getManagerRecipients();
+  const first      = fullRows[0];
+  const itemsBullet = fullRows.map(r => `• ${r.item_name} × ${r.quantity} ${r.unit_name}`).join('\n');
+
+  sendRequestForwarded({
+    storekeepName:  req.user?.name || 'Storekeeper',
+    requesterName:  first.requester_name,
+    items:          fullRows.map(r => ({ item_name: r.item_name, quantity: r.quantity, unit_name: r.unit_name })),
+    purpose:        first.purpose,
+    forwardedNote:  forwarded_note || null,
+    recipients:     managers,
+  }).catch(e => console.error('Forward email failed:', e.message));
+
+  const managerTgIds = managers.map(r => r.telegram_chat_id).filter(Boolean);
+  if (managerTgIds.length) sendTelegramToMany(managerTgIds,
+    `📨 <b>Request Forwarded to You</b>\n\n` +
+    `Forwarded by: <b>${req.user?.name || 'Storekeeper'}</b>\n` +
+    `From: ${first.requester_name}\n\n${itemsBullet}` +
+    `${forwarded_note ? `\n\n📝 Note: ${forwarded_note}` : ''}\n\n` +
+    `👉 Open app to review: kkinventory.ypj.sch.id/approvals`
+  ).catch(() => {});
 });
 
 // ── PUT /api/requests/:id/forward (single) ────────────────────────────────
@@ -298,6 +394,14 @@ router.put('/:id/approve', (req, res) => {
     sendRequestApproved({ requesterName: row.requester_name, requesterEmail: row.requester_email, itemName: row.item_name, quantity: row.quantity, type: row.type, returnDate: row.return_date, approvalNotes: notes || null })
       .catch(e => console.error(e.message));
 
+    const tgId = getTelegramId(row.requester_email);
+    if (tgId) sendTelegram(tgId,
+      `✅ <b>Request Approved!</b>\n\n• ${row.item_name} × ${row.quantity} ${row.unit_name}` +
+      `${notes ? `\n\n📝 Note: ${notes}` : ''}\n\n` +
+      `Please collect your item from the storeroom.` +
+      `${row.type === 'borrow' ? ' Remember to return by the due date.' : ''}`
+    ).catch(() => {});
+
     res.json(db.prepare(`${withItem} WHERE r.id = ?`).get(row.id));
   } catch (err) {
     db.exec('ROLLBACK');
@@ -317,6 +421,13 @@ router.put('/:id/reject', (req, res) => {
 
   sendRequestRejected({ requesterName: row.requester_name, requesterEmail: row.requester_email, itemName: row.item_name, quantity: row.quantity, notes })
     .catch(e => console.error(e.message));
+
+  const tgId = getTelegramId(row.requester_email);
+  if (tgId) sendTelegram(tgId,
+    `❌ <b>Request Not Approved</b>\n\n• ${row.item_name} × ${row.quantity} ${row.unit_name}` +
+    `${notes ? `\n\n📝 Reason: ${notes}` : ''}\n\n` +
+    `Please contact the storekeeper or submit a new request if needed.`
+  ).catch(() => {});
 
   res.json(db.prepare(`${withItem} WHERE r.id = ?`).get(row.id));
 });
