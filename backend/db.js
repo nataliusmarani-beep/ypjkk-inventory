@@ -110,11 +110,13 @@ if (!userCols.includes('password_reset_token'))   db.exec(`ALTER TABLE users ADD
 if (!userCols.includes('password_reset_expires')) db.exec(`ALTER TABLE users ADD COLUMN password_reset_expires TEXT`);
 
 const reqCols = db.prepare(`PRAGMA table_info(requests)`).all().map(c => c.name);
-if (!reqCols.includes('group_id'))       db.exec(`ALTER TABLE requests ADD COLUMN group_id TEXT`);
-if (!reqCols.includes('category'))       db.exec(`ALTER TABLE requests ADD COLUMN category TEXT`);
-if (!reqCols.includes('forwarded'))      db.exec(`ALTER TABLE requests ADD COLUMN forwarded INTEGER NOT NULL DEFAULT 0`);
-if (!reqCols.includes('forwarded_note')) db.exec(`ALTER TABLE requests ADD COLUMN forwarded_note TEXT`);
-if (!reqCols.includes('approval_notes')) db.exec(`ALTER TABLE requests ADD COLUMN approval_notes TEXT`);
+if (!reqCols.includes('group_id'))        db.exec(`ALTER TABLE requests ADD COLUMN group_id TEXT`);
+if (!reqCols.includes('category'))        db.exec(`ALTER TABLE requests ADD COLUMN category TEXT`);
+if (!reqCols.includes('forwarded'))       db.exec(`ALTER TABLE requests ADD COLUMN forwarded INTEGER NOT NULL DEFAULT 0`);
+if (!reqCols.includes('forwarded_note'))  db.exec(`ALTER TABLE requests ADD COLUMN forwarded_note TEXT`);
+if (!reqCols.includes('approval_notes'))  db.exec(`ALTER TABLE requests ADD COLUMN approval_notes TEXT`);
+if (!reqCols.includes('reminder_2d_sent')) db.exec(`ALTER TABLE requests ADD COLUMN reminder_2d_sent INTEGER NOT NULL DEFAULT 0`);
+if (!reqCols.includes('reminder_1d_sent')) db.exec(`ALTER TABLE requests ADD COLUMN reminder_1d_sent INTEGER NOT NULL DEFAULT 0`);
 
 const itemCols = db.prepare(`PRAGMA table_info(items)`).all().map(c => c.name);
 const migrations = {

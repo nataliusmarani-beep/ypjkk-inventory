@@ -91,6 +91,13 @@ function runAutoBackup() {
 runAutoBackup();
 setInterval(runAutoBackup, 24 * 60 * 60 * 1000);
 
+// ── Borrow return reminders: every hour ───────────────────────────────────
+const { runBorrowReminders } = require('./reminders');
+runBorrowReminders().catch(e => console.error('[reminders] Startup run failed:', e.message));
+setInterval(() => {
+  runBorrowReminders().catch(e => console.error('[reminders] Hourly run failed:', e.message));
+}, 60 * 60 * 1000);
+
 // ── Register Telegram webhook (production only) ───────────────────────────
 if (process.env.NODE_ENV === 'production' && process.env.FRONTEND_URL) {
   registerWebhook(process.env.FRONTEND_URL);

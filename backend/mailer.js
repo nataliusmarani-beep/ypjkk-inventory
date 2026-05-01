@@ -360,6 +360,56 @@ async function sendPrincipalDecisionNotice({ requesterName, requesterUnit, items
   );
 }
 
+// ── Borrow return reminder ─────────────────────────────────────────────────
+async function sendBorrowReminder({ name, email, itemName, quantity, unitName, returnDate, daysLeft }) {
+  const urgencyColor = daysLeft === 1 ? '#dc2626' : '#d97706';   // red for 1d, amber for 2d
+  const urgencyLabel = daysLeft === 1 ? '⚠️ Tomorrow!' : '📅 In 2 days';
+  const formattedDate = new Date(returnDate + 'T00:00:00').toLocaleDateString('en-GB', {
+    weekday: 'long', year: 'numeric', month: 'long', day: 'numeric',
+  });
+
+  const html = `
+    <div style="font-family:Arial,sans-serif;max-width:520px;margin:0 auto">
+      <div style="background:#1a2f5e;padding:20px 24px;border-radius:8px 8px 0 0">
+        <h2 style="color:white;margin:0;font-size:18px">📦 YPJ KK Inventory</h2>
+        <p style="color:#93c5fd;margin:4px 0 0;font-size:13px">Return Reminder</p>
+      </div>
+      <div style="background:white;padding:24px;border:1px solid #e2e8f0;border-top:none">
+        <p style="margin:0 0 16px">Hi <strong>${name}</strong>,</p>
+        <div style="background:#fff7ed;border:1px solid #fed7aa;border-left:4px solid ${urgencyColor};
+             border-radius:6px;padding:14px 16px;margin-bottom:20px">
+          <p style="margin:0;font-size:15px;font-weight:700;color:${urgencyColor}">${urgencyLabel}</p>
+          <p style="margin:4px 0 0;font-size:13px;color:#92400e">
+            Please return the borrowed item by <strong>${formattedDate}</strong>.
+          </p>
+        </div>
+        <table style="width:100%;border-collapse:collapse;font-size:14px;margin-bottom:20px">
+          <tr style="background:#f8fafc">
+            <td style="padding:10px 12px;border:1px solid #e2e8f0;font-weight:700;color:#64748b;width:40%">Item</td>
+            <td style="padding:10px 12px;border:1px solid #e2e8f0;color:#1a2f5e;font-weight:600">${itemName}</td>
+          </tr>
+          <tr>
+            <td style="padding:10px 12px;border:1px solid #e2e8f0;font-weight:700;color:#64748b">Quantity</td>
+            <td style="padding:10px 12px;border:1px solid #e2e8f0">${quantity} ${unitName}</td>
+          </tr>
+          <tr style="background:#f8fafc">
+            <td style="padding:10px 12px;border:1px solid #e2e8f0;font-weight:700;color:#64748b">Due Date</td>
+            <td style="padding:10px 12px;border:1px solid #e2e8f0;color:${urgencyColor};font-weight:700">${formattedDate}</td>
+          </tr>
+        </table>
+        <p style="font-size:13px;color:#64748b;margin:0">
+          Please return the item to the storekeeper on time. If you need an extension, contact the storekeeper directly.
+        </p>
+      </div>
+      <div style="background:#f8fafc;padding:12px 24px;border:1px solid #e2e8f0;border-top:none;
+           border-radius:0 0 8px 8px;text-align:center;font-size:11px;color:#94a3b8">
+        YPJ KK Inventory System · This is an automated reminder
+      </div>
+    </div>`;
+
+  await send({ to: email, subject: `[YPJ KK Inventory] 🔔 Return Reminder — ${itemName} due ${daysLeft === 1 ? 'tomorrow' : 'in 2 days'}`, html });
+}
+
 module.exports = {
   sendWelcomeEmail,
   sendNewRequestAlert,
@@ -372,4 +422,5 @@ module.exports = {
   sendPrincipalDecisionNotice,
   sendCheckoutConfirmation,
   sendCheckinConfirmation,
+  sendBorrowReminder,
 };
