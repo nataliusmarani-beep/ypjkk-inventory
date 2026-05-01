@@ -36,7 +36,7 @@ function validate(body) {
 
 // GET /api/items
 router.get('/', (req, res) => {
-  const { search, category, store_category, location, unit_school, status } = req.query;
+  const { search, category, store_category, location, unit_school, status, code } = req.query;
 
   const rows = db.prepare(`
     WITH enriched AS (
@@ -56,6 +56,7 @@ router.get('/', (req, res) => {
       AND (? IS NULL OR location = ?)
       AND (? IS NULL OR unit_school = ? OR unit_school = 'All')
       AND (? IS NULL OR status = ?)
+      AND (? IS NULL OR LOWER(COALESCE(code,'')) = LOWER(?))
     ORDER BY name ASC
   `).all(
     search||null, search||null, search||null,
@@ -64,6 +65,7 @@ router.get('/', (req, res) => {
     location||null, location||null,
     unit_school||null, unit_school||null,
     status||null, status||null,
+    code||null, code||null,
   );
 
   res.json(rows);

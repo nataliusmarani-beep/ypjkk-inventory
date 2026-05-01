@@ -35,8 +35,9 @@ export default function AddItemPage({ showToast, user }) {
   const [saving,         setSaving]         = useState(false);
   const [error,          setError]          = useState(null);
   const [showScanner,    setShowScanner]    = useState(false);
-  const [nameSuggestion, setNameSuggestion] = useState(null);  // { name, brand }
+  const [nameSuggestion, setNameSuggestion] = useState(null);
   const [lookingUp,      setLookingUp]      = useState(false);
+  const [existingItem,   setExistingItem]   = useState(null); // item found in local DB by barcode
 
   useEffect(() => { api.getMeta().then(setMeta).catch(() => {}); }, []);
 
@@ -54,11 +55,38 @@ export default function AddItemPage({ showToast, user }) {
 
   const handleScan = async (barcode) => {
     setShowScanner(false);
-    setForm(f => ({ ...f, code: barcode }));
     setNameSuggestion(null);
+    setExistingItem(null);
     setLookingUp(true);
 
     try {
+      // ── Step 1: Check local inventory database first ──────────────────────
+      const localMatches = await api.getItems({ code: barcode });
+      if (localMatches.length > 0) {
+        const item = localMatches[0];
+        setExistingItem(item);
+        // Pull ALL fields from existing item into the form
+        setForm({
+          name:           item.name           || '',
+          code:           item.code           || barcode,
+          icon:           item.icon           || '',
+          category:       item.category       || 'Stationery',
+          store_category: item.store_category || 'Supplies',
+          location:       item.location       || 'SD SMP YPJ KK',
+          unit_school:    item.unit_school    || 'All',
+          quantity:       item.quantity       ?? 0,
+          max_quantity:   item.max_quantity   ?? 0,
+          unit_name:      item.unit_name      || 'pcs',
+          min_threshold:  item.min_threshold  ?? 10,
+          condition:      item.condition      || 'Good',
+          po_number:      item.po_number      || '',
+          description:    item.description    || '',
+        });
+        return; // skip external lookup — item is already in inventory
+      }
+
+      // ── Step 2: Not in local DB — try external product databases ──────────
+      setForm(f => ({ ...f, code: barcode }));
       let name = '';
 
       // Source 1: UPC Item DB (broad product database)
@@ -70,7 +98,7 @@ export default function AddItemPage({ showToast, user }) {
         }
       } catch { /* ignore */ }
 
-      // Source 2: Open Food Facts (great for groceries / packaged goods)
+      // Source 2: Open Food Facts (groceries / packaged goods)
       if (!name) {
         try {
           const res  = await fetch(`https://world.openfoodfacts.org/api/v0/product/${barcode}.json`);
@@ -82,11 +110,9 @@ export default function AddItemPage({ showToast, user }) {
       }
 
       if (name) {
-        // Auto-fill name field directly — no manual step needed
         setForm(f => ({ ...f, name }));
         showToast('✅ Item name auto-filled from barcode', 'success');
       } else {
-        // Let the storekeeper know nothing was found
         setNameSuggestion({ notFound: true });
       }
     } finally {
@@ -98,8 +124,14 @@ export default function AddItemPage({ showToast, user }) {
     e.preventDefault();
     setSaving(true); setError(null);
     try {
-      await api.createItem({ ...form, max_quantity: form.max_quantity || form.quantity });
-      showToast('✅ Item saved to inventory!', 'success');
+      const payload = { ...form, max_quantity: form.max_quantity || form.quantity };
+      if (existingItem) {
+        await api.updateItem(existingItem.id, payload);
+        showToast('✅ Item updated successfully!', 'success');
+      } else {
+        await api.createItem(payload);
+        showToast('✅ Item saved to inventory!', 'success');
+      }
       navigate('/inventory');
     } catch (err) {
       setError(err.message);
@@ -114,13 +146,43 @@ export default function AddItemPage({ showToast, user }) {
     <div>
       <div className="page-header">
         <div>
-          <div className="page-title">➕ Add New Item</div>
-          <div className="page-subtitle">Add an item to the inventory catalog</div>
+          <div className="page-title">{existingItem ? '✏️ Update Item' : '➕ Add New Item'}</div>
+          <div className="page-subtitle">{existingItem ? `Updating stock for: ${existingItem.name}` : 'Add an item to the inventory catalog'}</div>
         </div>
         <button className="btn btn-ghost" onClick={() => navigate('/inventory')}>← Back to Items</button>
       </div>
 
       {error && <div className="alert alert-error">{error}</div>}
+
+      {/* ── Existing item found banner ── */}
+      {existingItem && (
+        <div style={{
+          background: '#f0fdf4', border: '1px solid #86efac', borderRadius: 10,
+          padding: '12px 16px', marginBottom: 16,
+          display: 'flex', flexWrap: 'wrap', gap: 10, alignItems: 'center',
+        }}>
+          <div style={{ flex: 1, minWidth: 200 }}>
+            <div style={{ fontSize: 12, color: '#15803d', fontWeight: 700, marginBottom: 2 }}>
+              🔄 Existing item found in inventory
+            </div>
+            <div style={{ fontSize: 14, fontWeight: 600, color: 'var(--navy)' }}>
+              {existingItem.name}
+            </div>
+            <div style={{ fontSize: 12, color: 'var(--muted)', marginTop: 2 }}>
+              Current stock: <strong>{existingItem.quantity} {existingItem.unit_name}</strong>
+              {' · '}All fields pre-filled. Adjust quantity or any field, then save.
+            </div>
+          </div>
+          <button
+            type="button"
+            className="btn btn-ghost"
+            style={{ fontSize: 12 }}
+            onClick={() => { setExistingItem(null); setForm(lock ? { ...EMPTY, location: lock.location, unit_school: lock.unitSchools[0] } : EMPTY); }}
+          >
+            ✕ Clear & add new item
+          </button>
+        </div>
+      )}
 
       {/* ── Barcode lookup status ── */}
       {lookingUp && (
@@ -265,7 +327,7 @@ export default function AddItemPage({ showToast, user }) {
 
           <div style={{ marginTop: 22, display: 'flex', gap: 10 }}>
             <button type="submit" className="btn btn-primary" disabled={saving}>
-              {saving ? 'Saving...' : '💾 Save Item'}
+              {saving ? 'Saving...' : existingItem ? '💾 Update Item' : '💾 Save Item'}
             </button>
             <button type="button" className="btn btn-ghost" onClick={() => navigate('/inventory')}>Cancel</button>
           </div>
