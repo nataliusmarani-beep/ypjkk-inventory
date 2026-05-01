@@ -492,7 +492,7 @@ Key concepts:
 
 ```javascript
 // Adapt these constants for Tembagapura's stores and categories:
-const LOCATIONS   = ['Tembagapura Primary Store', 'Tembagapura Secondary Store'];
+const LOCATIONS   = ['PAUD YPJ TPRA', 'SD SMP YPJ TPRA'];
 const UNIT_SCHOOLS = ['All', 'PAUD', 'SD', 'SMP'];
 // ... keep the rest of categories/units the same
 ```
@@ -1151,15 +1151,15 @@ When you replicate the app for YPJ Tembagapura, change these specific values:
 
 | Store | Unit | Storekeeper `unit_school` |
 |---|---|---|
-| PAUD YPJ Tembagapura | PAUD | `PAUD` |
-| SD SMP YPJ Tembagapura | SD + SMP | `SD` or `SMP` |
+| PAUD YPJ TPRA | PAUD | `PAUD` |
+| SD SMP YPJ TPRA | SD + SMP | `SD` or `SMP` |
 
 ### 1. Store locations (backend/routes/items.js)
 ```javascript
 // Change FROM:
 const LOCATIONS = ['PAUD YPJ KK', 'SD SMP YPJ KK'];
 // TO:
-const LOCATIONS = ['PAUD YPJ Tembagapura', 'SD SMP YPJ Tembagapura'];
+const LOCATIONS = ['PAUD YPJ TPRA', 'SD SMP YPJ TPRA'];
 ```
 
 ### 2. Storekeeper location mapping (backend/routes/items.js)
@@ -1167,7 +1167,7 @@ const LOCATIONS = ['PAUD YPJ Tembagapura', 'SD SMP YPJ Tembagapura'];
 // Change FROM:
 const myLocation = req.user.unit_school === 'PAUD' ? 'PAUD YPJ KK' : 'SD SMP YPJ KK';
 // TO:
-const myLocation = req.user.unit_school === 'PAUD' ? 'PAUD YPJ Tembagapura' : 'SD SMP YPJ Tembagapura';
+const myLocation = req.user.unit_school === 'PAUD' ? 'PAUD YPJ TPRA' : 'SD SMP YPJ TPRA';
 ```
 
 ### 3. Same mapping in frontend (RequestsPage.jsx, AddItemPage.jsx, ItemForm.jsx)
@@ -1175,7 +1175,7 @@ const myLocation = req.user.unit_school === 'PAUD' ? 'PAUD YPJ Tembagapura' : 'S
 // Change FROM:
 const storeLocation = unit_school === 'PAUD' ? 'PAUD YPJ KK' : 'SD SMP YPJ KK';
 // TO:
-const storeLocation = unit_school === 'PAUD' ? 'PAUD YPJ Tembagapura' : 'SD SMP YPJ Tembagapura';
+const storeLocation = unit_school === 'PAUD' ? 'PAUD YPJ TPRA' : 'SD SMP YPJ TPRA';
 ```
 
 ### 4. App title (frontend/src/components/Layout/Topbar.jsx)
@@ -1433,7 +1433,7 @@ git push -u origin main
 | Campus | Store locations | Storekeepers |
 |---|---|---|
 | YPJ KK | PAUD YPJ KK · SD SMP YPJ KK | 2 (one per location) |
-| YPJ TPRA | PAUD YPJ Tembagapura · SD SMP YPJ Tembagapura | 2 (one per location) |
+| YPJ TPRA | PAUD YPJ TPRA · SD SMP YPJ TPRA | 2 (one per location) |
 
 The backend logic (`storekeepWhere`, location mapping, notification routing) is **identical to KK** — just replace the location name strings.
 
@@ -1446,8 +1446,8 @@ Run these replacements across the whole codebase:
 | `YPJ KK Inventory` | `YPJ TPRA Inventory` |
 | `YPJ KK Campus` | `YPJ TPRA Campus` |
 | `Kuala Kencana Campus` | `Tembagapura Campus` |
-| `PAUD YPJ KK` | `YPJ Tembagapura` |
-| `SD SMP YPJ KK` | `YPJ Tembagapura` |
+| `PAUD YPJ KK` | `PAUD YPJ TPRA` |
+| `SD SMP YPJ KK` | `SD SMP YPJ TPRA` |
 | `kkinventory.ypj.sch.id` | `tprainventory.ypj.sch.id` *(or your chosen domain)* |
 | `@ypjkkinventory_bot` | `@ypjtprainventory_bot` *(after creating the new Telegram bot)* |
 
@@ -1470,21 +1470,21 @@ TPRA uses the same two-store, two-storekeeper structure as KK. The `storekeepWhe
 
 **backend/routes/items.js:**
 ```javascript
-const LOCATIONS = ['PAUD YPJ Tembagapura', 'SD SMP YPJ Tembagapura'];
+const LOCATIONS = ['PAUD YPJ TPRA', 'SD SMP YPJ TPRA'];
 ```
 
 **Storekeeper location mapping** (items.js + requests.js):
 ```javascript
 const myLocation = req.user.unit_school === 'PAUD'
-  ? 'PAUD YPJ Tembagapura'
-  : 'SD SMP YPJ Tembagapura';
+  ? 'PAUD YPJ TPRA'
+  : 'SD SMP YPJ TPRA';
 ```
 
 **Frontend location mapping** (AddItemPage.jsx, RequestsPage.jsx):
 ```javascript
 const storeLocation = unit_school === 'PAUD'
-  ? 'PAUD YPJ Tembagapura'
-  : 'SD SMP YPJ Tembagapura';
+  ? 'PAUD YPJ TPRA'
+  : 'SD SMP YPJ TPRA';
 ```
 
 **storekeepWhere()** — no change needed, works as-is.
