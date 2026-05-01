@@ -693,27 +693,44 @@ async function send({ to, subject, html }) {
 
 // ── Welcome email (sent when a new user is created) ───────────────────────
 async function sendWelcomeEmail({ name, email, role, unit_school, setPasswordUrl }) {
+  const appUrl = process.env.FRONTEND_URL || 'https://kkinventory.ypj.sch.id';
   await send({
     to: email,
-    subject: '🎉 Welcome to YPJ Inventory — Set Your Password',
-    html: `
-      <div style="font-family:Arial,sans-serif;max-width:520px;margin:0 auto">
-        <div style="background:#1a2f5e;padding:24px;border-radius:8px 8px 0 0;text-align:center">
-          <h2 style="color:white;margin:0">📦 YPJ Inventory</h2>
-        </div>
-        <div style="background:white;padding:28px;border:1px solid #e2e8f0">
-          <p>Hello <strong>${name}</strong>,</p>
-          <p>Your account has been created with role <strong>${role}</strong> (${unit_school}).</p>
-          <p>Click the button below to set your password. This link expires in <strong>72 hours</strong>.</p>
-          <div style="text-align:center;margin:28px 0">
-            <a href="${setPasswordUrl}" style="background:#1a2f5e;color:white;padding:14px 28px;
-               border-radius:8px;text-decoration:none;font-weight:700">🔐 Set My Password</a>
-          </div>
-          <p style="color:#6b7280;font-size:13px">If you did not expect this email, ignore it.</p>
-        </div>
-      </div>`,
+    subject: `[YPJ KK Inventory] Welcome, ${name} — Set Your Password`,
+    html: wrap(`
+      <p>Dear <strong>${name}</strong>,</p>
+      <p>Your account for the <strong>YPJ KK Inventory System</strong> has been created.</p>
+      ${table([['Name', name], ['Email', email], ['Role', role], ['Unit / School', unit_school || 'All']])}
+      <p>Click the button below to set your password (link expires in <strong>72 hours</strong>):</p>
+      <div style="text-align:center;margin:28px 0">
+        <a href="${setPasswordUrl}" style="...">🔐 Set My Password</a>
+      </div>
+
+      <!-- PWA install instructions -->
+      <div style="background:#f8fafc;border:1px solid #e2e8f0;border-radius:8px;padding:20px">
+        <p style="font-weight:700;color:#1a2f5e">📱 Install the App on Your Phone</p>
+        <p>App URL: <a href="${appUrl}">${appUrl}</a></p>
+
+        <p><strong>🤖 Android (Chrome)</strong></p>
+        <ol>
+          <li>Open the URL above in <strong>Chrome</strong></li>
+          <li>Tap ⋮ menu → <strong>"Add to Home Screen"</strong> or <strong>"Install app"</strong></li>
+          <li>Tap Add</li>
+        </ol>
+
+        <p><strong>🍎 iPhone / iPad (Safari)</strong></p>
+        <ol>
+          <li>Open the URL above in <strong>Safari</strong> (not Chrome)</li>
+          <li>Tap the Share button (□↑) → <strong>"Add to Home Screen"</strong></li>
+          <li>Tap Add</li>
+        </ol>
+      </div>
+    `),
   });
 }
+
+// ── For TPRA: update appUrl fallback ─────────────────────────────────────
+// const appUrl = process.env.FRONTEND_URL || 'https://tprainventory.ypj.sch.id';
 
 // ── Principal CC on request submission ───────────────────────────────────
 async function sendPrincipalSubmissionNotice({ principal, requester, items, groupId }) { /* ... */ }
@@ -1212,6 +1229,18 @@ const adminName     = process.env.ADMIN_NAME     || 'Administrator Tembagapura';
 <div className="page-subtitle">How to use the YPJ Tembagapura Inventory System</div>
 ```
 
+> 💡 The User Guide page covers all roles and is auto-updated with the latest features including: roles overview, set-password flow, request submission, borrow reminders, barcode scanner, PWA install instructions (Android + iOS), Telegram setup, and manager tools.
+
+### 8. Welcome email app URL (backend/mailer.js)
+```javascript
+// In sendWelcomeEmail(), the appUrl fallback should match the campus:
+// KK:
+const appUrl = process.env.FRONTEND_URL || 'https://kkinventory.ypj.sch.id';
+// TPRA:
+const appUrl = process.env.FRONTEND_URL || 'https://tprainventory.ypj.sch.id';
+```
+> Since `FRONTEND_URL` is set as a Railway env variable in production, the fallback only matters for local dev. In production it always uses the correct domain automatically.
+
 ### 8. Telegram Bot
 - Create a NEW bot via @BotFather for Tembagapura (e.g. `@ypjtembagapurainventory_bot`)
 - Use its new token as `TELEGRAM_BOT_TOKEN` in Railway
@@ -1372,6 +1401,7 @@ NODE_ENV=development
 - [ ] Email notification test works (submit a test request)
 - [ ] Welcome email received when adding a new user
 - [ ] "Set My Password" link in welcome email works
+- [ ] Welcome email contains correct app URL and PWA install instructions
 - [ ] Telegram bot `/start` replies with Chat ID
 - [ ] Barcode scanner opens camera and auto-fills item name on Add Item page
 - [ ] PWA installs correctly on Android (Chrome) and iOS (Safari)
@@ -1399,6 +1429,7 @@ NODE_ENV=development
 | PWA icon | `frontend/public/icons/` | Regenerate PNGs with `generate-icons.html` |
 | SW cache version | `frontend/public/sw.js` | Bump `CACHE = 'ypj-inv-vN'` on every deploy |
 | Reminder email branding | `backend/mailer.js` → `sendBorrowReminder` | Update campus name in email footer |
+| Welcome email app URL | `backend/mailer.js` → `sendWelcomeEmail` | Update `appUrl` fallback to TPRA domain |
 
 ---
 
@@ -1554,7 +1585,7 @@ The icon design can stay the same (same YPJ branding) — just make sure `manife
 - [ ] All environment variables set (especially new `JWT_SECRET`)
 - [ ] Custom domain live with HTTPS
 - [ ] First login works
-- [ ] Welcome email received when adding first user
+- [ ] Welcome email received when adding first user (contains correct TPRA URL + install instructions)
 - [ ] Borrow reminder emails working (test with 1-day return date)
 - [ ] Telegram bot `/start` replies with Chat ID
 - [ ] PWA installs on mobile with correct TPRA name
