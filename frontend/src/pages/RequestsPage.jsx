@@ -48,6 +48,7 @@ export default function RequestsPage({ role, user, showToast, refreshPending }) 
   });
   const [submitting, setSubmitting] = useState(false);
   const [formError, setFormError]   = useState(null);
+  const [detailItem, setDetailItem] = useState(null);
 
   /* ── loaders ─────────────────────────────────────────────────────────── */
   // Teachers only see their own requests; Admins/Storekeepers see all
@@ -182,10 +183,17 @@ export default function RequestsPage({ role, user, showToast, refreshPending }) 
                           transition: 'border-color .15s',
                         }}
                       >
-                        <div style={{ fontSize:26, marginBottom:5, lineHeight:1 }}>
-                          {(item.icon || '').startsWith('data:')
-                            ? <img src={item.icon} alt="" style={{ width:36, height:36, objectFit:'contain', borderRadius:6 }} />
-                            : (item.icon || CAT_EMOJI[item.category] || '📦')}
+                        <div style={{ display:'flex', justifyContent:'space-between', alignItems:'flex-start', marginBottom:5 }}>
+                          <div style={{ fontSize:26, lineHeight:1 }}>
+                            {(item.icon || '').startsWith('data:')
+                              ? <img src={item.icon} alt="" style={{ width:36, height:36, objectFit:'contain', borderRadius:6 }} />
+                              : (item.icon || CAT_EMOJI[item.category] || '📦')}
+                          </div>
+                          <button
+                            title="View item details"
+                            onClick={() => setDetailItem(item)}
+                            style={{ background:'none', border:'none', cursor:'pointer', fontSize:14, color:'var(--muted)', padding:0, lineHeight:1 }}
+                          >ℹ️</button>
                         </div>
                         <div style={{ fontWeight:800, fontSize:13, marginBottom:2, lineHeight:1.3 }}>{item.name}</div>
                         {item.code && <div className="mono" style={{ color:'var(--muted)', marginBottom:4, fontSize:11 }}>{item.code}</div>}
@@ -331,6 +339,88 @@ export default function RequestsPage({ role, user, showToast, refreshPending }) 
                   </button>
                 )}
               </form>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ── ITEM DETAIL MODAL ─────────────────────────────────────────── */}
+      {detailItem && (
+        <div className="modal-overlay" onClick={() => setDetailItem(null)}>
+          <div className="modal" style={{ maxWidth: 420 }} onClick={e => e.stopPropagation()}>
+            <div className="modal-header">
+              <h3 className="modal-title">📋 Item Details</h3>
+              <button className="modal-close" onClick={() => setDetailItem(null)}>✕</button>
+            </div>
+            <div className="modal-body">
+              {/* Icon + name */}
+              <div style={{ display:'flex', alignItems:'center', gap:14, marginBottom:16 }}>
+                <div style={{ fontSize:44, lineHeight:1 }}>
+                  {(detailItem.icon || '').startsWith('data:')
+                    ? <img src={detailItem.icon} alt="" style={{ width:52, height:52, objectFit:'contain', borderRadius:8 }} />
+                    : (detailItem.icon || CAT_EMOJI[detailItem.category] || '📦')}
+                </div>
+                <div>
+                  <div style={{ fontWeight:800, fontSize:16, color:'var(--navy)' }}>{detailItem.name}</div>
+                  {detailItem.code && <div className="mono" style={{ fontSize:12, color:'var(--muted)', marginTop:2 }}>{detailItem.code}</div>}
+                  <div style={{ marginTop:6, display:'flex', gap:6, flexWrap:'wrap' }}>
+                    <span className="badge badge-blue" style={{ fontSize:11 }}>{detailItem.category}</span>
+                    <span className="badge badge-grey" style={{ fontSize:11 }}>{detailItem.store_category}</span>
+                  </div>
+                </div>
+              </div>
+
+              {/* Details table */}
+              <div style={{ background:'var(--bg)', borderRadius:8, padding:'12px 16px', marginBottom:16 }}>
+                <table style={{ width:'100%', fontSize:13, borderCollapse:'collapse' }}>
+                  <tbody>
+                    {[
+                      ['📍 Location',  detailItem.location],
+                      ['🏫 Unit School', detailItem.unit_school],
+                      ['📦 Stock',     `${detailItem.quantity} ${detailItem.unit_name}`],
+                      ['⚡ Min Threshold', `${detailItem.min_threshold} ${detailItem.unit_name}`],
+                      ['🔧 Condition', detailItem.condition],
+                    ].map(([label, value]) => (
+                      <tr key={label} style={{ borderBottom:'1px solid var(--border)' }}>
+                        <td style={{ padding:'7px 0', color:'var(--muted)', fontWeight:600, whiteSpace:'nowrap', paddingRight:16 }}>{label}</td>
+                        <td style={{ padding:'7px 0', fontWeight:700 }}>{value}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+
+              {/* Description */}
+              {detailItem.description && (
+                <div style={{ background:'#eff6ff', border:'1px solid #bfdbfe', borderRadius:8, padding:'10px 14px', fontSize:13, color:'#1e40af' }}>
+                  <strong>Description:</strong>
+                  <p style={{ margin:'6px 0 0', lineHeight:1.6 }}>{detailItem.description}</p>
+                </div>
+              )}
+
+              {/* Stock status */}
+              <div style={{
+                marginTop:14,
+                padding:'10px 14px',
+                borderRadius:8,
+                background: detailItem.quantity === 0 ? '#fef2f2' : detailItem.quantity <= detailItem.min_threshold ? '#fffbeb' : '#f0fdf4',
+                border: `1px solid ${detailItem.quantity === 0 ? '#fecaca' : detailItem.quantity <= detailItem.min_threshold ? '#fde68a' : '#bbf7d0'}`,
+                fontSize:13,
+                fontWeight:700,
+                color: detailItem.quantity === 0 ? '#dc2626' : detailItem.quantity <= detailItem.min_threshold ? '#d97706' : '#16a34a',
+              }}>
+                {detailItem.quantity === 0 ? '🔴 Out of Stock — cannot be requested'
+                  : detailItem.quantity <= detailItem.min_threshold ? `⚠️ Low Stock — only ${detailItem.quantity} ${detailItem.unit_name} left`
+                  : `✅ In Stock — ${detailItem.quantity} ${detailItem.unit_name} available`}
+              </div>
+            </div>
+            <div className="modal-footer">
+              <button className="btn btn-secondary" onClick={() => setDetailItem(null)}>Close</button>
+              {detailItem.quantity > 0 && (
+                <button className="btn btn-primary" onClick={() => { addToCart(detailItem); setDetailItem(null); }}>
+                  + Add to Cart
+                </button>
+              )}
             </div>
           </div>
         </div>
