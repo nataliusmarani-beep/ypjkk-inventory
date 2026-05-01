@@ -317,16 +317,32 @@ function UserFormFields({ form, set, setForm, isAdd, isSelf }) {
       <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:12 }}>
         <div className="form-group">
           <label className="form-label">Role <span className="req">*</span></label>
-          <select value={form.role} onChange={set('role')} disabled={isSelf}>
+          <select
+            value={form.role}
+            onChange={e => {
+              const newRole = e.target.value;
+              setForm(f => ({
+                ...f,
+                role: newRole,
+                // Reset unit_school to PAUD if switching to Storekeeper and currently All
+                unit_school: newRole === 'Storekeeper' && f.unit_school === 'All' ? 'PAUD' : f.unit_school,
+              }));
+            }}
+            disabled={isSelf}
+          >
             {['Manager','Storekeeper','Teacher','Other'].map(r => <option key={r}>{r}</option>)}
           </select>
           {isSelf && <div style={{ fontSize:11, color:'var(--muted)', marginTop:3 }}>Cannot change your own role.</div>}
         </div>
         <div className="form-group">
           <label className="form-label">Unit / School</label>
-          <select value={form.unit_school} onChange={set('unit_school')}>
-            {['All','PAUD','SD','SMP'].map(u => <option key={u}>{u}</option>)}
+          <select
+            value={form.unit_school}
+            onChange={set('unit_school')}
+          >
+            {(isStorekeeper ? ['PAUD','SD','SMP'] : ['All','PAUD','SD','SMP']).map(u => <option key={u}>{u}</option>)}
           </select>
+          {isStorekeeper && <div style={{ fontSize:11, color:'var(--muted)', marginTop:3 }}>Storekeepers must be assigned to a specific unit.</div>}
         </div>
       </div>
 
