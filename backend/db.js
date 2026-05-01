@@ -30,6 +30,7 @@ db.exec(`
     description    TEXT,
     min_threshold  INTEGER NOT NULL DEFAULT 1,
     condition      TEXT    NOT NULL DEFAULT 'Good',
+    po_number      TEXT,
     created_at     TEXT    DEFAULT (datetime('now')),
     updated_at     TEXT    DEFAULT (datetime('now'))
   );
@@ -113,6 +114,7 @@ const migrations = {
   max_quantity:   `ALTER TABLE items ADD COLUMN max_quantity INTEGER NOT NULL DEFAULT 0`,
   unit_name:      `ALTER TABLE items ADD COLUMN unit_name TEXT NOT NULL DEFAULT 'pcs'`,
   condition:      `ALTER TABLE items ADD COLUMN condition TEXT NOT NULL DEFAULT 'Good'`,
+  po_number:      `ALTER TABLE items ADD COLUMN po_number TEXT`,
 };
 for (const [col, sql] of Object.entries(migrations)) {
   if (!itemCols.includes(col)) db.exec(sql);

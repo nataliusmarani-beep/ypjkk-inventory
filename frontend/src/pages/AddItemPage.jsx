@@ -14,7 +14,7 @@ const EMPTY = {
   category: 'Stationery', store_category: 'Supplies',
   location: 'SD SMP YPJ KK', unit_school: 'All',
   quantity: 0, max_quantity: 0, unit_name: 'pcs',
-  min_threshold: 10, condition: 'Good', description: '',
+  min_threshold: 10, condition: 'Good', po_number: '', description: '',
 };
 
 function storekeepLock(user) {
@@ -158,6 +158,17 @@ export default function AddItemPage({ showToast, user }) {
               <select className="filter-select" value={form.condition} onChange={set('condition')} style={{ width: '100%' }}>
                 {(M.CONDITIONS || ['Good']).map(c => <option key={c}>{c}</option>)}
               </select>
+            </div>
+
+            <div className="form-group full">
+              <label className="form-label">PR / PO Number <span className="req">*</span></label>
+              <input
+                type="text"
+                value={form.po_number || ''}
+                onChange={set('po_number')}
+                placeholder="e.g. PO-2026-001 or PR-2026-042"
+                required
+              />
             </div>
 
             <div className="form-group full">

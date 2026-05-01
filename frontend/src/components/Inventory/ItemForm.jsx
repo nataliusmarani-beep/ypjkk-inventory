@@ -115,6 +115,16 @@ export default function ItemForm({ initial, meta, user, onSubmit, onClose }) {
             {(M.CONDITIONS||[]).map(c => <option key={c}>{c}</option>)}
           </select>
         </div>
+        <div className="form-group full">
+          <label className="form-label">PR / PO Number <span className="req">*</span></label>
+          <input
+            type="text"
+            value={form.po_number || ''}
+            onChange={set('po_number')}
+            placeholder="e.g. PO-2026-001 or PR-2026-042"
+            required
+          />
+        </div>
       </div>
       <div className="form-actions" style={{ marginTop: 18 }}>
         <button type="submit" className="btn btn-primary" disabled={saving}>{saving ? 'Saving...' : 'Save'}</button>
