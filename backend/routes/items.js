@@ -17,6 +17,14 @@ const UNIT_SCHOOLS = ['All','PAUD','SD','SMP'];
 const UNIT_NAMES = ['pcs','ea','box','pack','set','cm','mtr','roll','carton','bundle','case','dozen','gr','kg','ltr','ml'];
 const CONDITIONS = ['Good','Fair','Damaged','Expired'];
 
+// Only Manager and Storekeeper can create/update/delete items
+function staffOnly(req, res, next) {
+  if (req.user?.role !== 'Manager' && req.user?.role !== 'Storekeeper') {
+    return res.status(403).json({ error: 'Only Managers and Storekeepers can modify inventory items.' });
+  }
+  next();
+}
+
 function validate(body) {
   const errors = [];
   if (!body.name || !body.name.trim()) errors.push('Name is required.');
@@ -78,7 +86,7 @@ router.get('/:id', (req, res) => {
 });
 
 // POST /api/items
-router.post('/', (req, res) => {
+router.post('/', staffOnly, (req, res) => {
   const errors = validate(req.body);
   if (errors.length) return res.status(400).json({ error: errors.join(' ') });
 
@@ -96,7 +104,7 @@ router.post('/', (req, res) => {
 });
 
 // PUT /api/items/:id
-router.put('/:id', (req, res) => {
+router.put('/:id', staffOnly, (req, res) => {
   const item = db.prepare('SELECT id, location FROM items WHERE id=?').get(req.params.id);
   if (!item) return res.status(404).json({ error: 'Item not found.' });
 
@@ -129,7 +137,7 @@ router.put('/:id', (req, res) => {
 });
 
 // POST /api/items/import
-router.post('/import', (req, res) => {
+router.post('/import', staffOnly, (req, res) => {
   const { rows } = req.body;
   if (!Array.isArray(rows) || rows.length === 0)
     return res.status(400).json({ error: 'No rows provided.' });
@@ -174,7 +182,7 @@ router.post('/import', (req, res) => {
 });
 
 // DELETE /api/items/:id
-router.delete('/:id', (req, res) => {
+router.delete('/:id', staffOnly, (req, res) => {
   const item = db.prepare('SELECT id, location FROM items WHERE id=?').get(req.params.id);
   if (!item) return res.status(404).json({ error: 'Item not found.' });
 
