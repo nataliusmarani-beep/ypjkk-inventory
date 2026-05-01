@@ -7,7 +7,7 @@ const CATEGORIES = ['Stationery','Housekeeping','Learning Tools','Groceries','Ar
 const STORE_CATS = ['Supplies','Teacher Resources','Sport & Uniform'];
 const LOCATIONS  = ['PAUD YPJ KK','SD SMP YPJ KK'];
 const UNIT_SCHOOLS = ['All','PAUD','SD','SMP'];
-const UNIT_NAMES = ['pcs','box','set','ream','btl','kg','liter','pack'];
+const UNIT_NAMES = ['pcs','ea','box','pack','set','cm','mtr','roll','carton','bundle','case','dozen','gr','kg','ltr','ml'];
 const CONDITIONS = ['Good','Fair','Damaged','Expired'];
 
 function validate(body) {
