@@ -7,14 +7,17 @@
 
 This guide walks you through building a full-stack web inventory app from scratch — the same way YPJ KK Inventory was built. By the end you will have a live, production web app hosted at your own domain, with:
 
-- Login system with 4 roles (Manager, Storekeeper, Teacher, Other)
+- Login system with 5 roles (Manager, Storekeeper, Principal, Teacher, Other)
 - Inventory management per store location
 - Request & approval workflow with auto stock updates
-- Email notifications (Resend API)
+- Email notifications (Resend API) — including welcome email with set-password link
+- Principal CC notifications on submission and approval/rejection
 - Telegram bot notifications
 - CSV import/export
 - Database backup system
 - In-app user guide
+- Barcode scanner (mobile camera) for quick item lookup and update
+- PWA support — installable as a home-screen shortcut on Android & iOS
 
 **Stack:** Node.js + Express (backend) · React + Vite (frontend) · SQLite (database) · Railway (hosting)
 
@@ -218,13 +221,15 @@ db.exec(`
     name           TEXT    NOT NULL,
     email          TEXT    NOT NULL UNIQUE,
     role           TEXT    NOT NULL DEFAULT 'Teacher'
-                   CHECK(role IN ('Manager','Storekeeper','Teacher','Other')),
+                   CHECK(role IN ('Manager','Storekeeper','Principal','Teacher','Other')),
     unit_school    TEXT    NOT NULL DEFAULT 'All',
     location       TEXT,
     store_category TEXT,
     is_active      INTEGER NOT NULL DEFAULT 1,
     password_hash  TEXT    NOT NULL,
-    telegram_chat_id TEXT,
+    telegram_chat_id       TEXT,
+    password_reset_token   TEXT,
+    password_reset_expires TEXT,
     created_at     TEXT    DEFAULT (datetime('now'))
   );
 
@@ -364,6 +369,37 @@ router.patch('/me', require('../middleware/auth'), (req, res) => {
   res.json({ ok: true });
 });
 
+// GET /api/auth/verify-reset?token=xxx — validate set-password link
+router.get('/verify-reset', (req, res) => {
+  const { token } = req.query;
+  if (!token) return res.status(400).json({ error: 'Token is required.' });
+  const user = db.prepare(`
+    SELECT id, name, email, role, unit_school
+    FROM users
+    WHERE password_reset_token = ? AND password_reset_expires > datetime('now')
+  `).get(token);
+  if (!user) return res.status(400).json({ error: 'This link is invalid or has expired. Ask your Manager to resend the invitation.' });
+  res.json({ name: user.name, email: user.email, role: user.role, unit_school: user.unit_school });
+});
+
+// POST /api/auth/set-password — set password using token
+router.post('/set-password', (req, res) => {
+  const { token, password } = req.body;
+  if (!token || !password) return res.status(400).json({ error: 'Token and password are required.' });
+  if (password.length < 6) return res.status(400).json({ error: 'Password must be at least 6 characters.' });
+  const user = db.prepare(`
+    SELECT id FROM users
+    WHERE password_reset_token = ? AND password_reset_expires > datetime('now')
+  `).get(token);
+  if (!user) return res.status(400).json({ error: 'This link is invalid or has expired.' });
+  const hash = bcrypt.hashSync(password, 10);
+  db.prepare(`
+    UPDATE users SET password_hash = ?, password_reset_token = NULL, password_reset_expires = NULL
+    WHERE id = ?
+  `).run(hash, user.id);
+  res.json({ ok: true });
+});
+
 module.exports = router;
 ```
 
@@ -469,6 +505,29 @@ Key concepts:
 - **`getApproverRecipients(unit_school)`** — routes notifications to the right storekeepers
 - **Auto stock deduction** — when approved, `quantity` is decremented atomically
 - **Auto stock restore** — when a borrow is returned, `quantity` is incremented back
+- **Storekeeper location scoping** — Storekeepers only see requests from their own store location. Use a `storekeepWhere(user)` helper that injects a safe SQL fragment based on `req.user.unit_school`:
+
+```javascript
+function storekeepWhere(user) {
+  if (!user || user.role !== 'Storekeeper') return '';
+  if (user.unit_school === 'PAUD')                             return `AND r.unit_school = 'PAUD'`;
+  if (user.unit_school === 'SD' || user.unit_school === 'SMP') return `AND r.unit_school IN ('SD','SMP')`;
+  return '';
+}
+// Apply to GET /, GET /groups, GET /stats queries:
+// WHERE ... ${storekeepWhere(req.user)}
+```
+
+- **Principal CC notifications** — on submission AND on approve/reject, notify the matching Principal(s). SD and SMP principals are separate (exact `unit_school` match):
+
+```javascript
+function getPrincipalRecipients(unit_school) {
+  if (['PAUD','SD','SMP'].includes(unit_school)) {
+    return db.prepare(`SELECT name, email FROM users WHERE role='Principal' AND unit_school=? AND is_active=1`).all(unit_school);
+  }
+  return db.prepare(`SELECT name, email FROM users WHERE role='Principal' AND is_active=1`).all();
+}
+```
 
 ### Users route (`backend/routes/users.js`)
 
@@ -476,6 +535,38 @@ Key concepts:
 - Manager only can create/edit/delete users
 - Password is hashed with `bcryptjs` before storing
 - CSV bulk import available
+- **Welcome email** — when a new user is created, a `crypto.randomBytes(32)` token is generated with a 72-hour expiry and a "Set My Password" email is sent via Resend
+- **Resend invite** — `POST /api/users/:id/resend-invite` regenerates the token and resends the welcome email
+- **Valid roles** — `['Manager', 'Storekeeper', 'Principal', 'Teacher', 'Other']`
+
+```javascript
+const crypto = require('crypto');
+const { sendWelcomeEmail } = require('../mailer');
+
+function createWelcomeToken(userId) {
+  const token   = crypto.randomBytes(32).toString('hex');
+  const expires = new Date(Date.now() + 72 * 60 * 60 * 1000)
+    .toISOString().replace('T', ' ').split('.')[0];
+  db.prepare(`UPDATE users SET password_reset_token=?, password_reset_expires=? WHERE id=?`)
+    .run(token, expires, userId);
+  const appUrl = process.env.FRONTEND_URL || 'http://localhost:5173';
+  return `${appUrl}/set-password?token=${token}`;
+}
+
+// After creating a user:
+const setPasswordUrl = createWelcomeToken(newUser.id);
+sendWelcomeEmail({ name, email, role, unit_school, setPasswordUrl }).catch(() => {});
+
+// POST /api/users/:id/resend-invite
+router.post('/:id/resend-invite', requireAuth, managerOnly, (req, res) => {
+  const user = db.prepare('SELECT * FROM users WHERE id=?').get(req.params.id);
+  if (!user) return res.status(404).json({ error: 'User not found.' });
+  const setPasswordUrl = createWelcomeToken(user.id);
+  sendWelcomeEmail({ name: user.name, email: user.email, role: user.role,
+    unit_school: user.unit_school, setPasswordUrl }).catch(() => {});
+  res.json({ ok: true });
+});
+```
 
 ### Backup route (`backend/routes/backup.js`)
 
@@ -535,7 +626,38 @@ async function send({ to, subject, html }) {
 // Export individual email functions:
 // sendRequestSubmitted, sendRequestApproved, sendRequestRejected,
 // sendLowStockAlert, sendNewRequestAlert, sendRequestForwarded
-module.exports = { send, /* ... */ };
+
+// ── Welcome email (sent when a new user is created) ───────────────────────
+async function sendWelcomeEmail({ name, email, role, unit_school, setPasswordUrl }) {
+  await send({
+    to: email,
+    subject: '🎉 Welcome to YPJ Inventory — Set Your Password',
+    html: `
+      <div style="font-family:Arial,sans-serif;max-width:520px;margin:0 auto">
+        <div style="background:#1a2f5e;padding:24px;border-radius:8px 8px 0 0;text-align:center">
+          <h2 style="color:white;margin:0">📦 YPJ Inventory</h2>
+        </div>
+        <div style="background:white;padding:28px;border:1px solid #e2e8f0">
+          <p>Hello <strong>${name}</strong>,</p>
+          <p>Your account has been created with role <strong>${role}</strong> (${unit_school}).</p>
+          <p>Click the button below to set your password. This link expires in <strong>72 hours</strong>.</p>
+          <div style="text-align:center;margin:28px 0">
+            <a href="${setPasswordUrl}" style="background:#1a2f5e;color:white;padding:14px 28px;
+               border-radius:8px;text-decoration:none;font-weight:700">🔐 Set My Password</a>
+          </div>
+          <p style="color:#6b7280;font-size:13px">If you did not expect this email, ignore it.</p>
+        </div>
+      </div>`,
+  });
+}
+
+// ── Principal CC on request submission ───────────────────────────────────
+async function sendPrincipalSubmissionNotice({ principal, requester, items, groupId }) { /* ... */ }
+
+// ── Principal CC on approve/reject ───────────────────────────────────────
+async function sendPrincipalDecisionNotice({ principal, requester, items, status, notes }) { /* ... */ }
+
+module.exports = { send, sendWelcomeEmail, sendPrincipalSubmissionNotice, sendPrincipalDecisionNotice /* ... */ };
 ```
 
 ---
@@ -600,7 +722,8 @@ module.exports = { sendMessage, registerWebhook };
     "react-router-dom": "^6.23.1",
     "xlsx": "^0.18.5",
     "@vitejs/plugin-react": "^4.3.0",
-    "vite": "^5.3.1"
+    "vite": "^5.3.1",
+    "html5-qrcode": "^2.3.8"
   }
 }
 ```
@@ -657,6 +780,10 @@ export const api = {
   getMe:    ()        => request('/auth/me/full'),
   updateMe: (data)    => request('/auth/me',      { method: 'PATCH', body: JSON.stringify(data) }),
 
+  // Auth (additions)
+  verifyResetToken: (token) => request(`/auth/verify-reset?token=${encodeURIComponent(token)}`),
+  setPassword:      (data)  => request('/auth/set-password', { method: 'POST', body: JSON.stringify(data) }),
+
   // Items
   getItems:   (params = {}) => request('/items?' + new URLSearchParams(params)),
   getItem:    (id)          => request(`/items/${id}`),
@@ -667,19 +794,24 @@ export const api = {
   getItemMeta:()            => request('/items/meta'),
 
   // Requests
-  getRequests:    (p = {})    => request('/requests?'        + new URLSearchParams(p)),
-  submitCart:     (data)      => request('/requests/cart',   { method: 'POST',  body: JSON.stringify(data) }),
+  getRequests:    (p = {})    => request('/requests?'          + new URLSearchParams(p)),
+  getGroups:      (p = {})    => request('/requests/groups?'   + new URLSearchParams(p)),  // ← use for badge count
+  submitCart:     (data)      => request('/requests/cart',     { method: 'POST',  body: JSON.stringify(data) }),
+  approveGroup:   (gid, data) => request(`/requests/groups/${encodeURIComponent(gid)}/approve`, { method: 'PUT', body: JSON.stringify(data) }),
+  rejectGroup:    (gid, data) => request(`/requests/groups/${encodeURIComponent(gid)}/reject`,  { method: 'PUT', body: JSON.stringify(data) }),
+  forwardGroup:   (gid, data) => request(`/requests/groups/${encodeURIComponent(gid)}/forward`, { method: 'PUT', body: JSON.stringify(data) }),
   approveRequest: (id, data)  => request(`/requests/${id}/approve`, { method: 'PUT', body: JSON.stringify(data) }),
   rejectRequest:  (id, data)  => request(`/requests/${id}/reject`,  { method: 'PUT', body: JSON.stringify(data) }),
   returnRequest:  (id)        => request(`/requests/${id}/return`,  { method: 'PUT' }),
   forwardRequest: (id, data)  => request(`/requests/${id}/forward`, { method: 'PUT', body: JSON.stringify(data) }),
 
   // Users
-  getUsers:    ()         => request('/users'),
-  createUser:  (data)     => request('/users',       { method: 'POST',   body: JSON.stringify(data) }),
-  updateUser:  (id, data) => request(`/users/${id}`, { method: 'PUT',    body: JSON.stringify(data) }),
-  deleteUser:  (id)       => request(`/users/${id}`, { method: 'DELETE' }),
-  importUsers: (data)     => request('/users/import',{ method: 'POST',   body: JSON.stringify(data) }),
+  getUsers:      ()         => request('/users'),
+  createUser:    (data)     => request('/users',                    { method: 'POST',   body: JSON.stringify(data) }),
+  updateUser:    (id, data) => request(`/users/${id}`,              { method: 'PUT',    body: JSON.stringify(data) }),
+  deleteUser:    (id)       => request(`/users/${id}`,              { method: 'DELETE' }),
+  importUsers:   (data)     => request('/users/import',             { method: 'POST',   body: JSON.stringify(data) }),
+  resendInvite:  (id)       => request(`/users/${id}/resend-invite`,{ method: 'POST' }),
 
   // Other
   getActivity: (p = {}) => request('/activity?' + new URLSearchParams(p)),
@@ -701,9 +833,242 @@ const superOnly = (el) => user.role === 'Manager' ? el : <Navigate to="/" replac
 // All logged-in users → Dashboard, Inventory, My Requests, Help
 ```
 
+**Important additions in App.jsx:**
+
+1. **Public `/set-password` route** — checked before the auth guard so unauthenticated users can set their password:
+```jsx
+if (window.location.pathname === '/set-password') {
+  return (
+    <>
+      <SetPasswordPage showToast={showToast} />
+      {toast && <Toast ... />}
+    </>
+  );
+}
+```
+
+2. **Pending badge counts request groups, not individual items** — use `getGroups` so the badge shows "1 request" not "3 items":
+```javascript
+const refreshPending = () => {
+  api.getGroups({ status: 'pending' })
+    .then(data => setPendingCount(data.length))
+    .catch(() => {});
+};
+```
+
+3. **Footer** with copyright and contact (inside the `<main>` element):
+```jsx
+<footer style={{ marginTop:48, paddingTop:20, borderTop:'1px solid var(--border)',
+  display:'flex', flexWrap:'wrap', justifyContent:'space-between',
+  fontSize:12, color:'var(--muted)' }}>
+  <span>© {new Date().getFullYear()} Yayasan Pendidikan Jayawijaya — Tembagapura Campus. All rights reserved.</span>
+  <span>
+    📧 <a href="mailto:admin@ypj.sch.id">admin@ypj.sch.id</a>
+    {' · '}
+    🌐 <a href="https://ypj.sch.id" target="_blank" rel="noreferrer">ypj.sch.id</a>
+  </span>
+</footer>
+```
+
+### Step 5 — SetPasswordPage (new page)
+
+Create `frontend/src/pages/SetPasswordPage.jsx` — a public page (no auth required) for new users to set their password from the welcome email link.
+
+Flow:
+1. Reads `?token` from URL
+2. On mount: `api.verifyResetToken(token)` — if invalid/expired, shows error screen
+3. If valid: shows user's name, email, role; presents password + confirm form
+4. On submit: `api.setPassword({ token, password })` → success screen with "Go to Login" button
+
+### Step 6 — BarcodeScanner component (mobile camera)
+
+Install the library:
+```bash
+cd frontend && npm install html5-qrcode
+```
+
+Add to `frontend/package.json` **dependencies** (not devDependencies):
+```json
+"html5-qrcode": "^2.3.8"
+```
+
+Create `frontend/src/components/shared/BarcodeScanner.jsx`:
+
+```jsx
+import { useEffect, useRef } from 'react';
+
+export default function BarcodeScanner({ onScan, onClose }) {
+  const calledRef = useRef(false);
+
+  useEffect(() => {
+    let scanner;
+    (async () => {
+      const { Html5Qrcode } = await import('html5-qrcode');
+      scanner = new Html5Qrcode('barcode-reader-box');
+      try {
+        await scanner.start(
+          { facingMode: 'environment' },           // back camera
+          { fps: 10, qrbox: { width: 260, height: 100 } },
+          (decoded) => {
+            if (calledRef.current) return;
+            calledRef.current = true;
+            scanner.stop().catch(() => {});
+            onScan(decoded);
+          },
+          () => {},
+        );
+      } catch (err) {
+        console.error('Camera error:', err);
+        onClose();
+      }
+    })();
+    return () => { scanner?.stop().catch(() => {}); };
+  }, []);
+
+  return (
+    <div style={{ position:'fixed', inset:0, background:'rgba(0,0,0,.8)',
+      zIndex:1000, display:'flex', flexDirection:'column',
+      alignItems:'center', justifyContent:'center' }}>
+      <div id="barcode-reader-box" style={{ width:300, borderRadius:12, overflow:'hidden' }} />
+      <p style={{ color:'white', marginTop:16 }}>Point camera at barcode</p>
+      <button onClick={onClose} style={{ marginTop:12, padding:'8px 24px',
+        background:'white', borderRadius:8, border:'none', cursor:'pointer' }}>
+        Cancel
+      </button>
+    </div>
+  );
+}
+```
+
+**Smart barcode flow in AddItemPage:**
+1. Scan barcode → check local DB: `api.getItems({ code: barcode })`
+2. If found → pre-fill ALL form fields + switch to **update mode** (PUT instead of POST)
+3. If not found → look up item name from UPC Item DB / Open Food Facts → auto-fill name field
+4. If name not found externally → show "not found" notice, let user type the name manually
+
 ---
 
-## Part 8 — Customising for Tembagapura
+## Part 8 — PWA (Mobile Home-Screen Shortcut)
+
+Making the app installable as a home-screen shortcut on Android and iOS requires three things: a manifest, a service worker, and meta tags in `index.html`.
+
+### Step 1 — frontend/public/manifest.json
+
+```json
+{
+  "name": "YPJ Tembagapura Inventory",
+  "short_name": "YPJ Inventory",
+  "description": "Yayasan Pendidikan Jayawijaya — Tembagapura Campus Inventory Management System",
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "orientation": "portrait-primary",
+  "background_color": "#f8fafc",
+  "theme_color": "#1a2f5e",
+  "categories": ["productivity", "business"],
+  "icons": [
+    { "src": "/icons/icon-72.png",  "sizes": "72x72",   "type": "image/png" },
+    { "src": "/icons/icon-96.png",  "sizes": "96x96",   "type": "image/png" },
+    { "src": "/icons/icon-128.png", "sizes": "128x128", "type": "image/png" },
+    { "src": "/icons/icon-144.png", "sizes": "144x144", "type": "image/png" },
+    { "src": "/icons/icon-152.png", "sizes": "152x152", "type": "image/png" },
+    { "src": "/icons/icon-192.png", "sizes": "192x192", "type": "image/png" },
+    { "src": "/icons/icon-384.png", "sizes": "384x384", "type": "image/png" },
+    { "src": "/icons/icon-512.png", "sizes": "512x512", "type": "image/png" },
+    { "src": "/icons/icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
+  ]
+}
+```
+
+### Step 2 — frontend/public/sw.js (service worker)
+
+```javascript
+const CACHE = 'ypj-inv-v1';
+const PRECACHE = ['/', '/manifest.json'];
+
+self.addEventListener('install',  e => { e.waitUntil(caches.open(CACHE).then(c => c.addAll(PRECACHE))); self.skipWaiting(); });
+self.addEventListener('activate', e => { e.waitUntil(caches.keys().then(keys => Promise.all(keys.filter(k => k !== CACHE).map(k => caches.delete(k))))); self.clients.claim(); });
+
+self.addEventListener('fetch', e => {
+  const url = new URL(e.request.url);
+  // Always network for API calls
+  if (url.pathname.startsWith('/api/')) {
+    e.respondWith(fetch(e.request).catch(() => new Response(JSON.stringify({ error: 'Offline' }), { status: 503, headers: { 'Content-Type': 'application/json' } })));
+    return;
+  }
+  // Cache-first for static assets
+  e.respondWith(caches.match(e.request).then(cached => cached || fetch(e.request).then(res => {
+    if (e.request.method === 'GET' && res.status === 200) {
+      caches.open(CACHE).then(c => c.put(e.request, res.clone()));
+    }
+    return res;
+  }).catch(() => e.request.mode === 'navigate' ? caches.match('/') : undefined)));
+});
+```
+
+> ⚠️ **Cache busting:** Every time you deploy a change, increment the cache version (`'ypj-inv-v1'` → `'ypj-inv-v2'`) so users' phones fetch the new files instead of serving the cached old ones.
+
+### Step 3 — Update frontend/index.html
+
+```html
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>YPJ Tembagapura Inventory</title>
+
+    <!-- PWA / Home-screen shortcut -->
+    <link rel="manifest" href="/manifest.json" />
+    <meta name="theme-color" content="#1a2f5e" />
+
+    <!-- iOS Safari home-screen support -->
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+    <meta name="apple-mobile-web-app-title" content="YPJ Inventory" />
+    <link rel="apple-touch-icon" href="/icons/icon-192.png" />
+
+    <link rel="icon" type="image/svg+xml" href="/icon.svg" />
+    <link rel="icon" type="image/png" sizes="192x192" href="/icons/icon-192.png" />
+  </head>
+  <body>
+    <div id="root"></div>
+    <script type="module" src="/src/main.jsx"></script>
+  </body>
+</html>
+```
+
+### Step 4 — Register service worker in frontend/src/main.jsx
+
+```javascript
+// Add after ReactDOM.createRoot(...).render(...)
+if ('serviceWorker' in navigator) {
+  window.addEventListener('load', () => {
+    navigator.serviceWorker.register('/sw.js')
+      .then(reg => console.log('[SW] Registered:', reg.scope))
+      .catch(err => console.warn('[SW] Failed:', err));
+  });
+}
+```
+
+### Step 5 — Generate PNG icons
+
+Create `frontend/generate-icons.html` — open it in Chrome, click the button, download all 8 PNG files, and place them in `frontend/public/icons/`.
+
+The icon sizes needed: **72, 96, 128, 144, 152, 192, 384, 512** px.
+
+### How users install the app
+
+| Platform | Steps |
+|---|---|
+| **Android (Chrome)** | Open app → tap ⋮ menu → **Add to Home Screen** or **Install app** |
+| **iOS (Safari)** | Open app → tap Share button (□↑) → **Add to Home Screen** |
+
+The app opens in full-screen standalone mode (no browser address bar).
+
+---
+
+## Part 9 — Customising for Tembagapura
 
 When you replicate the app for YPJ Tembagapura, change these specific values:
 
@@ -773,9 +1138,30 @@ const adminName     = process.env.ADMIN_NAME     || 'Administrator Tembagapura';
 - If Tembagapura uses a different subdomain, update `MAIL_FROM_DOMAIN` in Railway
 - Add Resend DNS records for that domain
 
+### 10. Principal role — unit_school assignment
+- SD and SMP are **separate** principals even though they share a store location
+- When creating a Principal user, set `unit_school` to exactly `'SD'` or `'SMP'` (not `'All'`)
+- The system routes CC notifications by exact `unit_school` match
+
+### 11. PWA manifest names
+```json
+// frontend/public/manifest.json
+{
+  "name": "YPJ Tembagapura Inventory",
+  "short_name": "YPJ Inventory",
+  "description": "Yayasan Pendidikan Jayawijaya — Tembagapura Campus Inventory Management System"
+}
+```
+
+### 12. PWA index.html title
+```html
+<title>YPJ Tembagapura Inventory</title>
+<meta name="apple-mobile-web-app-title" content="YPJ Inventory" />
+```
+
 ---
 
-## Part 9 — Deploying to Railway
+## Part 10 — Deploying to Railway
 
 ### Step 1 — Push code to GitHub
 
@@ -858,7 +1244,7 @@ Apply changes → one more redeploy → done!
 
 ---
 
-## Part 10 — First Login & Setup
+## Part 11 — First Login & Setup
 
 1. Open your domain in the browser
 2. Log in with the Manager email and password you set in `ADMIN_EMAIL` / `ADMIN_PASSWORD`
@@ -869,7 +1255,7 @@ Apply changes → one more redeploy → done!
 
 ---
 
-## Part 11 — Running Locally (for development)
+## Part 12 — Running Locally (for development)
 
 ```bash
 # Terminal 1 — Backend
@@ -891,7 +1277,7 @@ NODE_ENV=development
 
 ---
 
-## Part 12 — Checklist Before Going Live
+## Part 13 — Checklist Before Going Live
 
 - [ ] `JWT_SECRET` is a strong random string (not the default)
 - [ ] `ADMIN_PASSWORD` is a strong password (not `YPJ2025`)
@@ -902,7 +1288,12 @@ NODE_ENV=development
 - [ ] Custom domain resolves in browser with HTTPS padlock ✅
 - [ ] First login works and Manager account is accessible
 - [ ] Email notification test works (submit a test request)
+- [ ] Welcome email received when adding a new user
+- [ ] "Set My Password" link in welcome email works
 - [ ] Telegram bot `/start` replies with Chat ID
+- [ ] Barcode scanner opens camera and auto-fills item name on Add Item page
+- [ ] PWA installs correctly on Android (Chrome) and iOS (Safari)
+- [ ] Service worker cache version bumped after every deploy (to bust old cache)
 
 ---
 
@@ -920,6 +1311,10 @@ NODE_ENV=development
 | Telegram bot | Railway variables | `TELEGRAM_BOT_TOKEN` |
 | Email sender | Railway variables | `MAIL_FROM_DOMAIN` |
 | Domain | Railway + DNS | CNAME record, `FRONTEND_URL` |
+| PWA app name | `frontend/public/manifest.json` | `name`, `short_name`, `description` |
+| PWA title tag | `frontend/index.html` | `<title>` and `apple-mobile-web-app-title` |
+| PWA icon | `frontend/public/icons/` | Regenerate PNGs with `generate-icons.html` |
+| SW cache version | `frontend/public/sw.js` | Bump `CACHE = 'ypj-inv-vN'` on every deploy |
 
 ---
 
