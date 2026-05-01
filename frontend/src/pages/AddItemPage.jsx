@@ -56,20 +56,42 @@ export default function AddItemPage({ showToast, user }) {
     setShowScanner(false);
     setForm(f => ({ ...f, code: barcode }));
     setNameSuggestion(null);
-
-    // Try to look up the product name from the barcode
     setLookingUp(true);
+
     try {
-      const res  = await fetch(`https://api.upcitemdb.com/prod/trial/lookup?upc=${barcode}`);
-      const data = await res.json();
-      if (data.items?.length > 0) {
-        const item  = data.items[0];
-        const name  = item.title || '';
-        const brand = item.brand || '';
-        if (name) setNameSuggestion({ name, brand });
+      let name = '';
+
+      // Source 1: UPC Item DB (broad product database)
+      try {
+        const res  = await fetch(`https://api.upcitemdb.com/prod/trial/lookup?upc=${barcode}`);
+        const data = await res.json();
+        if (data.items?.length > 0 && data.items[0].title) {
+          name = data.items[0].title.trim();
+        }
+      } catch { /* ignore */ }
+
+      // Source 2: Open Food Facts (great for groceries / packaged goods)
+      if (!name) {
+        try {
+          const res  = await fetch(`https://world.openfoodfacts.org/api/v0/product/${barcode}.json`);
+          const data = await res.json();
+          if (data.status === 1 && data.product) {
+            name = (data.product.product_name_en || data.product.product_name || '').trim();
+          }
+        } catch { /* ignore */ }
       }
-    } catch { /* network error — silently skip */ }
-    finally { setLookingUp(false); }
+
+      if (name) {
+        // Auto-fill name field directly — no manual step needed
+        setForm(f => ({ ...f, name }));
+        showToast('✅ Item name auto-filled from barcode', 'success');
+      } else {
+        // Let the storekeeper know nothing was found
+        setNameSuggestion({ notFound: true });
+      }
+    } finally {
+      setLookingUp(false);
+    }
   };
 
   const handleSubmit = async (e) => {
@@ -100,47 +122,26 @@ export default function AddItemPage({ showToast, user }) {
 
       {error && <div className="alert alert-error">{error}</div>}
 
-      {/* ── Name suggestion from barcode lookup ── */}
-      {nameSuggestion && (
-        <div style={{
-          background: '#eff6ff', border: '1px solid #bfdbfe', borderRadius: 10,
-          padding: '12px 16px', marginBottom: 16,
-          display: 'flex', flexWrap: 'wrap', gap: 10, alignItems: 'center',
-        }}>
-          <div style={{ flex: 1, minWidth: 200 }}>
-            <div style={{ fontSize: 12, color: '#1e40af', fontWeight: 700, marginBottom: 2 }}>
-              💡 Product found from barcode
-            </div>
-            <div style={{ fontSize: 14, fontWeight: 600, color: 'var(--navy)' }}>
-              {nameSuggestion.name}
-            </div>
-            {nameSuggestion.brand && (
-              <div style={{ fontSize: 12, color: 'var(--muted)' }}>{nameSuggestion.brand}</div>
-            )}
-          </div>
-          <div style={{ display: 'flex', gap: 8 }}>
-            <button
-              type="button"
-              className="btn btn-primary"
-              style={{ fontSize: 12, padding: '5px 14px' }}
-              onClick={() => {
-                setForm(f => ({ ...f, name: nameSuggestion.name }));
-                setNameSuggestion(null);
-              }}
-            >✓ Use this name</button>
-            <button
-              type="button"
-              className="btn btn-ghost"
-              style={{ fontSize: 12, padding: '5px 14px' }}
-              onClick={() => setNameSuggestion(null)}
-            >Dismiss</button>
-          </div>
-        </div>
-      )}
-
+      {/* ── Barcode lookup status ── */}
       {lookingUp && (
         <div style={{ fontSize: 12, color: 'var(--muted)', marginBottom: 12 }}>
           🔍 Looking up product name from barcode…
+        </div>
+      )}
+
+      {nameSuggestion?.notFound && (
+        <div style={{
+          background: '#fffbeb', border: '1px solid #fde68a', borderRadius: 8,
+          padding: '10px 14px', marginBottom: 14,
+          display: 'flex', justifyContent: 'space-between', alignItems: 'center',
+          fontSize: 13, color: '#92400e',
+        }}>
+          <span>⚠️ Product not found in database — please enter the item name manually.</span>
+          <button
+            type="button"
+            onClick={() => setNameSuggestion(null)}
+            style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: 14, color: '#92400e', marginLeft: 8 }}
+          >✕</button>
         </div>
       )}
 
