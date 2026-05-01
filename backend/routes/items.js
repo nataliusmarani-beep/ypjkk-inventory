@@ -97,8 +97,16 @@ router.post('/', (req, res) => {
 
 // PUT /api/items/:id
 router.put('/:id', (req, res) => {
-  const item = db.prepare('SELECT id FROM items WHERE id=?').get(req.params.id);
+  const item = db.prepare('SELECT id, location FROM items WHERE id=?').get(req.params.id);
   if (!item) return res.status(404).json({ error: 'Item not found.' });
+
+  // Storekeeper location restriction
+  if (req.user?.role === 'Storekeeper' && req.user?.unit_school !== 'All') {
+    const myLocation = req.user.unit_school === 'PAUD' ? 'PAUD YPJ KK' : 'SD SMP YPJ KK';
+    if (item.location !== myLocation) {
+      return res.status(403).json({ error: 'You can only edit items in your assigned store.' });
+    }
+  }
 
   const errors = validate(req.body);
   if (errors.length) return res.status(400).json({ error: errors.join(' ') });
@@ -167,8 +175,16 @@ router.post('/import', (req, res) => {
 
 // DELETE /api/items/:id
 router.delete('/:id', (req, res) => {
-  const item = db.prepare('SELECT id FROM items WHERE id=?').get(req.params.id);
+  const item = db.prepare('SELECT id, location FROM items WHERE id=?').get(req.params.id);
   if (!item) return res.status(404).json({ error: 'Item not found.' });
+
+  // Storekeeper location restriction
+  if (req.user?.role === 'Storekeeper' && req.user?.unit_school !== 'All') {
+    const myLocation = req.user.unit_school === 'PAUD' ? 'PAUD YPJ KK' : 'SD SMP YPJ KK';
+    if (item.location !== myLocation) {
+      return res.status(403).json({ error: 'You can only delete items in your assigned store.' });
+    }
+  }
 
   const open = db.prepare(`SELECT COUNT(*) AS cnt FROM requests WHERE item_id=? AND status IN ('pending','approved')`).get(req.params.id);
   if (open.cnt > 0) return res.status(409).json({ error: 'This item has pending or active requests. Resolve them first.' });

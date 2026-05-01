@@ -31,6 +31,15 @@ export default function InventoryPage({ role, user, showToast }) {
   const [meta, setMeta] = useState(null);
 
   const isAdmin = role === 'Manager' || role === 'Storekeeper';
+
+  // Returns true if the current user is allowed to edit/delete a given item
+  const canEdit = (item) => {
+    if (role === 'Manager') return true;
+    if (role !== 'Storekeeper') return false;
+    if (!user || user.unit_school === 'All') return true; // Storekeeper assigned to All → full access
+    const myLocation = user.unit_school === 'PAUD' ? 'PAUD YPJ KK' : 'SD SMP YPJ KK';
+    return item.location === myLocation;
+  };
   const importRef = useRef();
   const [importing, setImporting] = useState(false);
 
@@ -199,8 +208,14 @@ export default function InventoryPage({ role, user, showToast }) {
                         {isAdmin && (
                           <td>
                             <div className="td-actions">
-                              <button className="btn btn-outline btn-sm" onClick={() => setModal({ type: 'edit', data: item })}>✏️</button>
-                              <button className="btn btn-ghost btn-sm" onClick={() => setModal({ type: 'delete', data: item })}>🗑️</button>
+                              {canEdit(item) ? (
+                                <>
+                                  <button className="btn btn-outline btn-sm" onClick={() => setModal({ type: 'edit', data: item })}>✏️</button>
+                                  <button className="btn btn-ghost btn-sm" onClick={() => setModal({ type: 'delete', data: item })}>🗑️</button>
+                                </>
+                              ) : (
+                                <span style={{ fontSize: 11, color: 'var(--muted)' }} title="You can only edit items in your assigned store">🔒</span>
+                              )}
                             </div>
                           </td>
                         )}
