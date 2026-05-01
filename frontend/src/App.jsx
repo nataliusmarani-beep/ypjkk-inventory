@@ -13,6 +13,7 @@ import ReportsPage from './pages/ReportsPage.jsx';
 import UsersPage from './pages/UsersPage.jsx';
 import ActivityLogPage from './pages/ActivityLogPage.jsx';
 import BackupPage      from './pages/BackupPage.jsx';
+import HelpPage        from './pages/HelpPage.jsx';
 import { api } from './api.js';
 
 export default function App() {
@@ -92,6 +93,7 @@ export default function App() {
             <Route path="/activity-log" element={superOnly(<ActivityLogPage  {...pageProps} />)} />
             <Route path="/users"        element={superOnly(<UsersPage        {...pageProps} />)} />
             <Route path="/backup"       element={superOnly(<BackupPage       {...pageProps} />)} />
+            <Route path="/help"         element={<HelpPage {...pageProps} />} />
             <Route path="*"          element={<Navigate to="/" replace />} />
           </Routes>
         </main>

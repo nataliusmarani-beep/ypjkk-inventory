@@ -58,6 +58,11 @@ export default function Sidebar({ role, user, pendingCount }) {
         </>
       )}
 
+      <div className="nav-section">Help</div>
+      <NavLink to="/help" className={({ isActive }) => `nav-item${isActive ? ' active' : ''}`}>
+        <span className="icon">📖</span> User Guide
+      </NavLink>
+
       <div className="nav-section">Stores</div>
       {visibleStores.map(s => (
         <button key={s.label} className="nav-item">
