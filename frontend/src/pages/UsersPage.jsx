@@ -300,6 +300,7 @@ export default function UsersPage({ user: currentUser, showToast }) {
 /* ── Shared form fields for Add / Edit ─────────────────────────────────── */
 function UserFormFields({ form, set, setForm, isAdd, isSelf }) {
   const isStorekeeper = form.role === 'Storekeeper';
+  const isRestricted  = form.role === 'Storekeeper' || form.role === 'Teacher';
 
   return (
     <>
@@ -324,8 +325,8 @@ function UserFormFields({ form, set, setForm, isAdd, isSelf }) {
               setForm(f => ({
                 ...f,
                 role: newRole,
-                // Reset unit_school to PAUD if switching to Storekeeper and currently All
-                unit_school: newRole === 'Storekeeper' && f.unit_school === 'All' ? 'PAUD' : f.unit_school,
+                // Reset unit_school to PAUD if switching to Storekeeper/Teacher and currently All
+                unit_school: (newRole === 'Storekeeper' || newRole === 'Teacher') && f.unit_school === 'All' ? 'PAUD' : f.unit_school,
               }));
             }}
             disabled={isSelf}
@@ -340,9 +341,9 @@ function UserFormFields({ form, set, setForm, isAdd, isSelf }) {
             value={form.unit_school}
             onChange={set('unit_school')}
           >
-            {(isStorekeeper ? ['PAUD','SD','SMP'] : ['All','PAUD','SD','SMP']).map(u => <option key={u}>{u}</option>)}
+            {(isRestricted ? ['PAUD','SD','SMP'] : ['All','PAUD','SD','SMP']).map(u => <option key={u}>{u}</option>)}
           </select>
-          {isStorekeeper && <div style={{ fontSize:11, color:'var(--muted)', marginTop:3 }}>Storekeepers must be assigned to a specific unit.</div>}
+          {isRestricted && <div style={{ fontSize:11, color:'var(--muted)', marginTop:3 }}>Must be assigned to a specific unit.</div>}
         </div>
       </div>
 
