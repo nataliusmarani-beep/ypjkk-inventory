@@ -1,6 +1,6 @@
 const express = require('express');
 const db = require('../db');
-const { sendRequestSubmitted, sendRequestApproved, sendRequestRejected, sendLowStockAlert, sendRequestForwarded } = require('../mailer');
+const { sendNewRequestAlert, sendRequestSubmitted, sendRequestApproved, sendRequestRejected, sendLowStockAlert, sendRequestForwarded } = require('../mailer');
 const { sendTelegram, sendTelegramToMany } = require('../telegram');
 
 // Fetch active Manager + Storekeeper records
@@ -11,6 +11,25 @@ function getStockAlertRecipients() {
 // Fetch active Managers only (for forwarding notifications)
 function getManagerRecipients() {
   return db.prepare(`SELECT name, email, telegram_chat_id FROM users WHERE role = 'Manager' AND is_active = 1`).all();
+}
+
+// Fetch approvers relevant to a requester's unit_school:
+// - Always all active Managers
+// - Storekeepers assigned to the matching store location:
+//     PAUD requester        → Storekeepers with unit_school = 'PAUD'
+//     SD / SMP requester    → Storekeepers with unit_school IN ('SD','SMP')
+//     Other / unknown       → all Storekeepers (fallback)
+function getApproverRecipients(unit_school) {
+  const managers = db.prepare(`SELECT name, email, telegram_chat_id FROM users WHERE role = 'Manager' AND is_active = 1`).all();
+  let storekeepers;
+  if (unit_school === 'PAUD') {
+    storekeepers = db.prepare(`SELECT name, email, telegram_chat_id FROM users WHERE role = 'Storekeeper' AND unit_school = 'PAUD' AND is_active = 1`).all();
+  } else if (unit_school === 'SD' || unit_school === 'SMP') {
+    storekeepers = db.prepare(`SELECT name, email, telegram_chat_id FROM users WHERE role = 'Storekeeper' AND unit_school IN ('SD','SMP') AND is_active = 1`).all();
+  } else {
+    storekeepers = db.prepare(`SELECT name, email, telegram_chat_id FROM users WHERE role = 'Storekeeper' AND is_active = 1`).all();
+  }
+  return [...managers, ...storekeepers];
 }
 
 // Look up a user's telegram_chat_id by email
@@ -180,14 +199,25 @@ router.post('/cart', (req, res) => {
       ).catch(() => {});
     }
 
-    // Telegram to all Storekeepers + Managers (approvers)
-    const approvers = getStockAlertRecipients();
+    // Email + Telegram to relevant Storekeepers + Managers
+    const approvers    = getApproverRecipients(unit_school);
+    const itemsSummary = created.map(r => `• ${r.item_name} × ${r.quantity} ${r.unit_name}`).join('\n');
+
+    sendNewRequestAlert({
+      requesterName: requester_name.trim(),
+      requesterUnit: unit_school,
+      items:         created.map(r => ({ item_name: r.item_name, quantity: r.quantity, unit_name: r.unit_name })),
+      type,
+      purpose:       purpose || null,
+      groupId:       group_id,
+      recipients:    approvers,
+    }).catch(e => console.error('New-request alert email failed:', e.message));
+
     const approverTgIds = approvers.map(r => r.telegram_chat_id).filter(Boolean);
     if (approverTgIds.length) {
-      const itemsSummary = created.map(r => `• ${r.item_name} × ${r.quantity} ${r.unit_name}`).join('\n');
       sendTelegramToMany(approverTgIds,
         `🔔 <b>New Request Pending Approval</b>\n\n` +
-        `From: <b>${requester_name.trim()}</b>\n${itemsSummary}\n\n` +
+        `From: <b>${requester_name.trim()}</b> (${unit_school})\n${itemsSummary}\n\n` +
         `Type: ${type === 'borrow' ? 'Borrow' : 'Used-up'}${purpose ? `\nPurpose: ${purpose}` : ''}\n\n` +
         `👉 Open the app to review: kkinventory.ypj.sch.id/approvals`
       ).catch(() => {});
@@ -228,6 +258,28 @@ router.post('/', (req, res) => {
     returnDate:     return_date || null,
     groupId:        null,
   }).catch(e => console.error('Submission email failed:', e.message));
+
+  // Email + Telegram to relevant Storekeepers + Managers
+  const approvers = getApproverRecipients(unit_school);
+  sendNewRequestAlert({
+    requesterName: requester_name.trim(),
+    requesterUnit: unit_school,
+    items:         [{ item_name: row.item_name, quantity, unit_name: row.unit_name }],
+    type,
+    purpose:       purpose || null,
+    groupId:       null,
+    recipients:    approvers,
+  }).catch(e => console.error('New-request alert email failed:', e.message));
+
+  const approverTgIds = approvers.map(r => r.telegram_chat_id).filter(Boolean);
+  if (approverTgIds.length) {
+    sendTelegramToMany(approverTgIds,
+      `🔔 <b>New Request Pending Approval</b>\n\n` +
+      `From: <b>${requester_name.trim()}</b> (${unit_school})\n• ${row.item_name} × ${quantity} ${row.unit_name}\n\n` +
+      `Type: ${type === 'borrow' ? 'Borrow' : 'Used-up'}${purpose ? `\nPurpose: ${purpose}` : ''}\n\n` +
+      `👉 Open the app to review: kkinventory.ypj.sch.id/approvals`
+    ).catch(() => {});
+  }
 });
 
 // ── PUT /api/requests/groups/:groupId/approve ──────────────────────────────

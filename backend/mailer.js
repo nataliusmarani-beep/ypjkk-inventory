@@ -181,7 +181,40 @@ async function sendLowStockAlert({ itemName, itemCode, category, location, quant
   );
 }
 
-// ── 5. Request Forwarded ───────────────────────────────────────────────────
+// ── 5. New Request Alert (to relevant Storekeepers + Managers) ────────────
+async function sendNewRequestAlert({ requesterName, requesterUnit, items, type, purpose, groupId, recipients }) {
+  if (!recipients || recipients.length === 0) return;
+  const typeLabel  = type === 'borrow' ? 'Borrow (must be returned)' : 'Used-up';
+  const totalQty   = items.reduce((s, i) => s + i.quantity, 0);
+  const html = wrap(`
+    <p>Dear Storekeeper / Manager,</p>
+    <p>A new item request has been <strong style="color:#2563eb">submitted and is awaiting your approval</strong>.</p>
+
+    ${table([
+      ['Request ID',   groupId || '—'],
+      ['From',         requesterName],
+      ['Unit / School',requesterUnit || '—'],
+      ['Type',         typeLabel],
+      ['Total Items',  `${items.length} item(s) — ${totalQty} unit(s)`],
+      ...(purpose ? [['Purpose', purpose]] : []),
+    ])}
+
+    ${itemList(items)}
+
+    <div style="background:#eff6ff;border-left:4px solid #2563eb;padding:12px 16px;border-radius:4px;font-size:13px;color:#1e40af">
+      👉 Please log in to the inventory system to review and approve or reject this request.
+    </div>
+  `);
+  await Promise.all(
+    recipients.map(r => send({
+      to:      r.email,
+      subject: `[YPJ KK Inventory] 🔔 New Request Pending Approval — from ${requesterName}`,
+      html,
+    }).catch(e => console.error(`New-request alert to ${r.email} failed:`, e.message)))
+  );
+}
+
+// ── 6. Request Forwarded ───────────────────────────────────────────────────
 async function sendRequestForwarded({ storekeepName, requesterName, items, purpose, forwardedNote, recipients }) {
   if (!recipients || recipients.length === 0) return;
   const itemList2 = items.map(i => `${i.item_name} × ${i.quantity} ${i.unit_name || ''}`).join(', ');
@@ -208,11 +241,12 @@ async function sendRequestForwarded({ storekeepName, requesterName, items, purpo
   );
 }
 
-// ── 6. Checkout / Checkin stubs ────────────────────────────────────────────
+// ── 7. Checkout / Checkin stubs ────────────────────────────────────────────
 async function sendCheckoutConfirmation() {}
 async function sendCheckinConfirmation()  {}
 
 module.exports = {
+  sendNewRequestAlert,
   sendRequestSubmitted,
   sendRequestApproved,
   sendRequestRejected,
