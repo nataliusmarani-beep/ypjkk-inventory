@@ -1,7 +1,6 @@
 export default function HelpPage({ role }) {
-  const isAdmin      = role === 'Manager' || role === 'Storekeeper';
-  const isManager    = role === 'Manager';
-  const isStorekeeper= role === 'Storekeeper';
+  const isAdmin       = role === 'Manager' || role === 'Storekeeper';
+  const isManager     = role === 'Manager';
 
   const Section = ({ icon, title, children }) => (
     <div style={{ marginBottom: 28 }}>
@@ -52,6 +51,7 @@ export default function HelpPage({ role }) {
           {[
             { role:'Manager',     color:'#2563eb', desc:'Full access. Manages users, approves requests, views reports and backups.' },
             { role:'Storekeeper', color:'#0d9488', desc:'Manages items in assigned store. Reviews and approves/rejects requests.' },
+            { role:'Principal',   color:'#ea580c', desc:'Receives CC email notifications on every request submission and approval/rejection. View-only.' },
             { role:'Teacher',     color:'#7c3aed', desc:'Submits item requests. Views own request history.' },
             { role:'Other',       color:'#6b7280', desc:'Same as Teacher. Can view inventory and submit requests.' },
           ].map(r => (
@@ -61,6 +61,20 @@ export default function HelpPage({ role }) {
             </div>
           ))}
         </div>
+      </div>
+
+      {/* ── First Login ── */}
+      <div className="card" style={{ marginBottom: 20 }}>
+        <div className="card-title" style={{ marginBottom:14 }}>🔐 First Login — Setting Your Password</div>
+        <Section icon="📧" title="Welcome Email & Set Password Link">
+          <Step n={1} text="When your account is created by the Manager, you will receive a welcome email to your registered address." />
+          <Step n={2} text='Click the "🔐 Set My Password" button in the email.' />
+          <Step n={3} text="Enter your new password (minimum 6 characters), confirm it, and click Save." />
+          <Step n={4} text="You will be redirected to the login page — log in with your email and new password." />
+          <Note color="#fffbeb" border="#fde68a" text="#92400e">
+            ⏰ The set-password link expires in <strong>72 hours</strong>. If it has expired, ask your Manager to click <strong>📧 Invite</strong> on your account in the Users page to send a new link.
+          </Note>
+        </Section>
       </div>
 
       {/* ── For Teachers / Others ── */}
@@ -73,17 +87,25 @@ export default function HelpPage({ role }) {
         <Section icon="🛒" title="How to Submit an Item Request">
           <Step n={1} text='Go to "My Requests" in the sidebar.' />
           <Step n={2} text='Click the blue "🛒 New Request" button at the top right.' />
-          <Step n={3} text='Browse items or use the search bar to find what you need. Click ℹ️ on any item to see its full description.' />
+          <Step n={3} text="Browse items or use the search bar to find what you need. Click ℹ️ on any item to see its full description." />
           <Step n={4} text='Click "+ Add to Cart" on the items you want. Use − and + to adjust quantities.' />
-          <Step n={5} text='On the right side, confirm your name and email (auto-filled), select Type (Used-up or Borrow), and fill in the Purpose.' />
-          <Step n={6} text='If borrowing, set the Return By date.' />
+          <Step n={5} text="On the right side, confirm your name and email (auto-filled), select Type (Used-up or Borrow), and fill in the Purpose." />
+          <Step n={6} text="If borrowing, set the Return By date." />
           <Step n={7} text='Click "📤 Submit" to send your request for approval.' />
           <Note>⏳ You will receive an email and/or Telegram notification once the storekeeper reviews your request.</Note>
         </Section>
 
+        <Section icon="🔔" title="Borrow Return Reminders">
+          <Step n={1} text="If your request type is Borrow, the system will automatically send you a reminder email 2 days before the return date." />
+          <Step n={2} text="A second reminder is sent 1 day before (the day before it is due)." />
+          <Note color="#fff7ed" border="#fed7aa" text="#92400e">
+            📅 Make sure your registered email is active. If you need more time, contact the storekeeper <strong>before</strong> the due date to request an extension.
+          </Note>
+        </Section>
+
         <Section icon="📜" title="Viewing Your Request History">
           <Step n={1} text='Go to "My Requests" — your past requests are listed in the table below.' />
-          <Step n={2} text='Each request shows the items, type, status (Pending / Approved / Rejected / Returned), and date.' />
+          <Step n={2} text="Each request shows the items, type, status (Pending / Approved / Rejected / Returned), and date." />
         </Section>
 
         <Section icon="↩️" title="Returning Borrowed Items">
@@ -94,7 +116,7 @@ export default function HelpPage({ role }) {
       </div>
 
       {/* ── For Storekeepers ── */}
-      {(isAdmin) && (
+      {isAdmin && (
         <div className="card" style={{ marginBottom: 20 }}>
           <div className="card-title" style={{ marginBottom:14 }}>
             ✅ Approvals & Items
@@ -102,31 +124,41 @@ export default function HelpPage({ role }) {
           </div>
 
           <Section icon="✅" title="Approving or Rejecting a Request">
-            <Step n={1} text='Go to "Approvals" in the sidebar. Pending requests are listed here.' />
+            <Step n={1} text='Go to "Approvals" in the sidebar. Pending requests from your assigned store are listed here.' />
             <Step n={2} text='Click "✅ Approve" to approve, or "❌ Reject" to reject a request.' />
-            <Step n={3} text='You may add an optional note before confirming.' />
+            <Step n={3} text="You may add an optional note before confirming." />
             <Step n={4} text='For requests that need manager review, click "📨 Forward to Manager".' />
             <Note>📦 When a request is approved, the item stock is <strong>automatically deducted</strong>. When a borrowed item is returned, the stock is restored.</Note>
           </Section>
 
           <Section icon="➕" title="Adding a New Item">
             <Step n={1} text='Click "Add Item" in the sidebar.' />
-            <Step n={2} text='Fill in all required fields: Name, Store Category, Category, Location, Unit School, Quantity, Unit, Min Threshold, Condition, and PR/PO Number.' />
-            <Step n={3} text='Store Category determines which Category options are available.' />
+            <Step n={2} text="Fill in all required fields: Name, Store Category, Category, Location, Unit School, Quantity, Unit, Min Threshold, Condition, and PR/PO Number." />
+            <Step n={3} text="Store Category determines which Category options are available." />
             <Step n={4} text='Click "💾 Save Item" to add it to inventory.' />
             <Note color="#fffbeb" border="#fde68a" text="#92400e">🔒 Location and Unit School are <strong>locked to your assigned store</strong> if you are a Storekeeper assigned to a specific unit.</Note>
           </Section>
 
+          <Section icon="📷" title="Barcode Scanner (Mobile)">
+            <Step n={1} text='On the Add Item page, tap the "📷 Scan Barcode" button.' />
+            <Step n={2} text="Allow camera access when prompted, then point the camera at the item's barcode." />
+            <Step n={3} text="If the item already exists in the inventory, all its details are automatically loaded into the form — you can update the stock quantity or other fields and save." />
+            <Step n={4} text="If the item is not in the inventory yet, the system looks up the item name online and auto-fills the Name field. Enter the remaining details and save as a new item." />
+            <Note color="#f0fdf4" border="#bbf7d0" text="#15803d">
+              📦 The scanner uses the back camera automatically. Works best in good lighting with the barcode centred in the frame.
+            </Note>
+          </Section>
+
           <Section icon="✏️" title="Editing an Item">
             <Step n={1} text='Go to "Inventory Items" and find the item you want to edit.' />
-            <Step n={2} text='Click the ✏️ button on the right side of the row.' />
+            <Step n={2} text="Click the ✏️ button on the right side of the row." />
             <Step n={3} text='Update the fields and click "Save".' />
             <Note color="#fef2f2" border="#fecaca" text="#b91c1c">🔒 You can only edit items that belong to your assigned store location.</Note>
           </Section>
 
           <Section icon="📂" title="Importing Items via CSV">
             <Step n={1} text='Click "⬇ Template" to download the CSV template.' />
-            <Step n={2} text='Fill in the spreadsheet following the column headers.' />
+            <Step n={2} text="Fill in the spreadsheet following the column headers." />
             <Step n={3} text='Click "📂 Import CSV" and select your filled file.' />
             <Note>Maximum 500 rows per import. Items with duplicate names will be skipped.</Note>
           </Section>
@@ -143,16 +175,21 @@ export default function HelpPage({ role }) {
 
           <Section icon="👥" title="Managing Users">
             <Step n={1} text='Go to "Users" in the sidebar.' />
-            <Step n={2} text='Click "+ Add User" to create a new account. Fill in name, email, role, unit school, and a temporary password.' />
-            <Step n={3} text='Use the ✏️ button to edit a user or reset their password.' />
-            <Step n={4} text='Use "📂 Import CSV" to bulk-create users from a spreadsheet.' />
-            <Note color="#fffbeb" border="#fde68a" text="#92400e">⚠️ Storekeeper and Teacher roles cannot be assigned to "All" — they must be assigned to a specific unit (PAUD, SD, or SMP).</Note>
+            <Step n={2} text='Click "+ Add User" to create a new account. Fill in name, email, role, and unit school.' />
+            <Step n={3} text="A welcome email is automatically sent to the new user with a link to set their password. The link is valid for 72 hours." />
+            <Step n={4} text='To resend the welcome email (e.g. if the link expired), click the "📧 Invite" button on that user\'s row.' />
+            <Step n={5} text="Use the ✏️ button to edit a user's details or reset their password manually." />
+            <Step n={6} text='Use "📂 Import CSV" to bulk-create users from a spreadsheet.' />
+            <Note color="#fffbeb" border="#fde68a" text="#92400e">
+              ⚠️ Storekeeper, Principal, and Teacher roles must be assigned to a specific unit (PAUD, SD, or SMP) — not "All".<br/>
+              SD and SMP Principals are separate — assign the correct unit so they only receive notifications for their own school.
+            </Note>
           </Section>
 
           <Section icon="🗄️" title="Database Backup">
             <Step n={1} text='Go to "Backup" in the sidebar.' />
             <Step n={2} text='Click "⬇️ Download Latest Backup" to create and download a fresh backup file.' />
-            <Step n={3} text='The system automatically creates a backup on every restart and every 24 hours, keeping the last 14 backups.' />
+            <Step n={3} text="The system automatically creates a backup on every restart and every 24 hours, keeping the last 14 backups." />
           </Section>
 
           <Section icon="📊" title="Reports & Activity Log">
@@ -166,11 +203,31 @@ export default function HelpPage({ role }) {
       <div className="card" style={{ marginBottom: 20 }}>
         <div className="card-title" style={{ marginBottom:14 }}>✈️ Setting Up Telegram Notifications</div>
         <Section icon="📱" title="Connect Your Telegram Account">
-          <Step n={1} text='Open Telegram and search for @ypjkkinventory_bot.' />
-          <Step n={2} text='Tap Start or send /start — the bot will reply with your Chat ID (a number).' />
-          <Step n={3} text='In the app, click your avatar (top right) to open My Profile.' />
-          <Step n={4} text='Paste the Chat ID into the Telegram Chat ID field and click 💾 Save.' />
+          <Step n={1} text="Open Telegram and search for @ypjkkinventory_bot." />
+          <Step n={2} text="Tap Start or send /start — the bot will reply with your Chat ID (a number)." />
+          <Step n={3} text="In the app, click your avatar (top right) to open My Profile." />
+          <Step n={4} text="Paste the Chat ID into the Telegram Chat ID field and click 💾 Save." />
           <Note color="#f0fdf4" border="#bbf7d0" text="#15803d">✅ Once connected, you will receive instant Telegram messages for request submissions, approvals, rejections, and low stock alerts.</Note>
+        </Section>
+      </div>
+
+      {/* ── Install as App ── */}
+      <div className="card" style={{ marginBottom: 20 }}>
+        <div className="card-title" style={{ marginBottom:14 }}>📲 Install as a Home Screen App</div>
+        <Section icon="🤖" title="Android (Chrome)">
+          <Step n={1} text="Open the app in Chrome on your Android phone." />
+          <Step n={2} text='Tap the ⋮ menu (top right of Chrome) → "Add to Home Screen" or "Install app".' />
+          <Step n={3} text="Tap Add — the YPJ Inventory icon will appear on your home screen." />
+          <Step n={4} text="Tap the icon to open the app in full-screen mode without the browser bar." />
+        </Section>
+        <Section icon="🍎" title="iPhone / iPad (Safari)">
+          <Step n={1} text="Open the app in Safari on your iPhone." />
+          <Step n={2} text="Tap the Share button (the box with an arrow pointing up)." />
+          <Step n={3} text='Scroll down and tap "Add to Home Screen".' />
+          <Step n={4} text="Tap Add — the icon will appear on your home screen." />
+          <Note>
+            ⚠️ Use <strong>Safari</strong> on iPhone (not Chrome or Edge) for the Add to Home Screen option to appear correctly.
+          </Note>
         </Section>
       </div>
 
@@ -183,7 +240,10 @@ export default function HelpPage({ role }) {
             'Click ℹ️ on any item card in the request browser to see full details before adding to cart.',
             'Low stock items are highlighted in amber ⚠️, out-of-stock items in red.',
             'Borrowed items must be returned physically to the storeroom — the storekeeper will then mark them as returned in the system.',
-            'If you forget your password, ask your Manager to reset it from the Users page.',
+            'You will receive automatic email reminders 2 days and 1 day before your borrow due date — check your inbox.',
+            'If your set-password link has expired, ask your Manager to click 📧 Invite on your user account to send a fresh link.',
+            'Install the app on your phone home screen for quick access without opening a browser.',
+            'Storekeepers can use the 📷 barcode scanner on Add Item (mobile) to look up or update items instantly.',
           ].map((tip, i) => (
             <div key={i} style={{ display:'flex', gap:10, alignItems:'flex-start', fontSize:13, color:'var(--text)', lineHeight:1.6 }}>
               <span style={{ color:'var(--blue)', fontWeight:800, flexShrink:0 }}>→</span>
