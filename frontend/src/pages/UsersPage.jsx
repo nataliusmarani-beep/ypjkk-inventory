@@ -4,13 +4,14 @@ import Modal from '../components/shared/Modal.jsx';
 import ConfirmDialog from '../components/shared/ConfirmDialog.jsx';
 import { parseCSV, downloadTemplate } from '../utils/download.js';
 
-const ROLES       = ['Manager','Storekeeper','Teacher','Other'];
+const ROLES       = ['Manager','Storekeeper','Principal','Teacher','Other'];
 const UNIT_SCHOOLS = ['All','PAUD','SD','SMP'];
 const LOCATIONS   = ['','PAUD YPJ KK','SD SMP YPJ KK'];
 const STORE_CATS  = ['','Supplies','Teacher Resources','Sport & Uniform'];
 
 const ROLE_COLOR = {
-  Manager:'badge-blue', Storekeeper:'badge-teal', Teacher:'badge-purple', Other:'badge-grey',
+  Manager:'badge-blue', Storekeeper:'badge-teal', Principal:'badge-orange',
+  Teacher:'badge-purple', Other:'badge-grey',
 };
 
 const BLANK_FORM = {
@@ -300,7 +301,7 @@ export default function UsersPage({ user: currentUser, showToast }) {
 /* ── Shared form fields for Add / Edit ─────────────────────────────────── */
 function UserFormFields({ form, set, setForm, isAdd, isSelf }) {
   const isStorekeeper = form.role === 'Storekeeper';
-  const isRestricted  = form.role === 'Storekeeper' || form.role === 'Teacher';
+  const isRestricted  = form.role === 'Storekeeper' || form.role === 'Principal' || form.role === 'Teacher';
 
   return (
     <>
@@ -325,13 +326,13 @@ function UserFormFields({ form, set, setForm, isAdd, isSelf }) {
               setForm(f => ({
                 ...f,
                 role: newRole,
-                // Reset unit_school to PAUD if switching to Storekeeper/Teacher and currently All
-                unit_school: (newRole === 'Storekeeper' || newRole === 'Teacher') && f.unit_school === 'All' ? 'PAUD' : f.unit_school,
+                // Reset unit_school to PAUD if switching to a restricted role and currently All
+                unit_school: (newRole === 'Storekeeper' || newRole === 'Principal' || newRole === 'Teacher') && f.unit_school === 'All' ? 'PAUD' : f.unit_school,
               }));
             }}
             disabled={isSelf}
           >
-            {['Manager','Storekeeper','Teacher','Other'].map(r => <option key={r}>{r}</option>)}
+            {['Manager','Storekeeper','Principal','Teacher','Other'].map(r => <option key={r}>{r}</option>)}
           </select>
           {isSelf && <div style={{ fontSize:11, color:'var(--muted)', marginTop:3 }}>Cannot change your own role.</div>}
         </div>

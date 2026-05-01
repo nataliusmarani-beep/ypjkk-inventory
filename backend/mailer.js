@@ -245,6 +245,82 @@ async function sendRequestForwarded({ storekeepName, requesterName, items, purpo
 async function sendCheckoutConfirmation() {}
 async function sendCheckinConfirmation()  {}
 
+// ── 8. Principal: new request submitted (CC) ───────────────────────────────
+async function sendPrincipalSubmissionNotice({ requesterName, requesterUnit, items, type, purpose, groupId, recipients }) {
+  if (!recipients || recipients.length === 0) return;
+  const typeLabel = type === 'borrow' ? 'Borrow (must be returned)' : 'Used-up';
+  const totalQty  = items.reduce((s, i) => s + i.quantity, 0);
+
+  const html = wrap(`
+    <p>Dear Principal,</p>
+    <p>This is to inform you that a new item request has been <strong style="color:#2563eb">submitted</strong> and is pending storekeeper approval.</p>
+
+    ${table([
+      ['Request ID',   groupId || '—'],
+      ['From',         requesterName],
+      ['Unit / School',requesterUnit || '—'],
+      ['Type',         typeLabel],
+      ['Total Items',  `${items.length} item(s) — ${totalQty} unit(s)`],
+      ...(purpose ? [['Purpose', purpose]] : []),
+    ])}
+
+    ${itemList(items)}
+
+    <div style="background:#eff6ff;border-left:4px solid #2563eb;padding:12px 16px;border-radius:4px;font-size:13px;color:#1e40af">
+      📋 This is an informational copy. The storekeeper will review and approve or reject this request.
+    </div>
+  `);
+
+  await Promise.all(
+    recipients.map(r => send({
+      to:      r.email,
+      subject: `[YPJ KK Inventory] 📋 Request Submitted — ${requesterName} (${requesterUnit || '—'})`,
+      html,
+    }).catch(e => console.error(`Principal submission notice to ${r.email} failed:`, e.message)))
+  );
+}
+
+// ── 9. Principal: request approved or rejected (CC) ───────────────────────
+async function sendPrincipalDecisionNotice({ requesterName, requesterUnit, items, type, status, notes, groupId, recipients }) {
+  if (!recipients || recipients.length === 0) return;
+
+  const isApproved   = status === 'approved';
+  const statusLabel  = isApproved ? 'APPROVED' : 'REJECTED';
+  const statusColor  = isApproved ? '#16a34a' : '#dc2626';
+  const statusBg     = isApproved ? '#f0fdf4'  : '#fef2f2';
+  const statusBorder = isApproved ? '#86efac'  : '#fecaca';
+  const statusIcon   = isApproved ? '✅' : '❌';
+  const typeLabel    = type === 'borrow' ? 'Borrow (must be returned)' : 'Used-up';
+
+  const html = wrap(`
+    <p>Dear Principal,</p>
+    <p>A request from <strong>${requesterName}</strong> (${requesterUnit || '—'}) has been
+       <strong style="color:${statusColor}">${statusLabel}</strong>.</p>
+
+    ${table([
+      ['Request ID',   groupId || '—'],
+      ['From',         requesterName],
+      ['Unit / School',requesterUnit || '—'],
+      ['Type',         typeLabel],
+      ...(notes ? [[isApproved ? 'Approval Note' : 'Reason', notes]] : []),
+    ])}
+
+    ${itemList(items)}
+
+    <div style="background:${statusBg};border-left:4px solid ${statusBorder};padding:12px 16px;border-radius:4px;font-size:13px;color:${statusColor}">
+      ${statusIcon} This is an automated informational copy for your records.
+    </div>
+  `);
+
+  await Promise.all(
+    recipients.map(r => send({
+      to:      r.email,
+      subject: `[YPJ KK Inventory] ${statusIcon} Request ${statusLabel} — ${requesterName}`,
+      html,
+    }).catch(e => console.error(`Principal decision notice to ${r.email} failed:`, e.message)))
+  );
+}
+
 module.exports = {
   sendNewRequestAlert,
   sendRequestSubmitted,
@@ -252,6 +328,8 @@ module.exports = {
   sendRequestRejected,
   sendLowStockAlert,
   sendRequestForwarded,
+  sendPrincipalSubmissionNotice,
+  sendPrincipalDecisionNotice,
   sendCheckoutConfirmation,
   sendCheckinConfirmation,
 };

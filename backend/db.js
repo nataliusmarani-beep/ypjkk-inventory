@@ -66,31 +66,41 @@ db.exec(`
   );
 `);
 
-// ── Rename Admin → Manager (table recreation required to change CHECK constraint) ──
+// ── Migrate users table if CHECK constraint needs updating ────────────────
+// Handles: Admin→Manager rename AND adding Principal role
 const userSchema = db.prepare(`SELECT sql FROM sqlite_master WHERE type='table' AND name='users'`).get();
-if (userSchema && userSchema.sql.includes("'Admin'")) {
+const needsMigration = userSchema && (
+  userSchema.sql.includes("'Admin'") ||
+  !userSchema.sql.includes("'Principal'")
+);
+if (needsMigration) {
   db.exec(`PRAGMA foreign_keys = OFF`);
   db.exec(`
     CREATE TABLE users_new (
-      id             INTEGER PRIMARY KEY AUTOINCREMENT,
-      name           TEXT    NOT NULL,
-      email          TEXT    NOT NULL UNIQUE,
-      role           TEXT    NOT NULL DEFAULT 'Teacher' CHECK(role IN ('Manager','Storekeeper','Teacher','Other')),
-      unit_school    TEXT    NOT NULL DEFAULT 'All',
-      location       TEXT,
-      store_category TEXT,
-      is_active      INTEGER NOT NULL DEFAULT 1,
-      password_hash  TEXT    NOT NULL,
-      created_at     TEXT    DEFAULT (datetime('now'))
+      id               INTEGER PRIMARY KEY AUTOINCREMENT,
+      name             TEXT    NOT NULL,
+      email            TEXT    NOT NULL UNIQUE,
+      role             TEXT    NOT NULL DEFAULT 'Teacher'
+                       CHECK(role IN ('Manager','Storekeeper','Principal','Teacher','Other')),
+      unit_school      TEXT    NOT NULL DEFAULT 'All',
+      location         TEXT,
+      store_category   TEXT,
+      is_active        INTEGER NOT NULL DEFAULT 1,
+      password_hash    TEXT    NOT NULL,
+      telegram_chat_id TEXT,
+      created_at       TEXT    DEFAULT (datetime('now'))
     );
-    INSERT INTO users_new SELECT id, name, email,
-      CASE WHEN role='Admin' THEN 'Manager' ELSE role END,
-      unit_school, location, store_category, is_active, password_hash, created_at
-    FROM users;
+    INSERT INTO users_new
+      SELECT id, name, email,
+        CASE WHEN role='Admin' THEN 'Manager' ELSE role END,
+        unit_school, location, store_category, is_active, password_hash,
+        telegram_chat_id, created_at
+      FROM users;
     DROP TABLE users;
     ALTER TABLE users_new RENAME TO users;
   `);
   db.exec(`PRAGMA foreign_keys = ON`);
+  console.log('[db] Migration: users table updated (Principal role added).');
 }
 
 // Migrations for existing databases

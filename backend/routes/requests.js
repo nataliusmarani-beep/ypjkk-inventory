@@ -1,6 +1,6 @@
 const express = require('express');
 const db = require('../db');
-const { sendNewRequestAlert, sendRequestSubmitted, sendRequestApproved, sendRequestRejected, sendLowStockAlert, sendRequestForwarded } = require('../mailer');
+const { sendNewRequestAlert, sendRequestSubmitted, sendRequestApproved, sendRequestRejected, sendLowStockAlert, sendRequestForwarded, sendPrincipalSubmissionNotice, sendPrincipalDecisionNotice } = require('../mailer');
 const { sendTelegram, sendTelegramToMany } = require('../telegram');
 
 // Fetch active Manager + Storekeeper records
@@ -30,6 +30,16 @@ function getApproverRecipients(unit_school) {
     storekeepers = db.prepare(`SELECT name, email, telegram_chat_id FROM users WHERE role = 'Storekeeper' AND is_active = 1`).all();
   }
   return [...managers, ...storekeepers];
+}
+
+// Fetch Principals relevant to the requester's unit_school
+function getPrincipalRecipients(unit_school) {
+  if (unit_school === 'PAUD') {
+    return db.prepare(`SELECT name, email, telegram_chat_id FROM users WHERE role='Principal' AND unit_school='PAUD' AND is_active=1`).all();
+  } else if (unit_school === 'SD' || unit_school === 'SMP') {
+    return db.prepare(`SELECT name, email, telegram_chat_id FROM users WHERE role='Principal' AND unit_school IN ('SD','SMP') AND is_active=1`).all();
+  }
+  return db.prepare(`SELECT name, email, telegram_chat_id FROM users WHERE role='Principal' AND is_active=1`).all();
 }
 
 // Look up a user's telegram_chat_id by email
@@ -214,17 +224,30 @@ router.post('/cart', (req, res) => {
 
     // Email + Telegram to relevant Storekeepers + Managers
     const approvers    = getApproverRecipients(unit_school);
+    const principals   = getPrincipalRecipients(unit_school);
     const itemsSummary = created.map(r => `• ${r.item_name} × ${r.quantity} ${r.unit_name}`).join('\n');
+    const itemsPayload = created.map(r => ({ item_name: r.item_name, quantity: r.quantity, unit_name: r.unit_name }));
 
     sendNewRequestAlert({
       requesterName: requester_name.trim(),
       requesterUnit: unit_school,
-      items:         created.map(r => ({ item_name: r.item_name, quantity: r.quantity, unit_name: r.unit_name })),
+      items:         itemsPayload,
       type,
       purpose:       purpose || null,
       groupId:       group_id,
       recipients:    approvers,
     }).catch(e => console.error('New-request alert email failed:', e.message));
+
+    // CC Principals on submission
+    sendPrincipalSubmissionNotice({
+      requesterName: requester_name.trim(),
+      requesterUnit: unit_school,
+      items:         itemsPayload,
+      type,
+      purpose:       purpose || null,
+      groupId:       group_id,
+      recipients:    principals,
+    }).catch(e => console.error('Principal submission notice failed:', e.message));
 
     const approverTgIds = approvers.map(r => r.telegram_chat_id).filter(Boolean);
     if (approverTgIds.length) {
@@ -323,7 +346,9 @@ router.put('/groups/:groupId/approve', (req, res) => {
     const itemList = rows.map(r => `${r.item_name} × ${r.quantity} ${r.unit_name}`).join(', ');
     const itemsBullet = rows.map(r => `• ${r.item_name} × ${r.quantity} ${r.unit_name}`).join('\n');
 
-    // Email
+    const itemsPayload = rows.map(r => ({ item_name: r.item_name, quantity: r.quantity, unit_name: r.unit_name }));
+
+    // Email requester
     sendRequestApproved({
       requesterName:  first.requester_name,
       requesterEmail: first.requester_email,
@@ -333,6 +358,18 @@ router.put('/groups/:groupId/approve', (req, res) => {
       returnDate:     first.return_date,
       approvalNotes:  notes || null,
     }).catch(e => console.error('Approval email failed:', e.message));
+
+    // CC Principals on decision
+    sendPrincipalDecisionNotice({
+      requesterName: first.requester_name,
+      requesterUnit: first.unit_school,
+      items:         itemsPayload,
+      type:          first.type,
+      status:        'approved',
+      notes:         notes || null,
+      groupId,
+      recipients:    getPrincipalRecipients(first.unit_school),
+    }).catch(e => console.error('Principal approval notice failed:', e.message));
 
     // Telegram
     const tgId = getTelegramId(first.requester_email);
@@ -364,7 +401,7 @@ router.put('/groups/:groupId/reject', (req, res) => {
   const itemList = rows.map(r => `${r.item_name} × ${r.quantity}`).join(', ');
   const itemsBullet = rows.map(r => `• ${r.item_name} × ${r.quantity}`).join('\n');
 
-  // Email
+  // Email requester
   sendRequestRejected({
     requesterName:  first.requester_name,
     requesterEmail: first.requester_email,
@@ -372,6 +409,18 @@ router.put('/groups/:groupId/reject', (req, res) => {
     quantity:       rows.reduce((s, r) => s + r.quantity, 0),
     notes,
   }).catch(e => console.error('Rejection email failed:', e.message));
+
+  // CC Principals on decision
+  sendPrincipalDecisionNotice({
+    requesterName: first.requester_name,
+    requesterUnit: first.unit_school,
+    items:         rows.map(r => ({ item_name: r.item_name, quantity: r.quantity, unit_name: r.unit_name })),
+    type:          first.type,
+    status:        'rejected',
+    notes:         notes || null,
+    groupId,
+    recipients:    getPrincipalRecipients(first.unit_school),
+  }).catch(e => console.error('Principal rejection notice failed:', e.message));
 
   // Telegram
   const tgId = getTelegramId(first.requester_email);
@@ -459,6 +508,17 @@ router.put('/:id/approve', (req, res) => {
     sendRequestApproved({ requesterName: row.requester_name, requesterEmail: row.requester_email, itemName: row.item_name, quantity: row.quantity, type: row.type, returnDate: row.return_date, approvalNotes: notes || null })
       .catch(e => console.error(e.message));
 
+    sendPrincipalDecisionNotice({
+      requesterName: row.requester_name,
+      requesterUnit: row.unit_school,
+      items:         [{ item_name: row.item_name, quantity: row.quantity, unit_name: row.unit_name }],
+      type:          row.type,
+      status:        'approved',
+      notes:         notes || null,
+      groupId:       row.group_id || null,
+      recipients:    getPrincipalRecipients(row.unit_school),
+    }).catch(e => console.error('Principal approval notice failed:', e.message));
+
     const tgId = getTelegramId(row.requester_email);
     if (tgId) sendTelegram(tgId,
       `✅ <b>Request Approved!</b>\n\n• ${row.item_name} × ${row.quantity} ${row.unit_name}` +
@@ -486,6 +546,17 @@ router.put('/:id/reject', (req, res) => {
 
   sendRequestRejected({ requesterName: row.requester_name, requesterEmail: row.requester_email, itemName: row.item_name, quantity: row.quantity, notes })
     .catch(e => console.error(e.message));
+
+  sendPrincipalDecisionNotice({
+    requesterName: row.requester_name,
+    requesterUnit: row.unit_school,
+    items:         [{ item_name: row.item_name, quantity: row.quantity, unit_name: row.unit_name }],
+    type:          row.type,
+    status:        'rejected',
+    notes:         notes || null,
+    groupId:       row.group_id || null,
+    recipients:    getPrincipalRecipients(row.unit_school),
+  }).catch(e => console.error('Principal rejection notice failed:', e.message));
 
   const tgId = getTelegramId(row.requester_email);
   if (tgId) sendTelegram(tgId,

@@ -61,7 +61,7 @@ router.post('/', (req, res) => {
     if (!email?.trim())    return res.status(400).json({ error: 'Email is required.' });
     if (!password?.trim()) return res.status(400).json({ error: 'Password is required.' });
 
-    const validRoles = ['Manager','Storekeeper','Teacher','Other'];
+    const validRoles = ['Manager','Storekeeper','Principal','Teacher','Other'];
     if (!validRoles.includes(role)) return res.status(400).json({ error: 'Invalid role.' });
 
     const existing = db.prepare('SELECT id FROM users WHERE email = :email')
@@ -103,7 +103,7 @@ router.put('/:id', (req, res) => {
     if (!name?.trim())  return res.status(400).json({ error: 'Name is required.' });
     if (!email?.trim()) return res.status(400).json({ error: 'Email is required.' });
 
-    const validRoles = ['Manager','Storekeeper','Teacher','Other'];
+    const validRoles = ['Manager','Storekeeper','Principal','Teacher','Other'];
     if (!validRoles.includes(role)) return res.status(400).json({ error: 'Invalid role.' });
 
     if (id === req.user.id && is_active === 0) {
@@ -167,7 +167,7 @@ router.post('/import', async (req, res) => {
     if (rows.length > 200)
       return res.status(400).json({ error: 'Maximum 200 users per import.' });
 
-    const validRoles = ['Manager','Storekeeper','Teacher','Other'];
+    const validRoles = ['Manager','Storekeeper','Principal','Teacher','Other'];
     const validUnits = ['All','PAUD','SD','SMP'];
     const validLocs  = ['','PAUD YPJ KK','SD SMP YPJ KK'];
     const validCats  = ['','Supplies','Teacher Resources','Sport & Uniform'];
