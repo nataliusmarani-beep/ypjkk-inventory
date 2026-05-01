@@ -215,7 +215,7 @@ export default function InventoryPage({ role, user, showToast }) {
 
       {modal?.type === 'edit' && (
         <Modal title="Edit Item" onClose={() => setModal(null)}>
-          <ItemForm initial={modal.data} meta={meta} onSubmit={handleSave} onClose={() => setModal(null)} />
+          <ItemForm initial={modal.data} meta={meta} user={user} onSubmit={handleSave} onClose={() => setModal(null)} />
         </Modal>
       )}
       {modal?.type === 'delete' && (

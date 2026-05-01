@@ -11,9 +11,19 @@ const EMPTY = {
   min_threshold: 10, condition: 'Good', description: '',
 };
 
-export default function AddItemPage({ showToast }) {
+function storekeepLock(user) {
+  if (!user || user.role !== 'Storekeeper' || user.unit_school === 'All') return null;
+  if (user.unit_school === 'PAUD') return { location: 'PAUD YPJ KK',    unitSchools: ['PAUD'] };
+  return                                   { location: 'SD SMP YPJ KK', unitSchools: ['SD', 'SMP'] };
+}
+
+export default function AddItemPage({ showToast, user }) {
   const navigate = useNavigate();
-  const [form, setForm] = useState(EMPTY);
+  const lock = storekeepLock(user);
+  const [form, setForm] = useState(() => lock
+    ? { ...EMPTY, location: lock.location, unit_school: lock.unitSchools[0] }
+    : EMPTY
+  );
   const [meta, setMeta] = useState(null);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState(null);
@@ -87,16 +97,30 @@ export default function AddItemPage({ showToast }) {
 
             <div className="form-group">
               <label className="form-label">Location <span className="req">*</span></label>
-              <select className="filter-select" value={form.location} onChange={set('location')} style={{ width: '100%' }}>
+              <select
+                className="filter-select"
+                value={form.location}
+                onChange={set('location')}
+                style={{ width: '100%', opacity: lock ? 0.75 : 1, cursor: lock ? 'not-allowed' : 'pointer' }}
+                disabled={!!lock}
+              >
                 {(M.LOCATIONS || ['SD SMP YPJ KK']).map(l => <option key={l}>{l}</option>)}
               </select>
+              {lock && <div style={{ fontSize:11, color:'var(--muted)', marginTop:3 }}>🔒 Assigned store location</div>}
             </div>
 
             <div className="form-group">
               <label className="form-label">Unit School <span className="req">*</span></label>
-              <select className="filter-select" value={form.unit_school} onChange={set('unit_school')} style={{ width: '100%' }}>
-                {(M.UNIT_SCHOOLS || ['All']).map(u => <option key={u}>{u}</option>)}
+              <select
+                className="filter-select"
+                value={form.unit_school}
+                onChange={set('unit_school')}
+                style={{ width: '100%', opacity: lock?.unitSchools.length === 1 ? 0.75 : 1, cursor: lock?.unitSchools.length === 1 ? 'not-allowed' : 'pointer' }}
+                disabled={lock?.unitSchools.length === 1}
+              >
+                {(lock ? lock.unitSchools : (M.UNIT_SCHOOLS || ['All'])).map(u => <option key={u}>{u}</option>)}
               </select>
+              {lock?.unitSchools.length === 1 && <div style={{ fontSize:11, color:'var(--muted)', marginTop:3 }}>🔒 Assigned to your unit</div>}
             </div>
 
             <div className="form-group">

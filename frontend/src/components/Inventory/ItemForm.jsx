@@ -1,11 +1,27 @@
 import { useState } from 'react';
 import EmojiPicker from '../shared/EmojiPicker.jsx';
 
-export default function ItemForm({ initial, meta, onSubmit, onClose }) {
-  const [form, setForm] = useState(initial ?? {
-    name:'', code:'', icon:'', category:'Stationery', store_category:'Supplies',
-    location:'SD SMP YPJ KK', unit_school:'All',
-    quantity:0, unit_name:'pcs', description:'', min_threshold:10, condition:'Good',
+// Derive locked location + allowed unit_school options for a Storekeeper
+function storekeepLock(user) {
+  if (!user || user.role !== 'Storekeeper' || user.unit_school === 'All') return null;
+  if (user.unit_school === 'PAUD') return { location: 'PAUD YPJ KK',    unitSchools: ['PAUD'] };
+  return                                   { location: 'SD SMP YPJ KK', unitSchools: ['SD', 'SMP'] };
+}
+
+export default function ItemForm({ initial, meta, user, onSubmit, onClose }) {
+  const lock = storekeepLock(user);
+
+  const [form, setForm] = useState(() => {
+    const base = initial ?? {
+      name:'', code:'', icon:'', category:'Stationery', store_category:'Supplies',
+      location:'SD SMP YPJ KK', unit_school:'All',
+      quantity:0, unit_name:'pcs', description:'', min_threshold:10, condition:'Good',
+    };
+    // Pre-fill locked fields when adding a new item
+    if (lock && !initial) {
+      return { ...base, location: lock.location, unit_school: lock.unitSchools[0] };
+    }
+    return base;
   });
   const [error, setError] = useState(null);
   const [saving, setSaving] = useState(false);
@@ -56,9 +72,29 @@ export default function ItemForm({ initial, meta, onSubmit, onClose }) {
         </div>
         <div className="form-group">
           <label className="form-label">Location</label>
-          <select className="filter-select" style={{ width:'100%' }} value={form.location} onChange={set('location')}>
+          <select
+            className="filter-select"
+            style={{ width:'100%', opacity: lock ? 0.75 : 1, cursor: lock ? 'not-allowed' : 'pointer' }}
+            value={form.location}
+            onChange={set('location')}
+            disabled={!!lock}
+          >
             {(M.LOCATIONS||[]).map(l => <option key={l}>{l}</option>)}
           </select>
+          {lock && <div style={{ fontSize:10, color:'var(--muted)', marginTop:3 }}>🔒 Assigned store</div>}
+        </div>
+        <div className="form-group">
+          <label className="form-label">Unit School</label>
+          <select
+            className="filter-select"
+            style={{ width:'100%', opacity: lock?.unitSchools.length === 1 ? 0.75 : 1, cursor: lock?.unitSchools.length === 1 ? 'not-allowed' : 'pointer' }}
+            value={form.unit_school}
+            onChange={set('unit_school')}
+            disabled={lock?.unitSchools.length === 1}
+          >
+            {(lock ? lock.unitSchools : (M.UNIT_SCHOOLS||['All','PAUD','SD','SMP'])).map(u => <option key={u}>{u}</option>)}
+          </select>
+          {lock?.unitSchools.length === 1 && <div style={{ fontSize:10, color:'var(--muted)', marginTop:3 }}>🔒 Assigned to your unit</div>}
         </div>
         <div className="form-group">
           <label className="form-label">Condition</label>
