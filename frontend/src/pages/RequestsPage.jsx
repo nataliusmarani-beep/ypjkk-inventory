@@ -60,12 +60,11 @@ export default function RequestsPage({ role, user, showToast, refreshPending }) 
       .catch(() => setHL(false));
   }, []);
 
-  // Use explicit location set by admin; fallback to unit_school mapping
+  // Map user's unit_school to a store location filter (non-admins only)
   const storeLocation = (() => {
-    if (isAdmin) return undefined;
-    if (user?.location) return user.location;
-    if (!user || user.unit_school === 'All') return undefined;
-    return user.unit_school === 'PAUD' ? 'PAUD YPJ KK' : 'SD SMP YPJ KK';
+    if (isAdmin) return undefined;                          // admins see everything
+    if (!user || user.unit_school === 'All') return undefined; // All → both stores
+    return user.unit_school === 'PAUD' ? 'PAUD YPJ KK' : 'SD SMP YPJ KK'; // PAUD → PAUD store; SD/SMP → SD SMP store
   })();
 
   useEffect(() => { loadHistory(); }, [loadHistory]);
@@ -113,7 +112,7 @@ export default function RequestsPage({ role, user, showToast, refreshPending }) 
       });
       showToast('✅ Request submitted! Storekeeper will be notified.', 'success');
       setCart([]);
-      setForm({ requester_name:'', requester_email:'', type:'used-up', unit_school:'All', purpose:'', return_date:'' });
+      setForm({ requester_name: user?.name || '', requester_email: user?.email || '', type:'used-up', unit_school: user?.unit_school || 'All', purpose:'', return_date:'' });
       setCartMode(false);
       loadHistory(); refreshPending();
     } catch (err) {
@@ -293,9 +292,20 @@ export default function RequestsPage({ role, user, showToast, refreshPending }) 
                   </label>
                   <label style={{ fontSize:12, fontWeight:800, color:'var(--navy)' }}>
                     Unit School
-                    <select className="filter-select" value={form.unit_school} onChange={set('unit_school')} style={{ width:'100%', marginTop:4 }}>
+                    <select
+                      className="filter-select"
+                      value={form.unit_school}
+                      onChange={set('unit_school')}
+                      disabled={!isAdmin}
+                      style={{ width:'100%', marginTop:4, opacity: isAdmin ? 1 : 0.75, cursor: isAdmin ? 'pointer' : 'not-allowed' }}
+                    >
                       {['All','PAUD','SD','SMP'].map(u => <option key={u}>{u}</option>)}
                     </select>
+                    {!isAdmin && (
+                      <div style={{ fontSize:10, color:'var(--muted)', marginTop:3 }}>
+                        🔒 Assigned to your unit
+                      </div>
+                    )}
                   </label>
                 </div>
 
