@@ -32,12 +32,11 @@ function getApproverRecipients(unit_school) {
   return [...managers, ...storekeepers];
 }
 
-// Fetch Principals relevant to the requester's unit_school
+// Fetch Principals relevant to the requester's unit_school.
+// SD and SMP are separate schools (same building, different principals).
 function getPrincipalRecipients(unit_school) {
-  if (unit_school === 'PAUD') {
-    return db.prepare(`SELECT name, email, telegram_chat_id FROM users WHERE role='Principal' AND unit_school='PAUD' AND is_active=1`).all();
-  } else if (unit_school === 'SD' || unit_school === 'SMP') {
-    return db.prepare(`SELECT name, email, telegram_chat_id FROM users WHERE role='Principal' AND unit_school IN ('SD','SMP') AND is_active=1`).all();
+  if (unit_school === 'PAUD' || unit_school === 'SD' || unit_school === 'SMP') {
+    return db.prepare(`SELECT name, email, telegram_chat_id FROM users WHERE role='Principal' AND unit_school=? AND is_active=1`).all(unit_school);
   }
   return db.prepare(`SELECT name, email, telegram_chat_id FROM users WHERE role='Principal' AND is_active=1`).all();
 }
