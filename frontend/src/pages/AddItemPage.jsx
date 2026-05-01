@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { api } from '../api.js';
 import EmojiPicker from '../components/shared/EmojiPicker.jsx';
+import BarcodeScanner from '../components/shared/BarcodeScanner.jsx';
 
 const CAT_BY_STORE = {
   'Supplies':          ['Stationery','Housekeeping','Groceries','Tools','Medical/First Aid','Electronics'],
@@ -30,9 +31,12 @@ export default function AddItemPage({ showToast, user }) {
     ? { ...EMPTY, location: lock.location, unit_school: lock.unitSchools[0] }
     : EMPTY
   );
-  const [meta, setMeta] = useState(null);
-  const [saving, setSaving] = useState(false);
-  const [error, setError] = useState(null);
+  const [meta,           setMeta]           = useState(null);
+  const [saving,         setSaving]         = useState(false);
+  const [error,          setError]          = useState(null);
+  const [showScanner,    setShowScanner]    = useState(false);
+  const [nameSuggestion, setNameSuggestion] = useState(null);  // { name, brand }
+  const [lookingUp,      setLookingUp]      = useState(false);
 
   useEffect(() => { api.getMeta().then(setMeta).catch(() => {}); }, []);
 
@@ -46,6 +50,26 @@ export default function AddItemPage({ showToast, user }) {
       }
       return { ...f, [field]: val };
     });
+  };
+
+  const handleScan = async (barcode) => {
+    setShowScanner(false);
+    setForm(f => ({ ...f, code: barcode }));
+    setNameSuggestion(null);
+
+    // Try to look up the product name from the barcode
+    setLookingUp(true);
+    try {
+      const res  = await fetch(`https://api.upcitemdb.com/prod/trial/lookup?upc=${barcode}`);
+      const data = await res.json();
+      if (data.items?.length > 0) {
+        const item  = data.items[0];
+        const name  = item.title || '';
+        const brand = item.brand || '';
+        if (name) setNameSuggestion({ name, brand });
+      }
+    } catch { /* network error — silently skip */ }
+    finally { setLookingUp(false); }
   };
 
   const handleSubmit = async (e) => {
@@ -76,6 +100,50 @@ export default function AddItemPage({ showToast, user }) {
 
       {error && <div className="alert alert-error">{error}</div>}
 
+      {/* ── Name suggestion from barcode lookup ── */}
+      {nameSuggestion && (
+        <div style={{
+          background: '#eff6ff', border: '1px solid #bfdbfe', borderRadius: 10,
+          padding: '12px 16px', marginBottom: 16,
+          display: 'flex', flexWrap: 'wrap', gap: 10, alignItems: 'center',
+        }}>
+          <div style={{ flex: 1, minWidth: 200 }}>
+            <div style={{ fontSize: 12, color: '#1e40af', fontWeight: 700, marginBottom: 2 }}>
+              💡 Product found from barcode
+            </div>
+            <div style={{ fontSize: 14, fontWeight: 600, color: 'var(--navy)' }}>
+              {nameSuggestion.name}
+            </div>
+            {nameSuggestion.brand && (
+              <div style={{ fontSize: 12, color: 'var(--muted)' }}>{nameSuggestion.brand}</div>
+            )}
+          </div>
+          <div style={{ display: 'flex', gap: 8 }}>
+            <button
+              type="button"
+              className="btn btn-primary"
+              style={{ fontSize: 12, padding: '5px 14px' }}
+              onClick={() => {
+                setForm(f => ({ ...f, name: nameSuggestion.name }));
+                setNameSuggestion(null);
+              }}
+            >✓ Use this name</button>
+            <button
+              type="button"
+              className="btn btn-ghost"
+              style={{ fontSize: 12, padding: '5px 14px' }}
+              onClick={() => setNameSuggestion(null)}
+            >Dismiss</button>
+          </div>
+        </div>
+      )}
+
+      {lookingUp && (
+        <div style={{ fontSize: 12, color: 'var(--muted)', marginBottom: 12 }}>
+          🔍 Looking up product name from barcode…
+        </div>
+      )}
+
       <form onSubmit={handleSubmit}>
         <div className="card">
           <div className="form-grid">
@@ -90,8 +158,25 @@ export default function AddItemPage({ showToast, user }) {
             </div>
 
             <div className="form-group">
-              <label className="form-label">Item Code <span className="req">*</span></label>
-              <input type="text" value={form.code} onChange={set('code')} placeholder="e.g. STA-001" />
+              <label className="form-label">Item Code / Barcode</label>
+              <div style={{ display: 'flex', gap: 8 }}>
+                <input
+                  type="text"
+                  value={form.code}
+                  onChange={set('code')}
+                  placeholder="e.g. STA-001 or scan barcode"
+                  style={{ flex: 1 }}
+                />
+                <button
+                  type="button"
+                  className="btn btn-secondary"
+                  title="Scan barcode with camera"
+                  onClick={() => { setNameSuggestion(null); setShowScanner(true); }}
+                  style={{ whiteSpace: 'nowrap', padding: '0 14px' }}
+                >
+                  📷 Scan
+                </button>
+              </div>
             </div>
 
             <div className="form-group">
@@ -185,6 +270,13 @@ export default function AddItemPage({ showToast, user }) {
           </div>
         </div>
       </form>
+
+      {showScanner && (
+        <BarcodeScanner
+          onScan={handleScan}
+          onClose={() => setShowScanner(false)}
+        />
+      )}
     </div>
   );
 }
