@@ -123,8 +123,8 @@ export default function App() {
             <span>© {new Date().getFullYear()} Yayasan Pendidikan Jayawijaya — Kuala Kencana Campus. All rights reserved.</span>
             <span>
               📧{' '}
-              <a href="mailto:natalius_marani@ypj.sch.id" style={{ color:'var(--muted)', textDecoration:'none' }}>
-                natalius_marani@ypj.sch.id
+              <a href="mailto:nmarani@fmi.com" style={{ color:'var(--muted)', textDecoration:'none' }}>
+                nmarani@fmi.com
               </a>
               {' · '}
               🌐{' '}
