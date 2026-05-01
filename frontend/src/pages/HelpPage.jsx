@@ -177,7 +177,7 @@ export default function HelpPage({ role }) {
             <Step n={1} text='Go to "Users" in the sidebar.' />
             <Step n={2} text='Click "+ Add User" to create a new account. Fill in name, email, role, and unit school.' />
             <Step n={3} text="A welcome email is automatically sent to the new user with a link to set their password. The link is valid for 72 hours." />
-            <Step n={4} text='To resend the welcome email (e.g. if the link expired), click the "📧 Invite" button on that user\'s row.' />
+            <Step n={4} text={`To resend the welcome email (e.g. if the link expired), click the "📧 Invite" button on that user's row.`} />
             <Step n={5} text="Use the ✏️ button to edit a user's details or reset their password manually." />
             <Step n={6} text='Use "📂 Import CSV" to bulk-create users from a spreadsheet.' />
             <Note color="#fffbeb" border="#fde68a" text="#92400e">
