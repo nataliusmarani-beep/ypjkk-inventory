@@ -243,6 +243,8 @@ async function sendRequestForwarded({ storekeepName, requesterName, items, purpo
 
 // ── 7. Welcome email — new user account created ───────────────────────────
 async function sendWelcomeEmail({ name, email, role, unit_school, setPasswordUrl }) {
+  const appUrl = process.env.FRONTEND_URL || 'https://kkinventory.ypj.sch.id';
+
   await send({
     to: email,
     subject: `[YPJ KK Inventory] Welcome, ${name} — Set Your Password`,
@@ -268,12 +270,49 @@ async function sendWelcomeEmail({ name, email, role, unit_school, setPasswordUrl
         </a>
       </div>
 
-      <div style="background:#fffbeb;border-left:4px solid #fde68a;padding:12px 16px;border-radius:4px;font-size:13px;color:#92400e">
+      <div style="background:#fffbeb;border-left:4px solid #fde68a;padding:12px 16px;border-radius:4px;font-size:13px;color:#92400e;margin-bottom:24px">
         ⏰ This link expires in <strong>72 hours</strong>.
         If it has expired, please ask your Manager to resend the invitation from the Users page.
       </div>
 
-      <p style="font-size:12px;color:#94a3b8;margin-top:20px">
+      <!-- ── App Access & Install Instructions ── -->
+      <div style="background:#f8fafc;border:1px solid #e2e8f0;border-radius:8px;padding:20px;margin-bottom:20px">
+        <p style="margin:0 0 12px;font-weight:700;font-size:14px;color:#1a2f5e">📱 Access &amp; Install the App</p>
+
+        <p style="margin:0 0 8px;font-size:13px;color:#374151">
+          Open the app in your browser:<br/>
+          <a href="${appUrl}" style="color:#2563eb;font-weight:600">${appUrl}</a>
+        </p>
+
+        <p style="margin:12px 0 6px;font-size:13px;font-weight:700;color:#374151">Install as a home screen shortcut:</p>
+
+        <!-- Android -->
+        <div style="background:white;border:1px solid #e2e8f0;border-radius:6px;padding:12px 14px;margin-bottom:8px">
+          <p style="margin:0 0 6px;font-size:12px;font-weight:700;color:#16a34a">🤖 Android (Chrome)</p>
+          <ol style="margin:0;padding-left:18px;font-size:12px;color:#374151;line-height:1.8">
+            <li>Open <strong>${appUrl}</strong> in <strong>Chrome</strong></li>
+            <li>Tap the <strong>⋮ menu</strong> (top right) → <strong>"Add to Home Screen"</strong> or <strong>"Install app"</strong></li>
+            <li>Tap <strong>Add</strong> — the YPJ Inventory icon appears on your home screen</li>
+          </ol>
+        </div>
+
+        <!-- iPhone -->
+        <div style="background:white;border:1px solid #e2e8f0;border-radius:6px;padding:12px 14px">
+          <p style="margin:0 0 6px;font-size:12px;font-weight:700;color:#374151">🍎 iPhone / iPad (Safari)</p>
+          <ol style="margin:0;padding-left:18px;font-size:12px;color:#374151;line-height:1.8">
+            <li>Open <strong>${appUrl}</strong> in <strong>Safari</strong> (not Chrome)</li>
+            <li>Tap the <strong>Share button</strong> (□↑) at the bottom of the screen</li>
+            <li>Tap <strong>"Add to Home Screen"</strong></li>
+            <li>Tap <strong>Add</strong> — the icon appears on your home screen</li>
+          </ol>
+        </div>
+
+        <p style="margin:10px 0 0;font-size:11px;color:#94a3b8">
+          Once installed, the app opens in full-screen mode like a native app — no browser bar.
+        </p>
+      </div>
+
+      <p style="font-size:12px;color:#94a3b8;margin-top:4px">
         If you did not expect this email, please ignore it. No action is needed.
       </p>
     `),
