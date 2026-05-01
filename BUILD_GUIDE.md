@@ -55,6 +55,7 @@ YPJTembagapura-Inventory/        ← root folder (rename as needed)
 │   ├── db.js                    ← SQLite setup + schema
 │   ├── mailer.js                ← Email via Resend
 │   ├── telegram.js              ← Telegram bot
+│   ├── reminders.js             ← Borrow return reminder scheduler
 │   ├── middleware/
 │   │   └── auth.js              ← JWT cookie middleware
 │   └── routes/
@@ -575,6 +576,69 @@ Key concepts:
 - Keeps only the last 14 backups (auto-deletes older ones)
 - Exposed as `GET /api/backup/list` and `GET /api/backup/download`
 
+### Borrow return reminders (`backend/reminders.js`)
+
+A standalone module that runs on a schedule (every hour) to send email reminders for borrowed items approaching their return date.
+
+**How it works:**
+- Queries all `requests` where `type='borrow'`, `status='approved'`, and `DATE(return_date)` equals today + 2 or today + 1
+- Sends a reminder email via `sendBorrowReminder()` in mailer.js
+- Sets `reminder_2d_sent = 1` or `reminder_1d_sent = 1` after sending — prevents duplicate emails
+
+**DB columns required** (add to `db.js` migrations):
+```javascript
+const reqCols = db.prepare(`PRAGMA table_info(requests)`).all().map(c => c.name);
+if (!reqCols.includes('reminder_2d_sent')) db.exec(`ALTER TABLE requests ADD COLUMN reminder_2d_sent INTEGER NOT NULL DEFAULT 0`);
+if (!reqCols.includes('reminder_1d_sent')) db.exec(`ALTER TABLE requests ADD COLUMN reminder_1d_sent INTEGER NOT NULL DEFAULT 0`);
+```
+
+**reminders.js:**
+```javascript
+const db = require('./db');
+const { sendBorrowReminder } = require('./mailer');
+
+function dateStr(offsetDays) {
+  const d = new Date();
+  d.setDate(d.getDate() + offsetDays);
+  return d.toISOString().split('T')[0];   // "YYYY-MM-DD"
+}
+
+async function runBorrowReminders() {
+  const targets = [
+    { daysLeft: 2, col: 'reminder_2d_sent', targetDate: dateStr(2) },
+    { daysLeft: 1, col: 'reminder_1d_sent', targetDate: dateStr(1) },
+  ];
+  for (const { daysLeft, col, targetDate } of targets) {
+    const rows = db.prepare(`
+      SELECT r.id, r.requester_name, r.requester_email,
+             r.quantity, r.return_date, i.name AS item_name, i.unit_name
+      FROM requests r JOIN items i ON r.item_id = i.id
+      WHERE r.type = 'borrow' AND r.status = 'approved'
+        AND r.${col} = 0 AND DATE(r.return_date) = ?
+    `).all(targetDate);
+
+    for (const row of rows) {
+      await sendBorrowReminder({ name: row.requester_name, email: row.requester_email,
+        itemName: row.item_name, quantity: row.quantity, unitName: row.unit_name || 'pcs',
+        returnDate: row.return_date, daysLeft });
+      db.prepare(`UPDATE requests SET ${col} = 1 WHERE id = ?`).run(row.id);
+    }
+  }
+}
+module.exports = { runBorrowReminders };
+```
+
+**Schedule in server.js** (alongside the auto-backup block):
+```javascript
+const { runBorrowReminders } = require('./reminders');
+runBorrowReminders().catch(e => console.error('[reminders] Startup run failed:', e.message));
+setInterval(() => {
+  runBorrowReminders().catch(e => console.error('[reminders] Hourly run failed:', e.message));
+}, 60 * 60 * 1000);
+```
+
+> 💡 Running every hour (not once per day) ensures reminders go out within 1 hour of midnight regardless of when the server started.
+
 ---
 
 ## Part 5 — Email Notifications (Resend)
@@ -657,7 +721,18 @@ async function sendPrincipalSubmissionNotice({ principal, requester, items, grou
 // ── Principal CC on approve/reject ───────────────────────────────────────
 async function sendPrincipalDecisionNotice({ principal, requester, items, status, notes }) { /* ... */ }
 
-module.exports = { send, sendWelcomeEmail, sendPrincipalSubmissionNotice, sendPrincipalDecisionNotice /* ... */ };
+// ── Borrow return reminder ────────────────────────────────────────────────
+async function sendBorrowReminder({ name, email, itemName, quantity, unitName, returnDate, daysLeft }) {
+  const urgencyColor = daysLeft === 1 ? '#dc2626' : '#d97706';
+  const urgencyLabel = daysLeft === 1 ? '⚠️ Tomorrow!' : '📅 In 2 days';
+  // ... branded HTML table with item name, quantity, due date highlighted in urgency colour
+  await send({ to: email,
+    subject: `[YPJ Inventory] 🔔 Return Reminder — ${itemName} due ${daysLeft === 1 ? 'tomorrow' : 'in 2 days'}`,
+    html });
+}
+
+module.exports = { send, sendWelcomeEmail, sendPrincipalSubmissionNotice, sendPrincipalDecisionNotice,
+  sendBorrowReminder /* ... */ };
 ```
 
 ---
@@ -1294,6 +1369,7 @@ NODE_ENV=development
 - [ ] Barcode scanner opens camera and auto-fills item name on Add Item page
 - [ ] PWA installs correctly on Android (Chrome) and iOS (Safari)
 - [ ] Service worker cache version bumped after every deploy (to bust old cache)
+- [ ] Borrow reminder: submit a borrow request with return date = tomorrow, verify email arrives within 1 hour
 
 ---
 
@@ -1315,9 +1391,128 @@ NODE_ENV=development
 | PWA title tag | `frontend/index.html` | `<title>` and `apple-mobile-web-app-title` |
 | PWA icon | `frontend/public/icons/` | Regenerate PNGs with `generate-icons.html` |
 | SW cache version | `frontend/public/sw.js` | Bump `CACHE = 'ypj-inv-vN'` on every deploy |
+| Reminder email branding | `backend/mailer.js` → `sendBorrowReminder` | Update campus name in email footer |
 
 ---
 
 *Built with Node.js + Express + React + SQLite · Hosted on Railway · Emails via Resend · Notifications via Telegram*
 
 *© Yayasan Pendidikan Jayawijaya — IT Documentation*
+
+---
+
+## Part 14 — Preparing the YPJ Tembagapura (TPRA) Inventory App
+
+This section is the step-by-step checklist for spinning up the Tembagapura campus instance from the KK codebase.
+
+### Step 1 — Clone / copy the repo
+
+```bash
+# Option A: clone KK repo into a new folder
+git clone https://github.com/nataliusmarani-beep/ypjkk-inventory.git ypjtpra-inventory
+cd ypjtpra-inventory
+
+# Remove the KK remote and point to a new TPRA repo
+git remote remove origin
+# Create a new empty repo on GitHub (e.g. ypjtpra-inventory), then:
+git remote add origin https://github.com/nataliusmarani-beep/ypjtpra-inventory.git
+git push -u origin main
+```
+
+### Step 2 — Find & replace all KK-specific strings
+
+Run these replacements across the whole codebase:
+
+| Find | Replace with |
+|---|---|
+| `YPJ KK Inventory` | `YPJ TPRA Inventory` |
+| `YPJ KK Campus` | `YPJ TPRA Campus` |
+| `Kuala Kencana Campus` | `Tembagapura Campus` |
+| `PAUD YPJ KK` | `PAUD YPJ TPRA` |
+| `SD SMP YPJ KK` | `SD SMP YPJ TPRA` |
+| `kkinventory.ypj.sch.id` | `tprainventory.ypj.sch.id` *(or your chosen domain)* |
+| `@ypjkkinventory_bot` | `@ypjtprainventory_bot` *(after creating the new Telegram bot)* |
+
+Files most likely to need changes:
+- `frontend/src/components/Layout/Topbar.jsx` — logo text
+- `frontend/src/App.jsx` — footer campus name
+- `frontend/src/pages/HelpPage.jsx` — subtitle
+- `frontend/src/pages/DashboardPage.jsx` — campus label
+- `frontend/src/pages/AddItemPage.jsx` — location dropdown default
+- `frontend/src/pages/RequestsPage.jsx` — location label
+- `frontend/public/manifest.json` — PWA name
+- `frontend/index.html` — page title
+- `backend/routes/items.js` — `LOCATIONS` array
+- `backend/routes/requests.js` — location strings
+- `backend/mailer.js` — email footer campus name
+
+### Step 3 — Create new Railway project for TPRA
+
+1. Go to [railway.app](https://railway.app) → **New Project** → **Deploy from GitHub repo**
+2. Select the new `ypjtpra-inventory` repo
+3. Add a **Volume** → mount path `/data`
+
+### Step 4 — Set Railway environment variables for TPRA
+
+| Variable | Value |
+|---|---|
+| `NODE_ENV` | `production` |
+| `JWT_SECRET` | *(new strong random string — different from KK)* |
+| `ADMIN_EMAIL` | `admin.tpra@ypj.sch.id` |
+| `ADMIN_PASSWORD` | *(strong password)* |
+| `ADMIN_NAME` | `Administrator Tembagapura` |
+| `DB_PATH` | `/data/database.sqlite` |
+| `FRONTEND_URL` | `https://tprainventory.ypj.sch.id` |
+| `RESEND_API_KEY` | *(same key as KK — same Resend account)* |
+| `MAIL_FROM_DOMAIN` | `ypj.sch.id` *(same verified domain)* |
+| `TELEGRAM_BOT_TOKEN` | *(new token from @BotFather for TPRA bot)* |
+
+### Step 5 — Create TPRA Telegram Bot
+
+1. Open Telegram → search **@BotFather**
+2. Send `/newbot`
+3. Name: `YPJ TPRA Inventory`
+4. Username: `ypjtprainventory_bot` (or similar)
+5. Copy the token → set as `TELEGRAM_BOT_TOKEN` in Railway
+
+### Step 6 — Add custom domain
+
+1. Railway → TPRA service → **Settings → Domains → Add Custom Domain**
+2. Enter `tprainventory.ypj.sch.id`
+3. Add the CNAME record to your DNS registrar
+4. Wait for ✅ Active, then update `FRONTEND_URL` in Railway variables
+
+### Step 7 — Regenerate PWA icons for TPRA
+
+The icon design can stay the same (same YPJ branding) — just make sure `manifest.json` has the TPRA name:
+```json
+{
+  "name": "YPJ TPRA Inventory",
+  "short_name": "YPJ Inventory"
+}
+```
+
+### Step 8 — First login & user setup
+
+1. Open `https://tprainventory.ypj.sch.id`
+2. Log in with `ADMIN_EMAIL` / `ADMIN_PASSWORD`
+3. Go to **Users** → create Storekeepers for PAUD and SD/SMP stores
+4. Create Principal accounts (set `unit_school` to exact unit — SD or SMP, not All)
+5. Create Teacher/Other accounts for Tembagapura staff
+6. Go to **Add Item** or use CSV import to seed inventory
+
+### Step 9 — TPRA Go-live checklist
+
+- [ ] GitHub repo created and code pushed
+- [ ] All KK strings replaced with TPRA strings
+- [ ] Railway project created with Volume at `/data`
+- [ ] All environment variables set (especially new `JWT_SECRET`)
+- [ ] Custom domain live with HTTPS
+- [ ] First login works
+- [ ] Welcome email received when adding first user
+- [ ] Borrow reminder emails working (test with 1-day return date)
+- [ ] Telegram bot `/start` replies with Chat ID
+- [ ] PWA installs on mobile with correct TPRA name
+- [ ] SW cache version starts at `ypj-inv-v1` (fresh for TPRA)
+
+---
