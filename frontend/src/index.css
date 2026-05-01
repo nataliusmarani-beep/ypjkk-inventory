@@ -308,6 +308,24 @@ textarea { resize: vertical; min-height: 80px; }
 .form-actions { display: flex; gap: 10px; justify-content: flex-end; margin-top: 8px; }
 .two-col     { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
 
+/* ── App footer ─────────────────────────────────────────────────────────── */
+.app-footer {
+  margin-top: 48px;
+  padding-top: 20px;
+  border-top: 1px solid var(--border);
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  align-items: center;
+  gap: 6px;
+  font-size: 12px;
+  color: var(--muted);
+}
+.app-footer a { color: var(--muted); text-decoration: none; }
+.app-footer a:hover { text-decoration: underline; }
+.footer-copy  { }
+.footer-links { white-space: nowrap; }
+
 @keyframes fadeIn  { from { opacity: 0; } to { opacity: 1; } }
 @keyframes slideUp { from { transform: translateY(12px); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
 
@@ -318,6 +336,10 @@ textarea { resize: vertical; min-height: 80px; }
   .two-col    { grid-template-columns: 1fr; }
   .sidebar    { display: none; }
   .main       { margin-left: 0; }
+
+  /* ── Footer ─────────────────────────────────────────────────────────── */
+  .app-footer   { flex-direction: column; align-items: center; text-align: center; gap: 4px; padding-top: 16px; margin-top: 32px; }
+  .footer-links { white-space: normal; }
 
   /* ── Page header: greeting + action button ──────────────────────────── */
   .page-header        { flex-wrap: nowrap; align-items: center; gap: 8px; margin-bottom: 16px; }

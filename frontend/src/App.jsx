@@ -108,29 +108,14 @@ export default function App() {
             <Route path="/help"         element={<HelpPage {...pageProps} />} />
             <Route path="*"          element={<Navigate to="/" replace />} />
           </Routes>
-          <footer style={{
-            marginTop: 48,
-            paddingTop: 20,
-            borderTop: '1px solid var(--border)',
-            display: 'flex',
-            flexWrap: 'wrap',
-            justifyContent: 'space-between',
-            alignItems: 'center',
-            gap: 8,
-            fontSize: 12,
-            color: 'var(--muted)',
-          }}>
-            <span>© {new Date().getFullYear()} Yayasan Pendidikan Jayawijaya — Kuala Kencana Campus. All rights reserved.</span>
-            <span>
+          <footer className="app-footer">
+            <span className="footer-copy">© {new Date().getFullYear()} Yayasan Pendidikan Jayawijaya — Kuala Kencana Campus. All rights reserved.</span>
+            <span className="footer-links">
               📧{' '}
-              <a href="mailto:nmarani@fmi.com" style={{ color:'var(--muted)', textDecoration:'none' }}>
-                nmarani@fmi.com
-              </a>
+              <a href="mailto:nmarani@fmi.com">nmarani@fmi.com</a>
               {' · '}
               🌐{' '}
-              <a href="https://ypj.sch.id" target="_blank" rel="noreferrer" style={{ color:'var(--muted)', textDecoration:'none' }}>
-                ypj.sch.id
-              </a>
+              <a href="https://ypj.sch.id" target="_blank" rel="noreferrer">ypj.sch.id</a>
             </span>
           </footer>
         </main>
