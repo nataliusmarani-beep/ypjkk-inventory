@@ -46,9 +46,9 @@ export default function Topbar({ user, pendingCount, onLogout, onProfileUpdate }
           {pendingCount > 0 && (
             <div className="notif-btn">🔔<span className="notif-dot"></span></div>
           )}
-          <div style={{ display:'flex', flexDirection:'column', alignItems:'flex-end', lineHeight:1.3 }}>
-            <span style={{ fontSize:13, fontWeight:700, color:'var(--navy)' }}>{user.name}</span>
-            <span style={{ fontSize:11, color:'var(--muted)' }}>{user.role} · {user.unit_school}</span>
+          <div className="topbar-userinfo">
+            <span className="topbar-username">{user.name}</span>
+            <span className="topbar-userrole">{user.role} · {user.unit_school}</span>
           </div>
           <div
             className="user-avatar"
@@ -58,8 +58,8 @@ export default function Topbar({ user, pendingCount, onLogout, onProfileUpdate }
           >
             {initial}
           </div>
-          <button className="btn btn-ghost" style={{ fontSize:12, padding:'6px 12px' }} onClick={onLogout} title="Sign out">
-            🚪 Sign out
+          <button className="btn btn-ghost sign-out-btn" onClick={onLogout} title="Sign out">
+            🚪<span className="sign-out-label"> Sign out</span>
           </button>
         </div>
       </div>
