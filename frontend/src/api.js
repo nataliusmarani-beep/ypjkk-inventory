@@ -28,9 +28,11 @@ const qs = (params = {}) => {
 
 export const api = {
   // Auth
-  login:   (b) => request('/auth/login',  { method: 'POST', body: JSON.stringify(b) }),
-  logout:  ()  => request('/auth/logout', { method: 'POST' }),
-  me:      ()  => request('/auth/me'),
+  login:            (b)      => request('/auth/login',       { method: 'POST', body: JSON.stringify(b) }),
+  logout:           ()       => request('/auth/logout',      { method: 'POST' }),
+  me:               ()       => request('/auth/me'),
+  verifyResetToken: (token)  => request(`/auth/verify-reset?token=${encodeURIComponent(token)}`),
+  setPassword:      (b)      => request('/auth/set-password', { method: 'POST', body: JSON.stringify(b) }),
 
   // Items
   getItems:   (p)     => request(`/items${qs(p)}`),
@@ -59,6 +61,7 @@ export const api = {
   createUser:    (b)      => request('/users',         { method: 'POST',   body: JSON.stringify(b) }),
   updateUser:    (id, b)  => request(`/users/${id}`,   { method: 'PUT',    body: JSON.stringify(b) }),
   resetPassword: (id, b)  => request(`/users/${id}/password`, { method: 'PUT', body: JSON.stringify(b) }),
+  resendInvite:  (id)     => request(`/users/${id}/resend-invite`, { method: 'POST' }),
   deleteUser:    (id)     => request(`/users/${id}`,   { method: 'DELETE' }),
   importUsers:   (rows)   => request('/users/import',  { method: 'POST',   body: JSON.stringify({ rows }) }),
   importItems:   (rows)   => request('/items/import',  { method: 'POST',   body: JSON.stringify({ rows }) }),

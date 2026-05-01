@@ -241,7 +241,46 @@ async function sendRequestForwarded({ storekeepName, requesterName, items, purpo
   );
 }
 
-// ── 7. Checkout / Checkin stubs ────────────────────────────────────────────
+// ── 7. Welcome email — new user account created ───────────────────────────
+async function sendWelcomeEmail({ name, email, role, unit_school, setPasswordUrl }) {
+  await send({
+    to: email,
+    subject: `[YPJ KK Inventory] Welcome, ${name} — Set Your Password`,
+    html: wrap(`
+      <p>Dear <strong>${name}</strong>,</p>
+      <p>Your account for the <strong>YPJ KK Inventory System</strong> has been created by the Manager.</p>
+
+      ${table([
+        ['Name',         name],
+        ['Email',        email],
+        ['Role',         role],
+        ['Unit / School',unit_school || 'All'],
+      ])}
+
+      <p style="margin-top:20px">Please click the button below to set your password and activate your account:</p>
+
+      <div style="text-align:center;margin:28px 0">
+        <a href="${setPasswordUrl}"
+           style="display:inline-block;background:#2563eb;color:white;padding:14px 32px;
+                  border-radius:8px;font-weight:700;font-size:15px;text-decoration:none;
+                  letter-spacing:0.3px">
+          🔐 Set My Password
+        </a>
+      </div>
+
+      <div style="background:#fffbeb;border-left:4px solid #fde68a;padding:12px 16px;border-radius:4px;font-size:13px;color:#92400e">
+        ⏰ This link expires in <strong>72 hours</strong>.
+        If it has expired, please ask your Manager to resend the invitation from the Users page.
+      </div>
+
+      <p style="font-size:12px;color:#94a3b8;margin-top:20px">
+        If you did not expect this email, please ignore it. No action is needed.
+      </p>
+    `),
+  });
+}
+
+// ── 8. Checkout / Checkin stubs ────────────────────────────────────────────
 async function sendCheckoutConfirmation() {}
 async function sendCheckinConfirmation()  {}
 
@@ -322,6 +361,7 @@ async function sendPrincipalDecisionNotice({ requesterName, requesterUnit, items
 }
 
 module.exports = {
+  sendWelcomeEmail,
   sendNewRequestAlert,
   sendRequestSubmitted,
   sendRequestApproved,

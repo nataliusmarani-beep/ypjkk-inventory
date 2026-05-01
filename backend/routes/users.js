@@ -1,8 +1,21 @@
 const express = require('express');
 const bcrypt  = require('bcryptjs');
+const crypto  = require('crypto');
 const db      = require('../db');
+const { sendWelcomeEmail } = require('../mailer');
 
 const router = express.Router();
+
+// Generate a secure 72-hour set-password token and return the set-password URL
+function createWelcomeToken(userId) {
+  const token   = crypto.randomBytes(32).toString('hex');
+  const expires = new Date(Date.now() + 72 * 60 * 60 * 1000)
+    .toISOString().replace('T', ' ').split('.')[0]; // SQLite datetime format
+  db.prepare(`UPDATE users SET password_reset_token=?, password_reset_expires=? WHERE id=?`)
+    .run(token, expires, userId);
+  const appUrl = process.env.FRONTEND_URL || 'http://localhost:5173';
+  return `${appUrl}/set-password?token=${token}`;
+}
 
 function adminOnly(req, res, next) {
   if (req.user?.role !== 'Manager') return res.status(403).json({ error: 'Manager access required.' });
@@ -85,9 +98,41 @@ router.post('/', (req, res) => {
     const user = db.prepare(`SELECT ${PUBLIC_COLS} FROM users WHERE id = :id`)
       .get({ id: result.lastInsertRowid });
     res.status(201).json(user);
+
+    // Send welcome email with set-password link (fire and forget)
+    const setPasswordUrl = createWelcomeToken(result.lastInsertRowid);
+    sendWelcomeEmail({
+      name:        name.trim(),
+      email:       email.trim().toLowerCase(),
+      role,
+      unit_school: unit_school || 'All',
+      setPasswordUrl,
+    }).catch(e => console.error('[mailer] Welcome email failed:', e.message));
+
   } catch (err) {
     console.error('POST /users error:', err.message);
     res.status(500).json({ error: err.message });
+  }
+});
+
+// ── POST /api/users/:id/resend-invite — resend the welcome email ───────────
+router.post('/:id/resend-invite', async (req, res) => {
+  try {
+    const user = db.prepare(`SELECT ${PUBLIC_COLS} FROM users WHERE id = ?`).get(req.params.id);
+    if (!user) return res.status(404).json({ error: 'User not found.' });
+
+    const setPasswordUrl = createWelcomeToken(user.id);
+    await sendWelcomeEmail({
+      name:        user.name,
+      email:       user.email,
+      role:        user.role,
+      unit_school: user.unit_school,
+      setPasswordUrl,
+    });
+    res.json({ ok: true });
+  } catch (err) {
+    console.error('[mailer] Resend invite failed:', err.message);
+    res.status(500).json({ error: 'Failed to send invitation email.' });
   }
 });
 

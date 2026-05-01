@@ -105,7 +105,9 @@ if (needsMigration) {
 
 // Migrations for existing databases
 const userCols = db.prepare(`PRAGMA table_info(users)`).all().map(c => c.name);
-if (!userCols.includes('telegram_chat_id')) db.exec(`ALTER TABLE users ADD COLUMN telegram_chat_id TEXT`);
+if (!userCols.includes('telegram_chat_id'))       db.exec(`ALTER TABLE users ADD COLUMN telegram_chat_id TEXT`);
+if (!userCols.includes('password_reset_token'))   db.exec(`ALTER TABLE users ADD COLUMN password_reset_token TEXT`);
+if (!userCols.includes('password_reset_expires')) db.exec(`ALTER TABLE users ADD COLUMN password_reset_expires TEXT`);
 
 const reqCols = db.prepare(`PRAGMA table_info(requests)`).all().map(c => c.name);
 if (!reqCols.includes('group_id'))       db.exec(`ALTER TABLE requests ADD COLUMN group_id TEXT`);

@@ -14,6 +14,7 @@ import UsersPage from './pages/UsersPage.jsx';
 import ActivityLogPage from './pages/ActivityLogPage.jsx';
 import BackupPage      from './pages/BackupPage.jsx';
 import HelpPage        from './pages/HelpPage.jsx';
+import SetPasswordPage from './pages/SetPasswordPage.jsx';
 import { api } from './api.js';
 
 export default function App() {
@@ -55,6 +56,16 @@ export default function App() {
   useEffect(() => {
     if (user) refreshPending();
   }, [user]);
+
+  // /set-password is always accessible — no auth needed
+  if (window.location.pathname === '/set-password') {
+    return (
+      <>
+        <SetPasswordPage showToast={showToast} />
+        {toast && <Toast message={toast.message} type={toast.type} onClose={() => setToast(null)} />}
+      </>
+    );
+  }
 
   if (!authChecked) {
     return (

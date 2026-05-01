@@ -79,4 +79,42 @@ router.get('/me', requireAuth, (req, res) => {
   }
 });
 
+// GET /api/auth/verify-reset?token=xxx — validate a set-password token (public)
+router.get('/verify-reset', (req, res) => {
+  const { token } = req.query;
+  if (!token) return res.status(400).json({ error: 'Token is required.' });
+
+  const user = db.prepare(`
+    SELECT id, name, email, role, unit_school
+    FROM users
+    WHERE password_reset_token = ? AND password_reset_expires > datetime('now')
+  `).get(token);
+
+  if (!user) return res.status(400).json({ error: 'This link is invalid or has expired. Please ask your Manager to resend the invitation.' });
+  res.json({ name: user.name, email: user.email, role: user.role, unit_school: user.unit_school });
+});
+
+// POST /api/auth/set-password — set password using a valid token (public)
+router.post('/set-password', (req, res) => {
+  const { token, password } = req.body;
+  if (!token)    return res.status(400).json({ error: 'Token is required.' });
+  if (!password || password.length < 4) return res.status(400).json({ error: 'Password must be at least 4 characters.' });
+
+  const user = db.prepare(`
+    SELECT id FROM users
+    WHERE password_reset_token = ? AND password_reset_expires > datetime('now')
+  `).get(token);
+
+  if (!user) return res.status(400).json({ error: 'This link is invalid or has expired. Please ask your Manager to resend the invitation.' });
+
+  const hash = bcrypt.hashSync(password, 10);
+  db.prepare(`
+    UPDATE users
+    SET password_hash = ?, password_reset_token = NULL, password_reset_expires = NULL
+    WHERE id = ?
+  `).run(hash, user.id);
+
+  res.json({ ok: true });
+});
+
 module.exports = router;

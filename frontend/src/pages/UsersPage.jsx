@@ -132,6 +132,16 @@ export default function UsersPage({ user: currentUser, showToast }) {
     setSaving(false);
   };
 
+  /* ── Resend invitation email ──────────────────────────────────────────── */
+  const handleResendInvite = async (u) => {
+    try {
+      await api.resendInvite(u.id);
+      showToast(`📧 Invitation email resent to ${u.email}`, 'success');
+    } catch (err) {
+      showToast(err.message, 'error');
+    }
+  };
+
   /* ── Delete user ──────────────────────────────────────────────────────── */
   const handleDelete = async () => {
     try {
@@ -218,6 +228,7 @@ export default function UsersPage({ user: currentUser, showToast }) {
                         <div className="td-actions">
                           <button className="btn btn-outline btn-sm" onClick={() => openEdit(u)} title="Edit user">✏️ Edit</button>
                           <button className="btn btn-outline btn-sm" onClick={() => openPassword(u)} title="Reset password">🔑</button>
+                          <button className="btn btn-outline btn-sm" onClick={() => handleResendInvite(u)} title="Resend invitation email">📧 Invite</button>
                           {u.id !== currentUser.id && (
                             <button className="btn btn-ghost btn-sm" onClick={() => openDelete(u)} title="Remove user">🗑️</button>
                           )}
