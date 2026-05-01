@@ -96,6 +96,31 @@ export default function App() {
             <Route path="/help"         element={<HelpPage {...pageProps} />} />
             <Route path="*"          element={<Navigate to="/" replace />} />
           </Routes>
+          <footer style={{
+            marginTop: 48,
+            paddingTop: 20,
+            borderTop: '1px solid var(--border)',
+            display: 'flex',
+            flexWrap: 'wrap',
+            justifyContent: 'space-between',
+            alignItems: 'center',
+            gap: 8,
+            fontSize: 12,
+            color: 'var(--muted)',
+          }}>
+            <span>© {new Date().getFullYear()} Yayasan Pendidikan Jayawijaya — Kuala Kencana Campus. All rights reserved.</span>
+            <span>
+              📧{' '}
+              <a href="mailto:admin@ypj.sch.id" style={{ color:'var(--muted)', textDecoration:'none' }}>
+                admin@ypj.sch.id
+              </a>
+              {' · '}
+              🌐{' '}
+              <a href="https://ypj.sch.id" target="_blank" rel="noreferrer" style={{ color:'var(--muted)', textDecoration:'none' }}>
+                ypj.sch.id
+              </a>
+            </span>
+          </footer>
         </main>
       </div>
       {toast && <Toast message={toast.message} type={toast.type} onClose={() => setToast(null)} />}
