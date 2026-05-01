@@ -12,6 +12,7 @@ import ApprovalsPage from './pages/ApprovalsPage.jsx';
 import ReportsPage from './pages/ReportsPage.jsx';
 import UsersPage from './pages/UsersPage.jsx';
 import ActivityLogPage from './pages/ActivityLogPage.jsx';
+import BackupPage      from './pages/BackupPage.jsx';
 import { api } from './api.js';
 
 export default function App() {
@@ -90,6 +91,7 @@ export default function App() {
             <Route path="/reports"      element={adminOnly(<ReportsPage      {...pageProps} />)} />
             <Route path="/activity-log" element={superOnly(<ActivityLogPage  {...pageProps} />)} />
             <Route path="/users"        element={superOnly(<UsersPage        {...pageProps} />)} />
+            <Route path="/backup"       element={superOnly(<BackupPage       {...pageProps} />)} />
             <Route path="*"          element={<Navigate to="/" replace />} />
           </Routes>
         </main>

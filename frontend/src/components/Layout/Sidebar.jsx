@@ -50,6 +50,9 @@ export default function Sidebar({ role, user, pendingCount }) {
               <NavLink to="/users" className={({ isActive }) => `nav-item${isActive ? ' active' : ''}`}>
                 <span className="icon">👥</span> Users
               </NavLink>
+              <NavLink to="/backup" className={({ isActive }) => `nav-item${isActive ? ' active' : ''}`}>
+                <span className="icon">🗄️</span> Backup
+              </NavLink>
             </>
           )}
         </>
