@@ -1147,28 +1147,30 @@ The app opens in full-screen standalone mode (no browser address bar).
 
 When you replicate the app for YPJ Tembagapura, change these specific values:
 
+> ⚠️ **TPRA campus structure:** Unlike KK (which has 2 store locations), TPRA is a **single location** covering PAUD, SD, and SMP. Only **one Storekeeper** is needed, assigned `unit_school = All`.
+
 ### 1. Store locations (backend/routes/items.js)
 ```javascript
-// Change FROM:
+// Change FROM (KK had 2):
 const LOCATIONS = ['PAUD YPJ KK', 'SD SMP YPJ KK'];
-// TO:
-const LOCATIONS = ['PAUD YPJ Tembagapura', 'SD SMP YPJ Tembagapura'];
+// TO (TPRA has 1):
+const LOCATIONS = ['YPJ Tembagapura'];
 ```
 
 ### 2. Storekeeper location mapping (backend/routes/items.js)
 ```javascript
-// Wherever this pattern appears:
+// KK: split by unit_school
 const myLocation = req.user.unit_school === 'PAUD' ? 'PAUD YPJ KK' : 'SD SMP YPJ KK';
-// Change to:
-const myLocation = req.user.unit_school === 'PAUD' ? 'PAUD YPJ Tembagapura' : 'SD SMP YPJ Tembagapura';
+// TPRA: always the same location
+const myLocation = 'YPJ Tembagapura';
 ```
 
 ### 3. Same mapping in frontend (RequestsPage.jsx, AddItemPage.jsx, ItemForm.jsx)
 ```javascript
-// Wherever storeLocation is computed:
+// KK:
 const storeLocation = unit_school === 'PAUD' ? 'PAUD YPJ KK' : 'SD SMP YPJ KK';
-// Change to:
-const storeLocation = unit_school === 'PAUD' ? 'PAUD YPJ Tembagapura' : 'SD SMP YPJ Tembagapura';
+// TPRA: simplify to constant
+const storeLocation = 'YPJ Tembagapura';
 ```
 
 ### 4. App title (frontend/src/components/Layout/Topbar.jsx)
@@ -1419,7 +1421,18 @@ git remote add origin https://github.com/nataliusmarani-beep/ypjtpra-inventory.g
 git push -u origin main
 ```
 
-### Step 2 — Find & replace all KK-specific strings
+### Step 2 — Understand the TPRA campus structure
+
+> ⚠️ **TPRA is different from KK.** KK has **2 store locations** (PAUD YPJ KK and SD SMP YPJ KK) each with their own storekeeper. TPRA is a **single location** that covers PAUD, SD, and SMP together under one store.
+
+| Campus | Store locations | Storekeepers |
+|---|---|---|
+| YPJ KK | PAUD YPJ KK · SD SMP YPJ KK | 2 (one per location) |
+| YPJ TPRA | YPJ Tembagapura *(single)* | 1 (covers all units) |
+
+This simplifies the backend significantly — no location-splitting logic needed.
+
+### Step 3 — Find & replace all KK-specific strings
 
 Run these replacements across the whole codebase:
 
@@ -1428,8 +1441,8 @@ Run these replacements across the whole codebase:
 | `YPJ KK Inventory` | `YPJ TPRA Inventory` |
 | `YPJ KK Campus` | `YPJ TPRA Campus` |
 | `Kuala Kencana Campus` | `Tembagapura Campus` |
-| `PAUD YPJ KK` | `PAUD YPJ TPRA` |
-| `SD SMP YPJ KK` | `SD SMP YPJ TPRA` |
+| `PAUD YPJ KK` | `YPJ Tembagapura` |
+| `SD SMP YPJ KK` | `YPJ Tembagapura` |
 | `kkinventory.ypj.sch.id` | `tprainventory.ypj.sch.id` *(or your chosen domain)* |
 | `@ypjkkinventory_bot` | `@ypjtprainventory_bot` *(after creating the new Telegram bot)* |
 
@@ -1438,21 +1451,57 @@ Files most likely to need changes:
 - `frontend/src/App.jsx` — footer campus name
 - `frontend/src/pages/HelpPage.jsx` — subtitle
 - `frontend/src/pages/DashboardPage.jsx` — campus label
-- `frontend/src/pages/AddItemPage.jsx` — location dropdown default
+- `frontend/src/pages/AddItemPage.jsx` — location dropdown (simplify to single option)
 - `frontend/src/pages/RequestsPage.jsx` — location label
 - `frontend/public/manifest.json` — PWA name
 - `frontend/index.html` — page title
-- `backend/routes/items.js` — `LOCATIONS` array
+- `backend/routes/items.js` — `LOCATIONS` array (one entry)
 - `backend/routes/requests.js` — location strings
 - `backend/mailer.js` — email footer campus name
 
-### Step 3 — Create new Railway project for TPRA
+### Step 4 — Simplify location logic for single-store TPRA
+
+Because TPRA has one store for all units, several KK-specific patterns become simpler:
+
+**backend/routes/items.js** — one location only:
+```javascript
+// KK had two:
+const LOCATIONS = ['PAUD YPJ KK', 'SD SMP YPJ KK'];
+// TPRA has one:
+const LOCATIONS = ['YPJ Tembagapura'];
+```
+
+**Storekeeper location mapping** — no split needed:
+```javascript
+// KK: mapped unit_school to one of two locations
+const myLocation = req.user.unit_school === 'PAUD' ? 'PAUD YPJ KK' : 'SD SMP YPJ KK';
+// TPRA: always the same location
+const myLocation = 'YPJ Tembagapura';
+```
+
+**storekeepWhere()** — TPRA storekeeper sees all requests (no unit filter):
+```javascript
+function storekeepWhere(user) {
+  if (!user || user.role !== 'Storekeeper') return '';
+  return '';  // TPRA: single store sees everything
+}
+```
+
+**Frontend location dropdown** (AddItemPage.jsx, RequestsPage.jsx):
+```javascript
+// TPRA: hardcode the single location, no dropdown needed
+const storeLocation = 'YPJ Tembagapura';
+```
+
+**Principal notifications** — TPRA may have one Principal per unit (PAUD/SD/SMP) or a single Principal for all. The `getPrincipalRecipients()` logic stays the same — it matches by `unit_school`, so assign Principal users with the correct `unit_school` when creating their accounts.
+
+### Step 5 — Create new Railway project for TPRA
 
 1. Go to [railway.app](https://railway.app) → **New Project** → **Deploy from GitHub repo**
 2. Select the new `ypjtpra-inventory` repo
 3. Add a **Volume** → mount path `/data`
 
-### Step 4 — Set Railway environment variables for TPRA
+### Step 6 — Set Railway environment variables for TPRA
 
 | Variable | Value |
 |---|---|
@@ -1467,7 +1516,7 @@ Files most likely to need changes:
 | `MAIL_FROM_DOMAIN` | `ypj.sch.id` *(same verified domain)* |
 | `TELEGRAM_BOT_TOKEN` | *(new token from @BotFather for TPRA bot)* |
 
-### Step 5 — Create TPRA Telegram Bot
+### Step 7 — Create TPRA Telegram Bot
 
 1. Open Telegram → search **@BotFather**
 2. Send `/newbot`
@@ -1475,14 +1524,14 @@ Files most likely to need changes:
 4. Username: `ypjtprainventory_bot` (or similar)
 5. Copy the token → set as `TELEGRAM_BOT_TOKEN` in Railway
 
-### Step 6 — Add custom domain
+### Step 8 — Add custom domain
 
 1. Railway → TPRA service → **Settings → Domains → Add Custom Domain**
 2. Enter `tprainventory.ypj.sch.id`
 3. Add the CNAME record to your DNS registrar
 4. Wait for ✅ Active, then update `FRONTEND_URL` in Railway variables
 
-### Step 7 — Regenerate PWA icons for TPRA
+### Step 9 — Regenerate PWA icons for TPRA
 
 The icon design can stay the same (same YPJ branding) — just make sure `manifest.json` has the TPRA name:
 ```json
@@ -1492,16 +1541,16 @@ The icon design can stay the same (same YPJ branding) — just make sure `manife
 }
 ```
 
-### Step 8 — First login & user setup
+### Step 10 — First login & user setup
 
 1. Open `https://tprainventory.ypj.sch.id`
 2. Log in with `ADMIN_EMAIL` / `ADMIN_PASSWORD`
-3. Go to **Users** → create Storekeepers for PAUD and SD/SMP stores
-4. Create Principal accounts (set `unit_school` to exact unit — SD or SMP, not All)
+3. Go to **Users** → create **one Storekeeper** with `unit_school = All` (covers PAUD + SD + SMP)
+4. Create Principal accounts — set `unit_school` to the exact unit they oversee (`PAUD`, `SD`, or `SMP`)
 5. Create Teacher/Other accounts for Tembagapura staff
 6. Go to **Add Item** or use CSV import to seed inventory
 
-### Step 9 — TPRA Go-live checklist
+### Step 11 — TPRA Go-live checklist
 
 - [ ] GitHub repo created and code pushed
 - [ ] All KK strings replaced with TPRA strings
