@@ -108,11 +108,19 @@ router.get('/', (req, res) => {
 
 // ── GET /api/requests/stats ────────────────────────────────────────────────
 router.get('/stats', (req, res) => {
-  const sw = storekeepWhere(req.user).replace(/^AND /, 'WHERE ');  // for standalone query
+  const sw = storekeepWhere(req.user);   // already has leading AND r.unit_school ...
   const totalItems = db.prepare('SELECT COUNT(*) AS n FROM items').get().n;
   const lowStock   = db.prepare('SELECT COUNT(*) AS n FROM items WHERE quantity < min_threshold').get().n;
-  const pending    = db.prepare(`SELECT COUNT(DISTINCT COALESCE(group_id, CAST(id AS TEXT))) AS n FROM requests ${sw ? sw + " AND status='pending'" : "WHERE status='pending'"}`).get().n;
-  const thisMonth  = db.prepare(`SELECT COUNT(*) AS n FROM requests ${sw ? sw + " AND strftime('%Y-%m',created_at)=strftime('%Y-%m','now')" : "WHERE strftime('%Y-%m',created_at)=strftime('%Y-%m','now')"}`).get().n;
+  const pending    = db.prepare(`
+    SELECT COUNT(DISTINCT COALESCE(r.group_id, CAST(r.id AS TEXT))) AS n
+    FROM requests r
+    WHERE r.status = 'pending' ${sw}
+  `).get().n;
+  const thisMonth  = db.prepare(`
+    SELECT COUNT(*) AS n
+    FROM requests r
+    WHERE strftime('%Y-%m', r.created_at) = strftime('%Y-%m', 'now') ${sw}
+  `).get().n;
   res.json({ totalItems, lowStock, pending, thisMonth });
 });
 
