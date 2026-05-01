@@ -125,6 +125,15 @@ export default function ItemForm({ initial, meta, user, onSubmit, onClose }) {
             required
           />
         </div>
+        <div className="form-group full">
+          <label className="form-label">Description</label>
+          <textarea
+            value={form.description || ''}
+            onChange={set('description')}
+            rows={3}
+            placeholder="Additional notes about this item..."
+          />
+        </div>
       </div>
       <div className="form-actions" style={{ marginTop: 18 }}>
         <button type="submit" className="btn btn-primary" disabled={saving}>{saving ? 'Saving...' : 'Save'}</button>
