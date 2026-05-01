@@ -3,7 +3,14 @@ const db = require('../db');
 
 const router = express.Router();
 
-const CATEGORIES = ['Stationery','Housekeeping','Learning Tools','Groceries','Art & Craft','Uniform','Sport Equipment','Tools','Medical/First Aid'];
+const CATEGORIES = [
+  // Supplies
+  'Stationery','Housekeeping','Groceries','Tools','Medical/First Aid','Electronics',
+  // Teacher Resources
+  'Learning Tools','Art & Craft','Lab Tools','Decoration',
+  // Sport & Uniform
+  'Sport Equipment','School Uniform','Event Uniform','Traditional Uniform',
+];
 const STORE_CATS = ['Supplies','Teacher Resources','Sport & Uniform'];
 const LOCATIONS  = ['PAUD YPJ KK','SD SMP YPJ KK'];
 const UNIT_SCHOOLS = ['All','PAUD','SD','SMP'];

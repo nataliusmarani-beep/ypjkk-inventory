@@ -3,6 +3,12 @@ import { useNavigate } from 'react-router-dom';
 import { api } from '../api.js';
 import EmojiPicker from '../components/shared/EmojiPicker.jsx';
 
+const CAT_BY_STORE = {
+  'Supplies':          ['Stationery','Housekeeping','Groceries','Tools','Medical/First Aid','Electronics'],
+  'Teacher Resources': ['Learning Tools','Art & Craft','Lab Tools','Decoration'],
+  'Sport & Uniform':   ['Sport Equipment','School Uniform','Event Uniform','Traditional Uniform'],
+};
+
 const EMPTY = {
   name: '', code: '', icon: '',
   category: 'Stationery', store_category: 'Supplies',
@@ -30,10 +36,17 @@ export default function AddItemPage({ showToast, user }) {
 
   useEffect(() => { api.getMeta().then(setMeta).catch(() => {}); }, []);
 
-  const set = field => e => setForm(f => ({
-    ...f,
-    [field]: e.target.type === 'number' ? Number(e.target.value) : e.target.value,
-  }));
+  const set = field => e => {
+    const val = e.target.type === 'number' ? Number(e.target.value) : e.target.value;
+    setForm(f => {
+      if (field === 'store_category') {
+        // Auto-reset category to first valid option for the chosen store category
+        const firstCat = (CAT_BY_STORE[val] || [])[0] || f.category;
+        return { ...f, store_category: val, category: firstCat };
+      }
+      return { ...f, [field]: val };
+    });
+  };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -82,16 +95,16 @@ export default function AddItemPage({ showToast, user }) {
             </div>
 
             <div className="form-group">
-              <label className="form-label">Category <span className="req">*</span></label>
-              <select className="filter-select" value={form.category} onChange={set('category')} style={{ width: '100%' }}>
-                {(M.CATEGORIES || ['Stationery']).map(c => <option key={c}>{c}</option>)}
+              <label className="form-label">Store Category <span className="req">*</span></label>
+              <select className="filter-select" value={form.store_category} onChange={set('store_category')} style={{ width: '100%' }}>
+                {(M.STORE_CATS || ['Supplies']).map(c => <option key={c}>{c}</option>)}
               </select>
             </div>
 
             <div className="form-group">
-              <label className="form-label">Store Category <span className="req">*</span></label>
-              <select className="filter-select" value={form.store_category} onChange={set('store_category')} style={{ width: '100%' }}>
-                {(M.STORE_CATS || ['Supplies']).map(c => <option key={c}>{c}</option>)}
+              <label className="form-label">Category <span className="req">*</span></label>
+              <select className="filter-select" value={form.category} onChange={set('category')} style={{ width: '100%' }}>
+                {(CAT_BY_STORE[form.store_category] || M.CATEGORIES || ['Stationery']).map(c => <option key={c}>{c}</option>)}
               </select>
             </div>
 

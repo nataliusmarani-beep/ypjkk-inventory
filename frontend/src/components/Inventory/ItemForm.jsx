@@ -1,6 +1,12 @@
 import { useState } from 'react';
 import EmojiPicker from '../shared/EmojiPicker.jsx';
 
+const CAT_BY_STORE = {
+  'Supplies':          ['Stationery','Housekeeping','Groceries','Tools','Medical/First Aid','Electronics'],
+  'Teacher Resources': ['Learning Tools','Art & Craft','Lab Tools','Decoration'],
+  'Sport & Uniform':   ['Sport Equipment','School Uniform','Event Uniform','Traditional Uniform'],
+};
+
 // Derive locked location + allowed unit_school options for a Storekeeper
 function storekeepLock(user) {
   if (!user || user.role !== 'Storekeeper' || user.unit_school === 'All') return null;
@@ -27,9 +33,16 @@ export default function ItemForm({ initial, meta, user, onSubmit, onClose }) {
   const [saving, setSaving] = useState(false);
 
   const M = meta || {};
-  const set = field => e => setForm(f => ({
-    ...f, [field]: e.target.type === 'number' ? Number(e.target.value) : e.target.value,
-  }));
+  const set = field => e => {
+    const val = e.target.type === 'number' ? Number(e.target.value) : e.target.value;
+    setForm(f => {
+      if (field === 'store_category') {
+        const firstCat = (CAT_BY_STORE[val] || [])[0] || f.category;
+        return { ...f, store_category: val, category: firstCat };
+      }
+      return { ...f, [field]: val };
+    });
+  };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -51,15 +64,15 @@ export default function ItemForm({ initial, meta, user, onSubmit, onClose }) {
           <input type="text" value={form.name} onChange={set('name')} required />
         </div>
         <div className="form-group">
-          <label className="form-label">Category <span className="req">*</span></label>
-          <select className="filter-select" style={{ width:'100%' }} value={form.category} onChange={set('category')}>
-            {(M.CATEGORIES||[]).map(c => <option key={c}>{c}</option>)}
+          <label className="form-label">Store Category <span className="req">*</span></label>
+          <select className="filter-select" style={{ width:'100%' }} value={form.store_category} onChange={set('store_category')}>
+            {(M.STORE_CATS||[]).map(c => <option key={c}>{c}</option>)}
           </select>
         </div>
         <div className="form-group">
-          <label className="form-label">Store Category</label>
-          <select className="filter-select" style={{ width:'100%' }} value={form.store_category} onChange={set('store_category')}>
-            {(M.STORE_CATS||[]).map(c => <option key={c}>{c}</option>)}
+          <label className="form-label">Category <span className="req">*</span></label>
+          <select className="filter-select" style={{ width:'100%' }} value={form.category} onChange={set('category')}>
+            {(CAT_BY_STORE[form.store_category] || M.CATEGORIES || []).map(c => <option key={c}>{c}</option>)}
           </select>
         </div>
         <div className="form-group">
