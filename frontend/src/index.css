@@ -121,9 +121,9 @@ body {
 .main { margin-left: var(--sidebar); flex: 1; padding: 28px 28px 40px; }
 
 /* ── PAGE HEADER ── */
-.page-header { display: flex; align-items: flex-start; justify-content: space-between; margin-bottom: 24px; }
+.page-header { display: flex; align-items: flex-start; justify-content: space-between; margin-bottom: 24px; gap: 12px; }
 .page-title { font-size: 24px; font-weight: 900; color: var(--navy); }
-.page-subtitle { font-size: 13px; color: var(--muted); font-weight: 600; margin-top: 2px; }
+.page-subtitle { font-size: 13px; color: var(--muted); font-weight: 600; margin-top: 2px; white-space: nowrap; }
 
 /* ── STAT CARDS ── */
 .stat-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px; margin-bottom: 28px; }
@@ -318,6 +318,12 @@ textarea { resize: vertical; min-height: 80px; }
   .two-col    { grid-template-columns: 1fr; }
   .sidebar    { display: none; }
   .main       { margin-left: 0; }
+
+  /* ── Page header: greeting + action button ──────────────────────────── */
+  .page-header        { flex-wrap: nowrap; align-items: center; gap: 8px; margin-bottom: 16px; }
+  .page-title         { font-size: 18px; }
+  .page-subtitle      { font-size: 12px; white-space: normal; }
+  .dashboard-add-btn  { font-size: 13px; padding: 8px 14px; white-space: nowrap; flex-shrink: 0; }
 
   /* ── Topbar: compact mobile layout ──────────────────────────────────── */
   .topbar          { padding: 0 12px; }

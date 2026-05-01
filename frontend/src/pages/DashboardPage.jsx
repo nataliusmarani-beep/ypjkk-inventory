@@ -59,7 +59,7 @@ export default function DashboardPage({ role, user, showToast }) {
           <div className="page-subtitle">{today} — YPJ KK Campus</div>
         </div>
         {isAdmin && (
-          <button className="btn btn-primary" onClick={() => navigate('/add-item')}>➕ Add Item</button>
+          <button className="btn btn-primary dashboard-add-btn" onClick={() => navigate('/add-item')}>➕ Add Item</button>
         )}
       </div>
 
