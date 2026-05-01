@@ -74,6 +74,16 @@ const router = express.Router();
 const withItem = `SELECT r.*, i.name AS item_name, i.category, i.unit_name, i.location, i.code, i.icon AS item_icon
                   FROM requests r JOIN items i ON i.id = r.item_id`;
 
+// ── Storekeeper location SQL fragment ─────────────────────────────────────
+// Returns an extra WHERE clause to restrict requests to the storekeeper's store.
+// Safe to interpolate — value comes from server-issued JWT, not user input.
+function storekeepWhere(user) {
+  if (!user || user.role !== 'Storekeeper') return '';
+  if (user.unit_school === 'PAUD')                             return `AND r.unit_school = 'PAUD'`;
+  if (user.unit_school === 'SD' || user.unit_school === 'SMP') return `AND r.unit_school IN ('SD','SMP')`;
+  return '';
+}
+
 // ── GET /api/requests ──────────────────────────────────────────────────────
 router.get('/', (req, res) => {
   const { status, requester_email } = req.query;
@@ -81,6 +91,7 @@ router.get('/', (req, res) => {
     ${withItem}
     WHERE (? IS NULL OR r.status = ?)
       AND (? IS NULL OR r.requester_email = ?)
+      ${storekeepWhere(req.user)}
     ORDER BY r.created_at DESC
   `).all(status || null, status || null, requester_email || null, requester_email || null);
   res.json(rows);
@@ -88,10 +99,11 @@ router.get('/', (req, res) => {
 
 // ── GET /api/requests/stats ────────────────────────────────────────────────
 router.get('/stats', (req, res) => {
+  const sw = storekeepWhere(req.user).replace(/^AND /, 'WHERE ');  // for standalone query
   const totalItems = db.prepare('SELECT COUNT(*) AS n FROM items').get().n;
   const lowStock   = db.prepare('SELECT COUNT(*) AS n FROM items WHERE quantity < min_threshold').get().n;
-  const pending    = db.prepare("SELECT COUNT(DISTINCT COALESCE(group_id, CAST(id AS TEXT))) AS n FROM requests WHERE status='pending'").get().n;
-  const thisMonth  = db.prepare("SELECT COUNT(*) AS n FROM requests WHERE strftime('%Y-%m',created_at)=strftime('%Y-%m','now')").get().n;
+  const pending    = db.prepare(`SELECT COUNT(DISTINCT COALESCE(group_id, CAST(id AS TEXT))) AS n FROM requests ${sw ? sw + " AND status='pending'" : "WHERE status='pending'"}`).get().n;
+  const thisMonth  = db.prepare(`SELECT COUNT(*) AS n FROM requests ${sw ? sw + " AND strftime('%Y-%m',created_at)=strftime('%Y-%m','now')" : "WHERE strftime('%Y-%m',created_at)=strftime('%Y-%m','now')"}`).get().n;
   res.json({ totalItems, lowStock, pending, thisMonth });
 });
 
@@ -103,6 +115,7 @@ router.get('/groups', (req, res) => {
     ${withItem}
     WHERE (? IS NULL OR r.status = ?)
       AND (? IS NULL OR r.requester_email = ?)
+      ${storekeepWhere(req.user)}
     ORDER BY r.created_at DESC
   `).all(status || null, status || null, requester_email || null, requester_email || null);
 

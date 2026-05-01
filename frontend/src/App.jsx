@@ -46,7 +46,8 @@ export default function App() {
 
   const refreshPending = () => {
     if (!user) return;
-    api.getRequests({ status: 'pending' })
+    // Count distinct request groups, not individual rows
+    api.getGroups({ status: 'pending' })
       .then(data => setPendingCount(data.length))
       .catch(() => {});
   };
