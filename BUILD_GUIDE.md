@@ -1147,30 +1147,35 @@ The app opens in full-screen standalone mode (no browser address bar).
 
 When you replicate the app for YPJ Tembagapura, change these specific values:
 
-> ⚠️ **TPRA campus structure:** Unlike KK (which has 2 store locations), TPRA is a **single location** covering PAUD, SD, and SMP. Only **one Storekeeper** is needed, assigned `unit_school = All`.
+> ✅ **TPRA campus structure:** Same as KK — **2 store locations**, each with its own storekeeper. PAUD has one storekeeper; SD and SMP share another storekeeper. Only the location names differ.
+
+| Store | Unit | Storekeeper `unit_school` |
+|---|---|---|
+| PAUD YPJ Tembagapura | PAUD | `PAUD` |
+| SD SMP YPJ Tembagapura | SD + SMP | `SD` or `SMP` |
 
 ### 1. Store locations (backend/routes/items.js)
 ```javascript
-// Change FROM (KK had 2):
+// Change FROM:
 const LOCATIONS = ['PAUD YPJ KK', 'SD SMP YPJ KK'];
-// TO (TPRA has 1):
-const LOCATIONS = ['YPJ Tembagapura'];
+// TO:
+const LOCATIONS = ['PAUD YPJ Tembagapura', 'SD SMP YPJ Tembagapura'];
 ```
 
 ### 2. Storekeeper location mapping (backend/routes/items.js)
 ```javascript
-// KK: split by unit_school
+// Change FROM:
 const myLocation = req.user.unit_school === 'PAUD' ? 'PAUD YPJ KK' : 'SD SMP YPJ KK';
-// TPRA: always the same location
-const myLocation = 'YPJ Tembagapura';
+// TO:
+const myLocation = req.user.unit_school === 'PAUD' ? 'PAUD YPJ Tembagapura' : 'SD SMP YPJ Tembagapura';
 ```
 
 ### 3. Same mapping in frontend (RequestsPage.jsx, AddItemPage.jsx, ItemForm.jsx)
 ```javascript
-// KK:
+// Change FROM:
 const storeLocation = unit_school === 'PAUD' ? 'PAUD YPJ KK' : 'SD SMP YPJ KK';
-// TPRA: simplify to constant
-const storeLocation = 'YPJ Tembagapura';
+// TO:
+const storeLocation = unit_school === 'PAUD' ? 'PAUD YPJ Tembagapura' : 'SD SMP YPJ Tembagapura';
 ```
 
 ### 4. App title (frontend/src/components/Layout/Topbar.jsx)
@@ -1423,14 +1428,14 @@ git push -u origin main
 
 ### Step 2 — Understand the TPRA campus structure
 
-> ⚠️ **TPRA is different from KK.** KK has **2 store locations** (PAUD YPJ KK and SD SMP YPJ KK) each with their own storekeeper. TPRA is a **single location** that covers PAUD, SD, and SMP together under one store.
+> ✅ **TPRA has the same structure as KK** — 2 store locations, 2 storekeepers. The only difference is the location names.
 
 | Campus | Store locations | Storekeepers |
 |---|---|---|
 | YPJ KK | PAUD YPJ KK · SD SMP YPJ KK | 2 (one per location) |
-| YPJ TPRA | YPJ Tembagapura *(single)* | 1 (covers all units) |
+| YPJ TPRA | PAUD YPJ Tembagapura · SD SMP YPJ Tembagapura | 2 (one per location) |
 
-This simplifies the backend significantly — no location-splitting logic needed.
+The backend logic (`storekeepWhere`, location mapping, notification routing) is **identical to KK** — just replace the location name strings.
 
 ### Step 3 — Find & replace all KK-specific strings
 
@@ -1459,41 +1464,32 @@ Files most likely to need changes:
 - `backend/routes/requests.js` — location strings
 - `backend/mailer.js` — email footer campus name
 
-### Step 4 — Simplify location logic for single-store TPRA
+### Step 4 — Update location name strings (the only real change)
 
-Because TPRA has one store for all units, several KK-specific patterns become simpler:
+TPRA uses the same two-store, two-storekeeper structure as KK. The `storekeepWhere()` logic, notification routing, and all backend patterns are **identical**. You only need to rename the location strings:
 
-**backend/routes/items.js** — one location only:
+**backend/routes/items.js:**
 ```javascript
-// KK had two:
-const LOCATIONS = ['PAUD YPJ KK', 'SD SMP YPJ KK'];
-// TPRA has one:
-const LOCATIONS = ['YPJ Tembagapura'];
+const LOCATIONS = ['PAUD YPJ Tembagapura', 'SD SMP YPJ Tembagapura'];
 ```
 
-**Storekeeper location mapping** — no split needed:
+**Storekeeper location mapping** (items.js + requests.js):
 ```javascript
-// KK: mapped unit_school to one of two locations
-const myLocation = req.user.unit_school === 'PAUD' ? 'PAUD YPJ KK' : 'SD SMP YPJ KK';
-// TPRA: always the same location
-const myLocation = 'YPJ Tembagapura';
+const myLocation = req.user.unit_school === 'PAUD'
+  ? 'PAUD YPJ Tembagapura'
+  : 'SD SMP YPJ Tembagapura';
 ```
 
-**storekeepWhere()** — TPRA storekeeper sees all requests (no unit filter):
+**Frontend location mapping** (AddItemPage.jsx, RequestsPage.jsx):
 ```javascript
-function storekeepWhere(user) {
-  if (!user || user.role !== 'Storekeeper') return '';
-  return '';  // TPRA: single store sees everything
-}
+const storeLocation = unit_school === 'PAUD'
+  ? 'PAUD YPJ Tembagapura'
+  : 'SD SMP YPJ Tembagapura';
 ```
 
-**Frontend location dropdown** (AddItemPage.jsx, RequestsPage.jsx):
-```javascript
-// TPRA: hardcode the single location, no dropdown needed
-const storeLocation = 'YPJ Tembagapura';
-```
+**storekeepWhere()** — no change needed, works as-is.
 
-**Principal notifications** — TPRA may have one Principal per unit (PAUD/SD/SMP) or a single Principal for all. The `getPrincipalRecipients()` logic stays the same — it matches by `unit_school`, so assign Principal users with the correct `unit_school` when creating their accounts.
+**Principal notifications** — same logic. Assign each Principal with the correct `unit_school` (`PAUD`, `SD`, or `SMP`) when creating their account.
 
 ### Step 5 — Create new Railway project for TPRA
 
@@ -1545,7 +1541,7 @@ The icon design can stay the same (same YPJ branding) — just make sure `manife
 
 1. Open `https://tprainventory.ypj.sch.id`
 2. Log in with `ADMIN_EMAIL` / `ADMIN_PASSWORD`
-3. Go to **Users** → create **one Storekeeper** with `unit_school = All` (covers PAUD + SD + SMP)
+3. Go to **Users** → create **2 Storekeepers**: one with `unit_school = PAUD` (for PAUD store), one with `unit_school = SD` or `SMP` (for SD SMP store)
 4. Create Principal accounts — set `unit_school` to the exact unit they oversee (`PAUD`, `SD`, or `SMP`)
 5. Create Teacher/Other accounts for Tembagapura staff
 6. Go to **Add Item** or use CSV import to seed inventory
