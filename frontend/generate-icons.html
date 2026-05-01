@@ -1,0 +1,139 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>YPJ Icon Generator</title>
+  <style>
+    body { font-family: Arial, sans-serif; max-width: 640px; margin: 40px auto; padding: 0 20px; background: #f8fafc; color: #1a2f5e; }
+    h1   { margin-bottom: 4px; }
+    p    { color: #555; margin-bottom: 24px; }
+    button { background: #1a2f5e; color: white; border: none; border-radius: 8px; padding: 12px 24px; font-size: 15px; cursor: pointer; margin-bottom: 24px; }
+    button:hover { background: #243d7a; }
+    #status { font-size: 14px; color: #16a34a; min-height: 24px; margin-bottom: 16px; }
+    #previews { display: flex; flex-wrap: wrap; gap: 12px; }
+    .preview-item { text-align: center; font-size: 11px; color: #666; }
+    canvas { border: 1px solid #e2e8f0; border-radius: 8px; display: block; }
+  </style>
+</head>
+<body>
+  <h1>📦 YPJ Icon Generator</h1>
+  <p>Click the button to generate all required PWA icon sizes and download them as PNG files.<br>
+     Place the downloaded files in <code>frontend/public/icons/</code>.</p>
+
+  <button id="btn">⬇️ Generate &amp; Download All Icons</button>
+  <div id="status"></div>
+  <div id="previews"></div>
+
+  <script>
+    const SIZES = [72, 96, 128, 144, 152, 192, 384, 512];
+
+    function drawIcon(size) {
+      const canvas = document.createElement('canvas');
+      canvas.width  = size;
+      canvas.height = size;
+      const ctx = canvas.getContext('2d');
+
+      const r  = size * 0.1875; // rounded corner radius (≈ 96/512)
+      const W  = size;
+      const H  = size;
+
+      // ── Navy background ──────────────────────────────────────────────────
+      ctx.fillStyle = '#1a2f5e';
+      ctx.beginPath();
+      ctx.moveTo(r, 0);
+      ctx.lineTo(W - r, 0);
+      ctx.arcTo(W, 0,   W, r,     r);
+      ctx.lineTo(W, H - r);
+      ctx.arcTo(W, H,   W - r, H, r);
+      ctx.lineTo(r, H);
+      ctx.arcTo(0, H,   0, H - r, r);
+      ctx.lineTo(0, r);
+      ctx.arcTo(0, 0,   r, 0,     r);
+      ctx.closePath();
+      ctx.fill();
+
+      // Shorthand helpers
+      const s  = n => Math.round(n * size / 512);
+      const rx = (x, y, w, h, cr, color) => {
+        ctx.fillStyle = color;
+        ctx.beginPath();
+        ctx.roundRect(s(x), s(y), s(w), s(h), s(cr));
+        ctx.fill();
+      };
+
+      // ── Box body (white) ──────────────────────────────────────────────────
+      rx(128, 220, 256, 196, 8, 'white');
+
+      // ── Box lid (light grey) ──────────────────────────────────────────────
+      rx(108, 168, 296, 68, 8, '#e2e8f0');
+
+      // ── Tape strip across lid ─────────────────────────────────────────────
+      ctx.globalAlpha = 0.85;
+      rx(108, 186, 296, 28, 0, '#93c5fd');
+      ctx.globalAlpha = 1;
+
+      // ── Tape strip down body ──────────────────────────────────────────────
+      ctx.globalAlpha = 0.9;
+      rx(228, 236, 56, 180, 0, '#bfdbfe');
+      ctx.globalAlpha = 1;
+
+      // ── "YPJ" text ────────────────────────────────────────────────────────
+      const fontSize = s(78);
+      ctx.fillStyle   = 'white';
+      ctx.font        = `900 ${fontSize}px "Arial Black", Arial, sans-serif`;
+      ctx.textAlign   = 'center';
+      ctx.textBaseline = 'alphabetic';
+      ctx.letterSpacing = `${s(6)}px`;
+      ctx.fillText('YPJ', s(256), s(468));
+
+      return canvas;
+    }
+
+    document.getElementById('btn').addEventListener('click', async () => {
+      const status   = document.getElementById('status');
+      const previews = document.getElementById('previews');
+      previews.innerHTML = '';
+
+      // Check roundRect support (Chrome 99+, Safari 15.4+)
+      if (typeof CanvasRenderingContext2D.prototype.roundRect !== 'function') {
+        status.textContent = '⚠️ Your browser does not support roundRect. Please use Chrome 99+ or Edge 99+.';
+        status.style.color = '#dc2626';
+        return;
+      }
+
+      for (const size of SIZES) {
+        const canvas = drawIcon(size);
+
+        // Preview
+        const preview = document.createElement('canvas');
+        const scale   = Math.min(1, 96 / size);
+        preview.width  = Math.round(size * scale);
+        preview.height = Math.round(size * scale);
+        preview.getContext('2d').drawImage(canvas, 0, 0, preview.width, preview.height);
+
+        const wrap = document.createElement('div');
+        wrap.className = 'preview-item';
+        wrap.appendChild(preview);
+        wrap.appendChild(document.createTextNode(`${size}×${size}`));
+        previews.appendChild(wrap);
+
+        // Download
+        await new Promise(resolve => {
+          canvas.toBlob(blob => {
+            const a = document.createElement('a');
+            a.href     = URL.createObjectURL(blob);
+            a.download = `icon-${size}.png`;
+            a.click();
+            URL.revokeObjectURL(a.href);
+            setTimeout(resolve, 200); // small gap between downloads
+          }, 'image/png');
+        });
+
+        status.textContent = `Generated ${size}×${size}…`;
+      }
+
+      status.textContent = '✅ All 8 icons downloaded! Move them to frontend/public/icons/';
+    });
+  </script>
+</body>
+</html>

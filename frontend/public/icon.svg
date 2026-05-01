@@ -1,0 +1,27 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
+  <!-- Navy background with rounded corners -->
+  <rect width="512" height="512" rx="96" fill="#1a2f5e"/>
+
+  <!-- Box body (white) -->
+  <rect x="128" y="220" width="256" height="196" rx="8" fill="white"/>
+
+  <!-- Box lid (light grey) -->
+  <rect x="108" y="168" width="296" height="68" rx="8" fill="#e2e8f0"/>
+
+  <!-- Tape strip across lid -->
+  <rect x="108" y="186" width="296" height="28" fill="#93c5fd" opacity="0.85"/>
+
+  <!-- Tape strip down body -->
+  <rect x="228" y="236" width="56" height="180" fill="#bfdbfe" opacity="0.9"/>
+
+  <!-- YPJ text -->
+  <text
+    x="256" y="468"
+    font-family="Arial Black, Arial, sans-serif"
+    font-size="78"
+    font-weight="900"
+    fill="white"
+    text-anchor="middle"
+    letter-spacing="6"
+  >YPJ</text>
+</svg>
