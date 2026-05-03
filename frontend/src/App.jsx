@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { Routes, Route, Navigate } from 'react-router-dom';
 import Topbar from './components/Layout/Topbar.jsx';
 import Sidebar from './components/Layout/Sidebar.jsx';
+import MobileNav from './components/Layout/MobileNav.jsx';
 import Toast from './components/shared/Toast.jsx';
 import LoginPage from './pages/LoginPage.jsx';
 import DashboardPage from './pages/DashboardPage.jsx';
@@ -120,6 +121,7 @@ export default function App() {
           </footer>
         </main>
       </div>
+      <MobileNav user={user} pendingCount={pendingCount} onLogout={handleLogout} />
       {toast && <Toast message={toast.message} type={toast.type} onClose={() => setToast(null)} />}
     </>
   );

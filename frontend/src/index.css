@@ -329,6 +329,10 @@ textarea { resize: vertical; min-height: 80px; }
 @keyframes fadeIn  { from { opacity: 0; } to { opacity: 1; } }
 @keyframes slideUp { from { transform: translateY(12px); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
 
+/* ── Mobile bottom navigation bar ── */
+.mobile-bottom-nav    { display: none; }
+.mobile-drawer-overlay { display: none; }
+
 @media (max-width: 768px) {
   .stat-grid  { grid-template-columns: 1fr 1fr; }
   .quick-grid { grid-template-columns: 1fr 1fr; }
@@ -355,6 +359,52 @@ textarea { resize: vertical; min-height: 80px; }
   .logo-icon       { width: 30px; height: 30px; font-size: 15px; border-radius: 7px; }
   .topbar-userinfo { display: none; }               /* hide name + role text */
   .sign-out-label  { display: none; }               /* icon-only sign-out button */
-  .sign-out-btn    { padding: 6px 8px; font-size: 16px; }
+  .sign-out-btn    { display: none; }               /* moved to More drawer on mobile */
   .user-avatar     { width: 32px; height: 32px; font-size: 13px; }
+
+  /* main content must clear the bottom nav */
+  .main { padding-bottom: 76px; }
+
+  /* ── Bottom tab bar ── */
+  .mobile-bottom-nav {
+    display: flex;
+    position: fixed;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    height: 60px;
+    background: #ffffff;
+    border-top: 1px solid #e2e8f0;
+    box-shadow: 0 -2px 12px rgba(0,0,0,0.08);
+    z-index: 1000;
+    padding: 0 4px;
+    padding-bottom: env(safe-area-inset-bottom, 0px);
+    align-items: stretch;
+  }
+
+  /* ── Slide-up drawer ── */
+  .mobile-drawer-overlay {
+    display: flex;
+    position: fixed;
+    inset: 0;
+    background: rgba(0,0,0,0.45);
+    z-index: 2000;
+    align-items: flex-end;
+  }
+
+  .mobile-drawer {
+    background: #ffffff;
+    border-radius: 20px 20px 0 0;
+    width: 100%;
+    max-height: 80vh;
+    display: flex;
+    flex-direction: column;
+    padding-bottom: env(safe-area-inset-bottom, 12px);
+    animation: drawerUp 0.22s cubic-bezier(0.32, 0.72, 0, 1);
+  }
+
+  @keyframes drawerUp {
+    from { transform: translateY(100%); }
+    to   { transform: translateY(0); }
+  }
 }
