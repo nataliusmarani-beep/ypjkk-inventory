@@ -199,10 +199,15 @@ router.delete('/:id', staffOnly, (req, res) => {
   const open = db.prepare(`SELECT COUNT(*) AS cnt FROM requests WHERE item_id=? AND status IN ('pending','approved')`).get(req.params.id);
   if (open.cnt > 0) return res.status(409).json({ error: 'This item has pending or active requests. Resolve them first.' });
 
-  db.transaction(() => {
+  db.exec('BEGIN');
+  try {
     db.prepare('DELETE FROM requests WHERE item_id=?').run(req.params.id);
     db.prepare('DELETE FROM items WHERE id=?').run(req.params.id);
-  })();
+    db.exec('COMMIT');
+  } catch (e) {
+    db.exec('ROLLBACK');
+    throw e;
+  }
   res.status(204).end();
 });
 
