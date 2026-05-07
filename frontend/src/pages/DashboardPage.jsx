@@ -92,7 +92,7 @@ export default function DashboardPage({ role, user, showToast }) {
         )}
         <div className="stat-card" onClick={() => navigate('/inventory?status=low_stock')}>
           <div className="stat-icon">🔴</div>
-          <div className="stat-label">Low Stock Items</div>
+          <div className="stat-label">Low &amp; Out of Stock</div>
           <div className="stat-value" style={{ color: 'var(--red)' }}>{stats.lowStock}</div>
           <div className="stat-meta">Need restocking soon</div>
         </div>
@@ -106,7 +106,7 @@ export default function DashboardPage({ role, user, showToast }) {
 
       {stats.lowStock > 0 && (
         <div className="alert alert-warning" onClick={() => navigate('/inventory?status=low_stock')} style={{ cursor: 'pointer' }}>
-          ⚠️ {stats.lowStock} item(s) are running low on stock. <strong>View low stock items →</strong>
+          ⚠️ {stats.lowStock} item(s) are low or out of stock. <strong>View items →</strong>
         </div>
       )}
 
