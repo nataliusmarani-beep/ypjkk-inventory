@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Routes, Route, Navigate } from 'react-router-dom';
+import { Routes, Route, Navigate, useLocation } from 'react-router-dom';
 import Topbar from './components/Layout/Topbar.jsx';
 import Sidebar from './components/Layout/Sidebar.jsx';
 import MobileNav from './components/Layout/MobileNav.jsx';
@@ -19,6 +19,7 @@ import SetPasswordPage from './pages/SetPasswordPage.jsx';
 import { api } from './api.js';
 
 export default function App() {
+  const location = useLocation();
   const [user,         setUser]         = useState(null);   // { id, name, email, role, unit_school }
   const [authChecked,  setAuthChecked]  = useState(false);
   const [pendingCount, setPendingCount] = useState(0);
@@ -59,7 +60,7 @@ export default function App() {
   }, [user]);
 
   // /set-password is always accessible — no auth needed
-  if (window.location.pathname === '/set-password') {
+  if (location.pathname === '/set-password') {
     return (
       <>
         <SetPasswordPage showToast={showToast} />

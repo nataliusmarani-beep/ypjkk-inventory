@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { useSearchParams } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import { api } from '../api.js';
 
 function Card({ children }) {
@@ -30,6 +30,7 @@ function Card({ children }) {
 
 export default function SetPasswordPage({ showToast }) {
   const [params] = useSearchParams();
+  const navigate = useNavigate();
   const token    = params.get('token');
 
   const [userInfo,  setUserInfo]  = useState(null);
@@ -84,7 +85,7 @@ export default function SetPasswordPage({ showToast }) {
             This invitation link has expired or already been used.<br />
             Please ask your Manager to resend the invitation from the Users page.
           </p>
-          <button className="btn btn-primary" onClick={() => window.location.replace('/')}>
+          <button className="btn btn-primary" onClick={() => navigate('/', { replace: true })}>
             Go to Login
           </button>
         </div>
@@ -102,7 +103,7 @@ export default function SetPasswordPage({ showToast }) {
           <p style={{ fontSize: 13, color: 'var(--muted)', lineHeight: 1.7, marginBottom: 24 }}>
             Your account is now active. You can log in with your email and the password you just created.
           </p>
-          <button className="btn btn-primary" style={{ width: '100%' }} onClick={() => window.location.replace('/')}>
+          <button className="btn btn-primary" style={{ width: '100%' }} onClick={() => navigate('/', { replace: true })}>
             🔐 Go to Login
           </button>
         </div>
