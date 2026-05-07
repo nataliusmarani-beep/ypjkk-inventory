@@ -110,7 +110,7 @@ export default function DashboardPage({ role, user, showToast }) {
           <div className="card-title" style={{ display:'flex', alignItems:'center', justifyContent:'space-between' }}>
             <span>🔴 Low Stock Alert</span>
             {lowItems.length > 0 && (
-              <span onClick={() => navigate('/inventory')} style={{ fontSize:12, fontWeight:600, color:'var(--blue)', cursor:'pointer' }}>View all →</span>
+              <span onClick={() => navigate('/inventory?status=low_stock')} style={{ fontSize:12, fontWeight:600, color:'var(--blue)', cursor:'pointer' }}>View all →</span>
             )}
           </div>
           {lowItems.length === 0

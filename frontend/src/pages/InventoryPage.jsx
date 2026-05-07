@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
 import { api } from '../api.js';
 import Modal from '../components/shared/Modal.jsx';
 import ConfirmDialog from '../components/shared/ConfirmDialog.jsx';
@@ -21,11 +21,14 @@ function stockColor(qty, threshold) {
 
 export default function InventoryPage({ role, user, showToast }) {
   const navigate = useNavigate();
+  const routerLocation = useLocation();
+  const initialStatus = new URLSearchParams(routerLocation.search).get('status') || '';
   const [items, setItems] = useState([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
   const [category, setCategory] = useState('');
   const [location, setLocation] = useState('');
+  const [statusFilter, setStatusFilter] = useState(initialStatus);
   const [storeTab, setStoreTab] = useState('All');
   const [modal, setModal] = useState(null);
   const [meta, setMeta] = useState(null);
@@ -80,12 +83,12 @@ export default function InventoryPage({ role, user, showToast }) {
     api.getItems({
       search:         search || undefined,
       category:       category || undefined,
-      // Teachers: locked to their store; Admins: use the dropdown selection
+      status:         statusFilter || undefined,
       location:       storeLocation ?? (location || undefined),
       store_category: storeTab !== 'All' ? storeTab : undefined,
     }).then(d => { setItems(d); setLoading(false); })
       .catch(() => setLoading(false));
-  }, [search, category, location, storeTab, storeLocation]);
+  }, [search, category, statusFilter, location, storeTab, storeLocation]);
 
   useEffect(() => { load(); }, [load]);
 
@@ -144,6 +147,12 @@ export default function InventoryPage({ role, user, showToast }) {
         <select value={category} onChange={e => setCategory(e.target.value)}>
           <option value="">All Categories</option>
           {(meta?.CATEGORIES || []).map(c => <option key={c}>{c}</option>)}
+        </select>
+        <select value={statusFilter} onChange={e => setStatusFilter(e.target.value)}>
+          <option value="">All Status</option>
+          <option value="low_stock">⚠️ Low Stock</option>
+          <option value="out_of_stock">🔴 Out of Stock</option>
+          <option value="ok">✅ OK</option>
         </select>
         {/* Location dropdown only for Admin/Storekeeper; Teachers are locked to their store */}
         {isAdmin && (
