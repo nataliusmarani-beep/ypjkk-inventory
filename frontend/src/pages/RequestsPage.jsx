@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
 import { api } from '../api.js';
+import CategoryBadge from '../components/shared/CategoryBadge.jsx';
 
 /* ── constants ─────────────────────────────────────────────────────────── */
 const CAT_EMOJI = {
@@ -202,7 +203,7 @@ export default function RequestsPage({ role, user, showToast, refreshPending }) 
                           {isLow && !outOfStock && ' ⚠️'}
                         </div>
                         <div style={{ marginBottom:8 }}>
-                          <span className="badge badge-blue" style={{ fontSize:10 }}>{item.category}</span>
+                          <CategoryBadge category={item.category} />
                         </div>
 
                         {inCart > 0 ? (
@@ -364,7 +365,7 @@ export default function RequestsPage({ role, user, showToast, refreshPending }) 
                   <div style={{ fontWeight:800, fontSize:16, color:'var(--navy)' }}>{detailItem.name}</div>
                   {detailItem.code && <div className="mono" style={{ fontSize:12, color:'var(--muted)', marginTop:2 }}>{detailItem.code}</div>}
                   <div style={{ marginTop:6, display:'flex', gap:6, flexWrap:'wrap' }}>
-                    <span className="badge badge-blue" style={{ fontSize:11 }}>{detailItem.category}</span>
+                    <CategoryBadge category={detailItem.category} />
                     <span className="badge badge-grey" style={{ fontSize:11 }}>{detailItem.store_category}</span>
                   </div>
                 </div>

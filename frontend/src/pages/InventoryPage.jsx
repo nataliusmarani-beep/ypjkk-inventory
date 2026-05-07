@@ -5,6 +5,7 @@ import Modal from '../components/shared/Modal.jsx';
 import ConfirmDialog from '../components/shared/ConfirmDialog.jsx';
 import ItemForm from '../components/Inventory/ItemForm.jsx';
 import { parseCSV, downloadTemplate } from '../utils/download.js';
+import CategoryBadge from '../components/shared/CategoryBadge.jsx';
 
 const CAT_EMOJI = {
   'Stationery':'📝','Housekeeping':'🧹','Learning Tools':'📚','Groceries':'🛒',
@@ -195,7 +196,7 @@ export default function InventoryPage({ role, user, showToast }) {
                             </div>
                           </div>
                         </td>
-                        <td><span className="badge badge-blue">{item.category}</span></td>
+                        <td><CategoryBadge category={item.category} /></td>
                         <td><span style={{ fontSize: 12, fontWeight: 700 }}>📍 {item.location}</span></td>
                         <td><span className={`badge ${item.unit_school === 'All' ? 'badge-grey' : 'badge-teal'}`}>{item.unit_school}</span></td>
                         <td>

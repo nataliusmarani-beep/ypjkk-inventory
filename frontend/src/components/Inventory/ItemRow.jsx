@@ -1,4 +1,5 @@
 import LowStockBadge from '../shared/LowStockBadge.jsx';
+import CategoryBadge from '../shared/CategoryBadge.jsx';
 
 export default function ItemRow({ item, onEdit, onDelete, onCheckOut }) {
   return (
@@ -7,7 +8,7 @@ export default function ItemRow({ item, onEdit, onDelete, onCheckOut }) {
         {item.name}
         <LowStockBadge status={item.status} />
       </td>
-      <td>{item.category}</td>
+      <td><CategoryBadge category={item.category} /></td>
       <td className="qty">{item.quantity}</td>
       <td>{item.min_threshold}</td>
       <td>{item.description || '—'}</td>
