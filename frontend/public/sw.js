@@ -3,7 +3,7 @@
 //   /api/*        → Network-first (always fresh data; fall back to nothing)
 //   everything else → Cache-first (shell, icons, JS bundles)
 
-const CACHE = 'ypj-inv-v9';
+const CACHE = 'ypj-inv-v10';
 
 const PRECACHE = [
   '/',

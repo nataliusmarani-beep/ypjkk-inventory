@@ -27,29 +27,29 @@ export default function DashboardPage({ role, user, showToast }) {
 
   const isAdmin = role === 'Manager' || role === 'Storekeeper';
 
-  // Use explicit location set by admin; fallback to unit_school mapping
+  // unit_school 'All' always means no location filter, even if user.location is set
   const storeLocation = (() => {
     if (isAdmin) return undefined;
-    if (user?.location) return user.location;
     if (!user || user.unit_school === 'All') return undefined;
+    if (user.location) return user.location;
     return user.unit_school === 'PAUD' ? 'PAUD YPJ KK' : 'SD SMP YPJ KK';
   })();
 
   useEffect(() => {
+    if (!user) return;   // wait for auth to resolve before fetching
     api.getStats().then(setStats).catch(() => {});
     Promise.all([
       api.getItems({ status: 'low_stock',    location: storeLocation }),
       api.getItems({ status: 'out_of_stock', location: storeLocation }),
     ]).then(([low, out]) => {
-      const combined = [...out, ...low];
-      setLowItems(combined.slice(0, 10));
+      setLowItems([...out, ...low].slice(0, 10));
     }).catch(() => {});
-    const reqFilter = !isAdmin ? { requester_email: user?.email } : {};
+    const reqFilter = !isAdmin ? { requester_email: user.email } : {};
     api.getRequests(reqFilter).then(d => {
       setRecent(d.slice(0, 10));
       if (!isAdmin) setMyPending(d.filter(r => r.status === 'pending').length);
     }).catch(() => {});
-  }, []);
+  }, [user]);
 
   const now = new Date();
   const hour = now.getHours();
