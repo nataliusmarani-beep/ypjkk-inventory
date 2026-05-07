@@ -37,8 +37,13 @@ export default function DashboardPage({ role, user, showToast }) {
 
   useEffect(() => {
     api.getStats().then(setStats).catch(() => {});
-    api.getItems({ status: 'low_stock', location: storeLocation })
-      .then(d => setLowItems(d.slice(0, 10))).catch(() => {});
+    Promise.all([
+      api.getItems({ status: 'low_stock',    location: storeLocation }),
+      api.getItems({ status: 'out_of_stock', location: storeLocation }),
+    ]).then(([low, out]) => {
+      const combined = [...out, ...low];
+      setLowItems(combined.slice(0, 10));
+    }).catch(() => {});
     const reqFilter = !isAdmin ? { requester_email: user?.email } : {};
     api.getRequests(reqFilter).then(d => {
       setRecent(d.slice(0, 10));
@@ -108,7 +113,7 @@ export default function DashboardPage({ role, user, showToast }) {
       <div className="two-col">
         <div className="card">
           <div className="card-title" style={{ display:'flex', alignItems:'center', justifyContent:'space-between' }}>
-            <span>🔴 Low Stock Alert</span>
+            <span>🔴 Low &amp; Out of Stock Alert</span>
             {lowItems.length > 0 && (
               <span onClick={() => navigate('/inventory?status=low_stock')} style={{ fontSize:12, fontWeight:600, color:'var(--blue)', cursor:'pointer' }}>View all →</span>
             )}
@@ -116,14 +121,17 @@ export default function DashboardPage({ role, user, showToast }) {
           {lowItems.length === 0
             ? <p style={{ color: 'var(--muted)', fontSize: 13 }}>All items are sufficiently stocked. ✅</p>
             : <table>
-                <thead><tr><th>Item</th><th>Location</th><th>Qty</th></tr></thead>
+                <thead><tr><th>Item</th><th>Location</th><th>Qty</th><th>Condition</th></tr></thead>
                 <tbody>
                   {lowItems.map(item => (
                     <tr key={item.id} className="low-stock-row">
                       <td><strong>{item.name}</strong></td>
                       <td>{item.location}</td>
                       <td className={item.quantity === 0 ? 'qty-low' : 'qty-warn'}>
-                        {item.quantity} {item.unit_name}
+                        {item.quantity === 0 ? <span className="badge badge-red" style={{fontSize:10}}>Out of Stock</span> : `${item.quantity} ${item.unit_name}`}
+                      </td>
+                      <td style={{fontSize:12, color:'var(--muted)'}}>
+                        {item.quantity === 0 ? 'N/A' : item.condition}
                       </td>
                     </tr>
                   ))}
