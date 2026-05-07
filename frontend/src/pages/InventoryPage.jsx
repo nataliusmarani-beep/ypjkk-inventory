@@ -211,7 +211,7 @@ export default function InventoryPage({ role, user, showToast }) {
                           </div>
                         </td>
                         <td>
-                          {low
+                          {item.quantity === 0
                             ? <span style={{ fontSize: 12, color: 'var(--muted)' }}>N/A</span>
                             : <span className={`badge ${item.condition === 'Good' ? 'badge-green' : item.condition === 'Fair' ? 'badge-orange' : 'badge-red'}`}>{item.condition}</span>
                           }
