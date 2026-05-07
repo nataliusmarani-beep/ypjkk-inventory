@@ -2,13 +2,39 @@ import { useState, useEffect } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { api } from '../api.js';
 
+function Card({ children }) {
+  return (
+    <div style={{
+      minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center',
+      background: 'var(--bg)', padding: 20,
+    }}>
+      <div style={{
+        background: 'white', borderRadius: 14, width: '100%', maxWidth: 460,
+        boxShadow: '0 4px 32px rgba(0,0,0,0.10)', overflow: 'hidden',
+      }}>
+        <div style={{ background: 'var(--navy)', padding: '20px 28px' }}>
+          <div style={{ color: 'white', fontWeight: 800, fontSize: 18, marginBottom: 2 }}>
+            📦 YPJ KK Inventory
+          </div>
+          <div style={{ color: 'rgba(255,255,255,0.65)', fontSize: 13 }}>
+            Campus Management System
+          </div>
+        </div>
+        <div style={{ padding: '28px 28px 32px' }}>
+          {children}
+        </div>
+      </div>
+    </div>
+  );
+}
+
 export default function SetPasswordPage({ showToast }) {
   const [params]   = useSearchParams();
   const navigate   = useNavigate();
   const token      = params.get('token');
 
-  const [userInfo,  setUserInfo]  = useState(null);   // { name, email, role, unit_school }
-  const [status,    setStatus]    = useState('loading'); // loading | ready | invalid | done
+  const [userInfo,  setUserInfo]  = useState(null);
+  const [status,    setStatus]    = useState('loading');
   const [password,  setPassword]  = useState('');
   const [confirm,   setConfirm]   = useState('');
   const [saving,    setSaving]    = useState(false);
@@ -36,32 +62,6 @@ export default function SetPasswordPage({ showToast }) {
       setSaving(false);
     }
   };
-
-  // ── Shared card wrapper ────────────────────────────────────────────────────
-  const Card = ({ children }) => (
-    <div style={{
-      minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center',
-      background: 'var(--bg)', padding: 20,
-    }}>
-      <div style={{
-        background: 'white', borderRadius: 14, width: '100%', maxWidth: 460,
-        boxShadow: '0 4px 32px rgba(0,0,0,0.10)', overflow: 'hidden',
-      }}>
-        {/* Header */}
-        <div style={{ background: 'var(--navy)', padding: '20px 28px' }}>
-          <div style={{ color: 'white', fontWeight: 800, fontSize: 18, marginBottom: 2 }}>
-            📦 YPJ KK Inventory
-          </div>
-          <div style={{ color: 'rgba(255,255,255,0.65)', fontSize: 13 }}>
-            Campus Management System
-          </div>
-        </div>
-        <div style={{ padding: '28px 28px 32px' }}>
-          {children}
-        </div>
-      </div>
-    </div>
-  );
 
   // ── Loading ────────────────────────────────────────────────────────────────
   if (status === 'loading') {
