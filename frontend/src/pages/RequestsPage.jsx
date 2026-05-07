@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { api } from '../api.js';
 import CategoryBadge from '../components/shared/CategoryBadge.jsx';
 
@@ -25,8 +25,9 @@ export default function RequestsPage({ role, user, showToast, refreshPending }) 
   const isAdmin = role === 'Manager' || role === 'Storekeeper';
 
   /* history */
-  const [groups, setGroups]   = useState([]);
-  const [histLoading, setHL]  = useState(true);
+  const [groups, setGroups]     = useState([]);
+  const [histLoading, setHL]    = useState(true);
+  const [expandedGroup, setExpandedGroup] = useState(null);
 
   /* cart mode toggle */
   const [cartMode, setCartMode] = useState(false);
@@ -449,32 +450,90 @@ export default function RequestsPage({ role, user, showToast, refreshPending }) 
                     <tbody>
                       {groups.map(g => {
                         const gid = g.group_id || `solo-${g.items[0]?.id}`;
+                        const isExpanded = expandedGroup === gid;
                         return (
-                          <tr key={gid}>
-                            <td><span className="mono">{GRP_ID(gid, g.created_at)}</span></td>
-                            <td>
-                              <div style={{ display:'flex', flexDirection:'column', gap:3 }}>
-                                {g.items.map(it => (
-                                  <div key={it.id} style={{ fontSize:12, fontWeight:600, display:'flex', alignItems:'center', gap:5 }}>
-                                    <span>
-                                      {(it.item_icon || '').startsWith('data:')
-                                        ? <img src={it.item_icon} alt="" style={{ width:16, height:16, objectFit:'contain', borderRadius:2, verticalAlign:'middle' }} />
-                                        : (it.item_icon || CAT_EMOJI[it.item_category] || CAT_EMOJI[g.category] || '📦')}
-                                    </span>
-                                    {it.item_name}
-                                    <span style={{ color:'var(--muted)' }}>× {it.quantity} {it.unit_name}</span>
+                          <React.Fragment key={gid}>
+                            <tr
+                              onClick={() => setExpandedGroup(isExpanded ? null : gid)}
+                              style={{ cursor:'pointer', background: isExpanded ? 'var(--off)' : undefined }}
+                            >
+                              <td>
+                                <div style={{ display:'flex', alignItems:'center', gap:6 }}>
+                                  <span style={{ fontSize:10, color:'var(--muted)', transition:'transform .15s', display:'inline-block', transform: isExpanded ? 'rotate(90deg)' : 'rotate(0deg)' }}>▶</span>
+                                  <span className="mono">{GRP_ID(gid, g.created_at)}</span>
+                                </div>
+                              </td>
+                              <td>
+                                <div style={{ display:'flex', flexDirection:'column', gap:3 }}>
+                                  {g.items.map(it => (
+                                    <div key={it.id} style={{ fontSize:12, fontWeight:600, display:'flex', alignItems:'center', gap:5 }}>
+                                      <span>
+                                        {(it.item_icon || '').startsWith('data:')
+                                          ? <img src={it.item_icon} alt="" style={{ width:16, height:16, objectFit:'contain', borderRadius:2, verticalAlign:'middle' }} />
+                                          : (it.item_icon || CAT_EMOJI[it.item_category] || CAT_EMOJI[g.category] || '📦')}
+                                      </span>
+                                      {it.item_name}
+                                      <span style={{ color:'var(--muted)' }}>× {it.quantity} {it.unit_name}</span>
+                                    </div>
+                                  ))}
+                                </div>
+                              </td>
+                              <td><span className={`badge ${TYPE_BADGE[g.type]}`}>{g.type}</span></td>
+                              <td>
+                                {g.requester_name}
+                                <br /><span style={{ fontSize:11, color:'var(--muted)' }}>{g.requester_email}</span>
+                              </td>
+                              <td><span className={`badge ${STATUS_BADGE[g.status]}`}>{STATUS_LABEL[g.status]}</span></td>
+                              <td>{g.created_at?.slice(0,10)}</td>
+                            </tr>
+                            {isExpanded && (
+                              <tr style={{ background:'var(--off)' }}>
+                                <td colSpan={6} style={{ padding:'0 16px 14px 40px' }}>
+                                  <div style={{ display:'flex', flexDirection:'column', gap:8 }}>
+                                    {g.purpose && (
+                                      <div style={{ fontSize:13, color:'var(--text)' }}>
+                                        <span style={{ fontWeight:700, color:'var(--navy)' }}>Purpose: </span>{g.purpose}
+                                      </div>
+                                    )}
+                                    {g.type === 'borrow' && g.return_date && (
+                                      <div style={{ fontSize:13, color:'var(--text)' }}>
+                                        <span style={{ fontWeight:700, color:'var(--navy)' }}>Return By: </span>{g.return_date}
+                                      </div>
+                                    )}
+                                    {(g.status === 'approved' || g.status === 'returned') && (
+                                      <div style={{
+                                        background:'#f0fdf4', border:'1px solid #bbf7d0',
+                                        borderRadius:8, padding:'10px 14px', fontSize:13, color:'#15803d',
+                                      }}>
+                                        <strong>✅ Approved</strong>
+                                        {g.approved_at && <span style={{ fontWeight:400, marginLeft:8, color:'#166534', fontSize:12 }}>{g.approved_at?.slice(0,10)}</span>}
+                                        {g.approval_notes && <div style={{ marginTop:5, color:'#166534' }}>📝 {g.approval_notes}</div>}
+                                        {!g.approval_notes && <div style={{ marginTop:5, color:'#86efac', fontSize:12 }}>No additional notes from storekeeper.</div>}
+                                      </div>
+                                    )}
+                                    {g.status === 'rejected' && (
+                                      <div style={{
+                                        background:'#fef2f2', border:'1px solid #fecaca',
+                                        borderRadius:8, padding:'10px 14px', fontSize:13, color:'#b91c1c',
+                                      }}>
+                                        <strong>❌ Rejected</strong>
+                                        {g.approval_notes && <div style={{ marginTop:5 }}>📝 {g.approval_notes}</div>}
+                                        {!g.approval_notes && <div style={{ marginTop:5, color:'#fca5a5', fontSize:12 }}>No reason provided.</div>}
+                                      </div>
+                                    )}
+                                    {g.status === 'pending' && (
+                                      <div style={{
+                                        background:'#fffbeb', border:'1px solid #fde68a',
+                                        borderRadius:8, padding:'10px 14px', fontSize:13, color:'#92400e',
+                                      }}>
+                                        ⏳ Awaiting storekeeper review.
+                                      </div>
+                                    )}
                                   </div>
-                                ))}
-                              </div>
-                            </td>
-                            <td><span className={`badge ${TYPE_BADGE[g.type]}`}>{g.type}</span></td>
-                            <td>
-                              {g.requester_name}
-                              <br /><span style={{ fontSize:11, color:'var(--muted)' }}>{g.requester_email}</span>
-                            </td>
-                            <td><span className={`badge ${STATUS_BADGE[g.status]}`}>{STATUS_LABEL[g.status]}</span></td>
-                            <td>{g.created_at?.slice(0,10)}</td>
-                          </tr>
+                                </td>
+                              </tr>
+                            )}
+                          </React.Fragment>
                         );
                       })}
                     </tbody>

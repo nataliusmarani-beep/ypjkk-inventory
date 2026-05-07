@@ -106,6 +106,7 @@ export default function HelpPage({ role }) {
         <Section icon="📜" title="Viewing Your Request History">
           <Step n={1} text='Go to "My Requests" — your past requests are listed in the table below.' />
           <Step n={2} text="Each request shows the items, type, status (Pending / Approved / Rejected / Returned), and date." />
+          <Step n={3} text="Click any row to expand it and see the full details: purpose, return date (if borrow), and the storekeeper's approval decision with any note or rejection reason." />
         </Section>
 
         <Section icon="↩️" title="Returning Borrowed Items">
@@ -133,9 +134,12 @@ export default function HelpPage({ role }) {
 
           <Section icon="➕" title="Adding a New Item">
             <Step n={1} text='Click "Add Item" in the sidebar.' />
-            <Step n={2} text="Fill in all required fields: Name, Store Category, Category, Location, Unit School, Quantity, Unit, Min Threshold, Condition, and PR/PO Number." />
-            <Step n={3} text="Store Category determines which Category options are available." />
-            <Step n={4} text='Click "💾 Save Item" to add it to inventory.' />
+            <Step n={2} text='Use the "🔍 Search Existing Items" box at the top to check whether the item was already added by another storekeeper in a different location.' />
+            <Step n={3} text='If a match appears, click "Use as template →" — all item details (name, code, category, icon, unit, threshold) are pre-filled for you. Set your own quantity and save.' />
+            <Step n={4} text="If no match is found, fill in all required fields manually: Name, Store Category, Category, Location, Unit School, Quantity, Unit, Min Threshold, Condition, and PR/PO Number." />
+            <Step n={5} text="Store Category determines which Category options are available." />
+            <Step n={6} text='Click "💾 Save Item" to add it to inventory.' />
+            <Note color="#eff6ff" border="#bfdbfe" text="#1d4ed8">💡 Use the search template feature to keep item names and categories consistent across locations — it prevents duplicates and saves time.</Note>
             <Note color="#fffbeb" border="#fde68a" text="#92400e">🔒 Location and Unit School are <strong>locked to your assigned store</strong> if you are a Storekeeper assigned to a specific unit.</Note>
           </Section>
 
@@ -147,6 +151,15 @@ export default function HelpPage({ role }) {
             <Note color="#f0fdf4" border="#bbf7d0" text="#15803d">
               📦 The scanner uses the back camera automatically. Works best in good lighting with the barcode centred in the frame.
             </Note>
+          </Section>
+
+          <Section icon="🔍" title="Filtering Inventory Items">
+            <Step n={1} text='Go to "Inventory Items" in the sidebar.' />
+            <Step n={2} text="Use the Store Category tabs (All / Supplies / Teacher Resources / Sport & Uniform) to filter by section." />
+            <Step n={3} text="Use the Category dropdown to filter by item type (Stationery, Housekeeping, etc.)." />
+            <Step n={4} text='Use the Status dropdown to show only items that are ⚠️ Low Stock, 🔴 Out of Stock, or ✅ OK.' />
+            <Step n={5} text="Each category is shown with a coloured badge for quick visual identification." />
+            <Note>📦 The Condition column shows <strong>N/A</strong> for out-of-stock items (quantity = 0) since condition is not applicable when there is no stock.</Note>
           </Section>
 
           <Section icon="✏️" title="Editing an Item">
@@ -196,6 +209,12 @@ export default function HelpPage({ role }) {
             <Step n={1} text='"Reports" shows inventory statistics and request summaries.' />
             <Step n={2} text='"Activity Log" records all changes made to items and requests, including who made each change and when.' />
           </Section>
+
+          <Section icon="🏠" title="Dashboard — Low & Out of Stock Alert">
+            <Step n={1} text='The "Low & Out of Stock Alert" panel on the dashboard shows items that are either below the minimum threshold (Low Stock) or have zero quantity (Out of Stock).' />
+            <Step n={2} text="Out-of-stock items appear first, followed by low-stock items. The Condition column shows N/A for out-of-stock items." />
+            <Step n={3} text='Click "View all →" to go directly to the filtered inventory list.' />
+          </Section>
         </div>
       )}
 
@@ -236,9 +255,9 @@ export default function HelpPage({ role }) {
         <div className="card-title" style={{ marginBottom:14 }}>💡 Quick Tips</div>
         <div style={{ display:'flex', flexDirection:'column', gap:8 }}>
           {[
-            'Use the 🔍 search bar on the Inventory page to quickly find items by name or code.',
+            'Use the 🔍 search bar and the Status dropdown on the Inventory page to quickly find items by name, code, or stock status.',
             'Click ℹ️ on any item card in the request browser to see full details before adding to cart.',
-            'Low stock items are highlighted in amber ⚠️, out-of-stock items in red.',
+            'Items with zero quantity show an "Out of Stock" badge (red). Items below the minimum threshold show a "Low Stock" badge (amber). Condition is shown as N/A for out-of-stock items.',
             'Borrowed items must be returned physically to the storeroom — the storekeeper will then mark them as returned in the system.',
             'You will receive automatic email reminders 2 days and 1 day before your borrow due date — check your inbox.',
             'If your set-password link has expired, ask your Manager to click 📧 Invite on your user account to send a fresh link.',
