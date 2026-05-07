@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { api } from '../api.js';
 import EmojiPicker from '../components/shared/EmojiPicker.jsx';
@@ -37,9 +37,54 @@ export default function AddItemPage({ showToast, user }) {
   const [showScanner,    setShowScanner]    = useState(false);
   const [nameSuggestion, setNameSuggestion] = useState(null);
   const [lookingUp,      setLookingUp]      = useState(false);
-  const [existingItem,   setExistingItem]   = useState(null); // item found in local DB by barcode
+  const [existingItem,   setExistingItem]   = useState(null);
+
+  // ── Item search ────────────────────────────────────────────────────────────
+  const [searchQuery,    setSearchQuery]    = useState('');
+  const [searchResults,  setSearchResults]  = useState([]);
+  const [searchLoading,  setSearchLoading]  = useState(false);
+  const [clonedFrom,     setClonedFrom]     = useState(null); // item cloned as template
+  const searchTimer = useRef(null);
 
   useEffect(() => { api.getMeta().then(setMeta).catch(() => {}); }, []);
+
+  const handleSearchChange = (e) => {
+    const q = e.target.value;
+    setSearchQuery(q);
+    setSearchResults([]);
+    clearTimeout(searchTimer.current);
+    if (q.trim().length < 2) return;
+    searchTimer.current = setTimeout(async () => {
+      setSearchLoading(true);
+      try {
+        const results = await api.getItems({ search: q.trim() });
+        setSearchResults(results.slice(0, 8));
+      } catch { /* ignore */ } finally {
+        setSearchLoading(false);
+      }
+    }, 300);
+  };
+
+  const selectSearchResult = (item) => {
+    setClonedFrom(item);
+    setSearchQuery('');
+    setSearchResults([]);
+    setExistingItem(null);
+    setForm(f => ({
+      ...f,
+      name:           item.name           || '',
+      code:           item.code           || '',
+      icon:           item.icon           || '',
+      category:       item.category       || 'Stationery',
+      store_category: item.store_category || 'Supplies',
+      unit_name:      item.unit_name      || 'pcs',
+      min_threshold:  item.min_threshold  ?? 10,
+      condition:      item.condition      || 'Good',
+      description:    item.description    || '',
+      quantity:       0,
+      max_quantity:   item.max_quantity   ?? 0,
+    }));
+  };
 
   const set = field => e => {
     const val = e.target.type === 'number' ? Number(e.target.value) : e.target.value;
@@ -153,6 +198,100 @@ export default function AddItemPage({ showToast, user }) {
       </div>
 
       {error && <div className="alert alert-error">{error}</div>}
+
+      {/* ── Search existing items ── */}
+      <div style={{ marginBottom: 16, position: 'relative' }}>
+        <div style={{
+          background: '#fff', borderRadius: 12, padding: '14px 18px',
+          boxShadow: '0 1px 4px rgba(0,0,0,.08)', border: '1px solid var(--border)',
+        }}>
+          <div style={{ fontSize: 13, fontWeight: 700, color: 'var(--navy)', marginBottom: 8 }}>
+            🔍 Search Existing Items
+          </div>
+          <div style={{ fontSize: 12, color: 'var(--muted)', marginBottom: 10 }}>
+            Find an item already added by another storekeeper and use it as a template for your location.
+          </div>
+          <div style={{ position: 'relative' }}>
+            <input
+              type="text"
+              className="form-input"
+              placeholder="Type item name to search…"
+              value={searchQuery}
+              onChange={handleSearchChange}
+              autoComplete="off"
+            />
+            {searchLoading && (
+              <span style={{ position: 'absolute', right: 12, top: '50%', transform: 'translateY(-50%)', fontSize: 12, color: 'var(--muted)' }}>
+                searching…
+              </span>
+            )}
+          </div>
+          {searchResults.length > 0 && (
+            <div style={{
+              marginTop: 6, border: '1px solid var(--border)', borderRadius: 8,
+              overflow: 'hidden', boxShadow: '0 4px 12px rgba(0,0,0,.08)',
+            }}>
+              {searchResults.map(item => (
+                <div
+                  key={item.id}
+                  onClick={() => selectSearchResult(item)}
+                  style={{
+                    padding: '10px 14px', cursor: 'pointer', background: '#fff',
+                    borderBottom: '1px solid var(--border)', display: 'flex',
+                    alignItems: 'center', gap: 10,
+                    transition: 'background .1s',
+                  }}
+                  onMouseEnter={e => e.currentTarget.style.background = '#f0f4ff'}
+                  onMouseLeave={e => e.currentTarget.style.background = '#fff'}
+                >
+                  <span style={{ fontSize: 20, flexShrink: 0 }}>{item.icon || '📦'}</span>
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    <div style={{ fontWeight: 600, fontSize: 13, color: 'var(--navy)' }}>{item.name}</div>
+                    <div style={{ fontSize: 11, color: 'var(--muted)', marginTop: 1 }}>
+                      {item.category} · {item.location} · Stock: {item.quantity} {item.unit_name}
+                    </div>
+                  </div>
+                  <span style={{ fontSize: 11, color: '#2563eb', fontWeight: 600, flexShrink: 0 }}>Use as template →</span>
+                </div>
+              ))}
+            </div>
+          )}
+          {searchQuery.length >= 2 && !searchLoading && searchResults.length === 0 && (
+            <div style={{ marginTop: 6, fontSize: 12, color: 'var(--muted)', padding: '6px 0' }}>
+              No matching items found. Fill in the form below to add a new item.
+            </div>
+          )}
+        </div>
+      </div>
+
+      {/* ── Cloned from template banner ── */}
+      {clonedFrom && (
+        <div style={{
+          background: '#eff6ff', border: '1px solid #bfdbfe', borderRadius: 10,
+          padding: '12px 16px', marginBottom: 16,
+          display: 'flex', flexWrap: 'wrap', gap: 10, alignItems: 'center',
+        }}>
+          <div style={{ flex: 1, minWidth: 200 }}>
+            <div style={{ fontSize: 12, color: '#1d4ed8', fontWeight: 700, marginBottom: 2 }}>
+              📋 Template applied from another location
+            </div>
+            <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--navy)' }}>
+              {clonedFrom.name}
+            </div>
+            <div style={{ fontSize: 12, color: 'var(--muted)', marginTop: 2 }}>
+              From: {clonedFrom.location} · Set your own quantity below, then save.
+            </div>
+          </div>
+          <button
+            type="button"
+            className="btn btn-ghost"
+            style={{ fontSize: 12 }}
+            onClick={() => { setClonedFrom(null); setForm(lock ? { ...EMPTY, location: lock.location, unit_school: lock.unitSchools[0] } : EMPTY); }}
+          >
+            ✕ Clear template
+          </button>
+        </div>
+      )}
 
       {/* ── Existing item found banner ── */}
       {existingItem && (
