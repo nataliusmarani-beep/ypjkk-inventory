@@ -207,7 +207,7 @@ export default function InventoryPage({ role, user, showToast }) {
                             <span className={low ? (item.quantity === 0 ? 'qty-low' : 'qty-warn') : 'qty-ok'}>
                               {item.quantity} {item.unit_name}
                             </span>
-                            {low && <span className="badge badge-red" style={{ fontSize: 10 }}>LOW</span>}
+                            {low && <span className="badge badge-red" style={{ fontSize: 10 }}>{item.quantity === 0 ? 'Out of Stock' : 'Low Stock'}</span>}
                           </div>
                         </td>
                         <td>
