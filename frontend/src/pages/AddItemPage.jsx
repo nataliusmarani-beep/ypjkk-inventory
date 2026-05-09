@@ -244,7 +244,11 @@ export default function AddItemPage({ showToast, user }) {
                   onMouseEnter={e => e.currentTarget.style.background = '#f0f4ff'}
                   onMouseLeave={e => e.currentTarget.style.background = '#fff'}
                 >
-                  <span style={{ fontSize: 20, flexShrink: 0 }}>{item.icon || '📦'}</span>
+                  <span style={{ fontSize: 20, flexShrink: 0, width: 24, textAlign: 'center' }}>
+                    {item.icon && item.icon.startsWith('data:image')
+                      ? <img src={item.icon} alt="" style={{ width: 22, height: 22, objectFit: 'contain', borderRadius: 3 }} />
+                      : (item.icon || '📦')}
+                  </span>
                   <div style={{ flex: 1, minWidth: 0 }}>
                     <div style={{ fontWeight: 600, fontSize: 13, color: 'var(--navy)' }}>{item.name}</div>
                     <div style={{ fontSize: 11, color: 'var(--muted)', marginTop: 1 }}>
