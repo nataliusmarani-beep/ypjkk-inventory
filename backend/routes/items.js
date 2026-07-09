@@ -25,6 +25,17 @@ function staffOnly(req, res, next) {
   next();
 }
 
+// Resolves the single store location a Storekeeper is confined to, if any.
+// Prefers the user's own `location` field; falls back to the unit_school
+// mapping for older accounts that don't have `location` set. Returns null
+// when the storekeeper isn't confined to any single location.
+function storekeeperLocation(user) {
+  if (user.location) return user.location;
+  if (user.unit_school === 'PAUD') return 'PAUD YPJ KK';
+  if (user.unit_school === 'SD' || user.unit_school === 'SMP') return 'SD SMP YPJ KK';
+  return null;
+}
+
 function validate(body) {
   const errors = [];
   if (!body.name || !body.name.trim()) errors.push('Name is required.');
@@ -111,9 +122,9 @@ router.put('/:id', staffOnly, (req, res) => {
   if (!item) return res.status(404).json({ error: 'Item not found.' });
 
   // Storekeeper location restriction
-  if (req.user?.role === 'Storekeeper' && req.user?.unit_school !== 'All') {
-    const myLocation = req.user.unit_school === 'PAUD' ? 'PAUD YPJ KK' : 'SD SMP YPJ KK';
-    if (item.location !== myLocation) {
+  if (req.user?.role === 'Storekeeper') {
+    const myLocation = storekeeperLocation(req.user);
+    if (myLocation && item.location !== myLocation) {
       return res.status(403).json({ error: 'You can only edit items in your assigned store.' });
     }
   }
@@ -189,9 +200,9 @@ router.delete('/:id', staffOnly, (req, res) => {
   if (!item) return res.status(404).json({ error: 'Item not found.' });
 
   // Storekeeper location restriction
-  if (req.user?.role === 'Storekeeper' && req.user?.unit_school !== 'All') {
-    const myLocation = req.user.unit_school === 'PAUD' ? 'PAUD YPJ KK' : 'SD SMP YPJ KK';
-    if (item.location !== myLocation) {
+  if (req.user?.role === 'Storekeeper') {
+    const myLocation = storekeeperLocation(req.user);
+    if (myLocation && item.location !== myLocation) {
       return res.status(403).json({ error: 'You can only delete items in your assigned store.' });
     }
   }
