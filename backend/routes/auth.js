@@ -36,12 +36,13 @@ router.post('/login', (req, res) => {
     }
 
     const payload = {
-      id:          user.id,
-      name:        user.name,
-      email:       user.email,
-      role:        user.role,
-      unit_school: user.unit_school,
-      location:    user.location || null,
+      id:             user.id,
+      name:           user.name,
+      email:          user.email,
+      role:           user.role,
+      unit_school:    user.unit_school,
+      location:       user.location || null,
+      store_category: user.store_category || null,
     };
     const token = jwt.sign(payload, SECRET, { expiresIn: '8h' });
 
@@ -65,7 +66,7 @@ router.post('/logout', (req, res) => {
 router.get('/me', requireAuth, (req, res) => {
   try {
     const user = db.prepare(
-      'SELECT id, name, email, role, unit_school, location FROM users WHERE id = :id AND is_active = 1'
+      'SELECT id, name, email, role, unit_school, location, store_category FROM users WHERE id = :id AND is_active = 1'
     ).get({ id: req.user.id });
 
     if (!user) {

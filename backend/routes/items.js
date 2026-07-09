@@ -36,6 +36,12 @@ function storekeeperLocation(user) {
   return null;
 }
 
+// Resolves the single store category a Storekeeper is confined to, if any.
+// Returns null when the storekeeper can work across all categories.
+function storekeeperCategory(user) {
+  return user.store_category || null;
+}
+
 function validate(body) {
   const errors = [];
   if (!body.name || !body.name.trim()) errors.push('Name is required.');
@@ -100,6 +106,13 @@ router.get('/:id', (req, res) => {
 
 // POST /api/items
 router.post('/', staffOnly, (req, res) => {
+  if (req.user?.role === 'Storekeeper') {
+    const myCategory = storekeeperCategory(req.user);
+    if (myCategory && req.body.store_category !== myCategory) {
+      return res.status(403).json({ error: 'You can only add items in your assigned store category.' });
+    }
+  }
+
   const errors = validate(req.body);
   if (errors.length) return res.status(400).json({ error: errors.join(' ') });
 
@@ -118,14 +131,18 @@ router.post('/', staffOnly, (req, res) => {
 
 // PUT /api/items/:id
 router.put('/:id', staffOnly, (req, res) => {
-  const item = db.prepare('SELECT id, location FROM items WHERE id=?').get(req.params.id);
+  const item = db.prepare('SELECT id, location, store_category FROM items WHERE id=?').get(req.params.id);
   if (!item) return res.status(404).json({ error: 'Item not found.' });
 
-  // Storekeeper location restriction
+  // Storekeeper location + category restriction
   if (req.user?.role === 'Storekeeper') {
     const myLocation = storekeeperLocation(req.user);
     if (myLocation && item.location !== myLocation) {
       return res.status(403).json({ error: 'You can only edit items in your assigned store.' });
+    }
+    const myCategory = storekeeperCategory(req.user);
+    if (myCategory && item.store_category !== myCategory) {
+      return res.status(403).json({ error: 'You can only edit items in your assigned store category.' });
     }
   }
 
@@ -166,6 +183,9 @@ router.post('/import', staffOnly, (req, res) => {
   let imported = 0, skipped = 0;
   const errors = [];
 
+  const myLocation = req.user?.role === 'Storekeeper' ? storekeeperLocation(req.user) : null;
+  const myCategory = req.user?.role === 'Storekeeper' ? storekeeperCategory(req.user) : null;
+
   const run = db.transaction(() => {
     rows.forEach((r, i) => {
       const rowNum = i + 2;
@@ -180,6 +200,9 @@ router.post('/import', staffOnly, (req, res) => {
       const unit   = UNIT_SCHOOLS.includes(r.unit_school)  ? r.unit_school     : 'All';
       const uname  = UNIT_NAMES.includes(r.unit_name)      ? r.unit_name       : 'pcs';
       const cond   = CONDITIONS.includes(r.condition)      ? r.condition       : 'Good';
+
+      if (myLocation && loc !== myLocation) { errors.push(`Row ${rowNum}: outside your assigned store location.`); return; }
+      if (myCategory && cat !== myCategory) { errors.push(`Row ${rowNum}: outside your assigned store category.`); return; }
 
       const result = insert.run(
         r.name.trim(), r.code?.trim() || null, r.category,
@@ -196,14 +219,18 @@ router.post('/import', staffOnly, (req, res) => {
 
 // DELETE /api/items/:id
 router.delete('/:id', staffOnly, (req, res) => {
-  const item = db.prepare('SELECT id, location FROM items WHERE id=?').get(req.params.id);
+  const item = db.prepare('SELECT id, location, store_category FROM items WHERE id=?').get(req.params.id);
   if (!item) return res.status(404).json({ error: 'Item not found.' });
 
-  // Storekeeper location restriction
+  // Storekeeper location + category restriction
   if (req.user?.role === 'Storekeeper') {
     const myLocation = storekeeperLocation(req.user);
     if (myLocation && item.location !== myLocation) {
       return res.status(403).json({ error: 'You can only delete items in your assigned store.' });
+    }
+    const myCategory = storekeeperCategory(req.user);
+    if (myCategory && item.store_category !== myCategory) {
+      return res.status(403).json({ error: 'You can only delete items in your assigned store category.' });
     }
   }
 

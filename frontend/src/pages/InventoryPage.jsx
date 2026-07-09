@@ -36,13 +36,20 @@ export default function InventoryPage({ role, user, showToast }) {
 
   const isAdmin = role === 'Manager' || role === 'Storekeeper';
 
-  // Returns true if the current user is allowed to edit/delete a given item
+  // Returns true if the current user is allowed to edit/delete a given item.
+  // Mirrors the backend restriction in routes/items.js: confined to the
+  // storekeeper's assigned location/category when those fields are set.
   const canEdit = (item) => {
     if (role === 'Manager') return true;
     if (role !== 'Storekeeper') return false;
-    if (!user || user.unit_school === 'All') return true; // Storekeeper assigned to All → full access
-    const myLocation = user.unit_school === 'PAUD' ? 'PAUD YPJ KK' : 'SD SMP YPJ KK';
-    return item.location === myLocation;
+    if (!user) return false;
+    const myLocation = user.location
+      || (user.unit_school === 'PAUD' ? 'PAUD YPJ KK'
+        : (user.unit_school === 'SD' || user.unit_school === 'SMP') ? 'SD SMP YPJ KK'
+        : null);
+    if (myLocation && item.location !== myLocation) return false;
+    if (user.store_category && item.store_category !== user.store_category) return false;
+    return true;
   };
   const importRef = useRef();
   const [importing, setImporting] = useState(false);
