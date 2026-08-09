@@ -1,0 +1,34 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
+  <!-- Navy background with rounded corners -->
+  <rect width="512" height="512" rx="96" fill="#13407A"/>
+
+  <!-- Bus body (white) -->
+  <rect x="86" y="176" width="340" height="176" rx="28" fill="white"/>
+
+  <!-- Window band -->
+  <rect x="114" y="204" width="284" height="70" rx="10" fill="#8FC1F2"/>
+  <!-- Window dividers -->
+  <rect x="184" y="204" width="8" height="70" fill="#13407A"/>
+  <rect x="254" y="204" width="8" height="70" fill="#13407A"/>
+  <rect x="324" y="204" width="8" height="70" fill="#13407A"/>
+
+  <!-- Headlight -->
+  <circle cx="118" cy="318" r="12" fill="#F5B301"/>
+
+  <!-- Wheels -->
+  <circle cx="164" cy="360" r="34" fill="#121826"/>
+  <circle cx="164" cy="360" r="14" fill="#D5D9E3"/>
+  <circle cx="348" cy="360" r="34" fill="#121826"/>
+  <circle cx="348" cy="360" r="14" fill="#D5D9E3"/>
+
+  <!-- BIS text -->
+  <text
+    x="256" y="460"
+    font-family="Arial Black, Arial, sans-serif"
+    font-size="70"
+    font-weight="900"
+    fill="white"
+    text-anchor="middle"
+    letter-spacing="6"
+  >BIS</text>
+</svg>

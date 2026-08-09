@@ -1,0 +1,900 @@
+/* YPJ identity: the foundation crest is deep blue with a gold accent. */
+:root {
+  --primary:      #13407A;
+  --primary-dark: #0C2A52;
+  --accent:       #F5B301;
+  --success:      #1B8A5A;
+  --success-dark: #0F5C3C;
+  --warning:      #B25E02;
+  --danger:       #B3261E;
+  --danger-dark:  #7C1913;
+  --surface:      #F6F7FB;
+  --outline:      #D5D9E3;
+  --text:         #121826;
+  --text-muted:   #5A6376;
+
+  --radius: 12px;
+  --shadow: 0 1px 2px rgba(18, 24, 38, .06);
+}
+
+* { box-sizing: border-box; }
+
+html, body, #root { height: 100%; }
+
+body {
+  margin: 0;
+  /* 16px base: parents read this outdoors on mid-range Android phones. */
+  font: 16px/1.55 system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+  color: var(--text);
+  background: var(--surface);
+  -webkit-text-size-adjust: 100%;
+}
+
+h1, h2, h3 { margin: 0 0 8px; line-height: 1.25; }
+h1 { font-size: 22px; font-weight: 700; }
+h2 { font-size: 18px; font-weight: 700; }
+h3 { font-size: 16px; font-weight: 600; }
+p  { margin: 0 0 12px; }
+
+a { color: var(--primary); }
+
+/* ── Layout ─────────────────────────────────────────────────────────────── */
+.app-bar {
+  position: sticky; top: 0; z-index: 20;
+  display: flex; align-items: center; gap: 11px;
+  padding: 10px 16px;
+  background: rgba(255, 255, 255, .92);
+  backdrop-filter: saturate(140%) blur(8px);
+  border-bottom: 1px solid var(--outline);
+  box-shadow: 0 1px 3px rgba(18, 24, 38, .05);
+}
+.app-bar .brand { font-weight: 700; font-size: 16px; letter-spacing: -.2px; line-height: 1.15; }
+.app-bar .brand small {
+  display: block;
+  font-size: 10px; font-weight: 600; letter-spacing: .6px;
+  color: var(--text-muted);
+}
+.app-bar .spacer { flex: 1; }
+
+/* Identity block: avatar + truncating name, so a long parent name can never
+   wrap the bar onto two lines (it used to). */
+.user-chip { display: flex; align-items: center; gap: 9px; min-width: 0; }
+.avatar {
+  width: 36px; height: 36px; flex: none;
+  border-radius: 50%;
+  background: linear-gradient(135deg, var(--primary), var(--primary-dark));
+  color: #fff;
+  display: grid; place-items: center;
+  font-size: 13px; font-weight: 700; letter-spacing: .3px;
+}
+.user-meta { min-width: 0; line-height: 1.3; }
+.user-meta .nm {
+  font-size: 13px; font-weight: 600;
+  max-width: 150px;
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+.user-meta .rl {
+  font-size: 10px; font-weight: 700; letter-spacing: .5px;
+  color: var(--text-muted); text-transform: uppercase;
+}
+.icon-btn {
+  width: 40px; height: 40px; min-height: 40px; flex: none; padding: 0;
+  display: grid; place-items: center;
+  font-size: 15px;
+  background: #fff;
+  color: var(--text);
+  border: 1.5px solid var(--primary);
+  border-radius: 12px;
+  box-shadow: 0 1px 3px rgba(18, 24, 38, .10);
+}
+
+@media (max-width: 430px) {
+  /* Phone: the avatar carries the identity; the text would crowd the brand. */
+  .user-meta { display: none; }
+}
+
+.page { max-width: 720px; margin: 0 auto; padding: 16px 16px 96px; }
+.page.wide { max-width: 1200px; }
+
+/* Login page watermark: same faded-bus treatment as the admin hero, but full
+   height/width since there's no colored banner behind it here. */
+.login-bg {
+  position: relative;
+  min-height: 100%;
+  overflow: hidden;
+  background: var(--surface);
+}
+.login-bg-bus {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  opacity: .15;
+  pointer-events: none;
+  z-index: 0;
+}
+
+.card {
+  background: #fff;
+  border: 1px solid var(--outline);
+  border-radius: 16px;
+  padding: 16px;
+  box-shadow: var(--shadow);
+  margin-bottom: 16px;
+}
+
+.row  { display: flex; gap: 12px; align-items: center; }
+.col  { display: flex; flex-direction: column; gap: 12px; }
+.grow { flex: 1; }
+.muted { color: var(--text-muted); font-size: 13px; }
+.center { text-align: center; }
+
+/* ── Forms ──────────────────────────────────────────────────────────────── */
+.field { margin-bottom: 18px; }
+.field > label { display: block; font-weight: 600; font-size: 15px; margin-bottom: 6px; }
+.field .hint  { font-size: 13px; color: var(--text-muted); margin-top: 6px; }
+.field .error { font-size: 13px; color: var(--danger); margin-top: 6px; }
+.req { color: var(--danger); }
+
+input[type=text], input[type=email], input[type=tel], input[type=password],
+input[type=number], input[type=date], select, textarea {
+  width: 100%;
+  padding: 14px;
+  font: inherit;
+  color: inherit;
+  background: #fff;
+  border: 1px solid var(--outline);
+  border-radius: var(--radius);
+}
+input:focus, select:focus, textarea:focus {
+  outline: none;
+  border-color: var(--primary);
+  box-shadow: 0 0 0 3px rgba(19, 64, 122, .12);
+}
+textarea { min-height: 84px; resize: vertical; }
+
+/* 48px minimum touch target throughout. */
+button {
+  font: inherit;
+  font-weight: 600;
+  min-height: 48px;
+  padding: 12px 20px;
+  border-radius: var(--radius);
+  border: 1px solid transparent;
+  cursor: pointer;
+  background: var(--primary);
+  color: #fff;
+}
+button:disabled { opacity: .5; cursor: not-allowed; }
+button.ghost   { background: #fff; color: var(--text); border-color: var(--outline); }
+
+/* Icon-only WhatsApp deep link (wa.me) next to a row's action button — an
+   <a>, not a <button>, so it can't reuse the button/.ghost rules above. */
+a.wa-btn {
+  display: inline-flex; align-items: center; justify-content: center;
+  width: 48px; height: 48px; flex: none;
+  border-radius: var(--radius);
+  border: 1px solid var(--outline);
+  background: #fff;
+  font-size: 18px;
+  text-decoration: none;
+}
+button.danger  { background: var(--danger); }
+button.success { background: var(--success); }
+button.link    { background: none; color: var(--primary); border: 0; min-height: 0; padding: 4px 0; }
+button.block   { width: 100%; }
+
+.checkline { display: flex; gap: 12px; align-items: flex-start; padding: 6px 0; }
+.checkline input[type=checkbox] { width: 22px; height: 22px; margin-top: 2px; flex: none; }
+.checkline label { font-size: 15px; }
+
+/* ── Banners, chips, badges ─────────────────────────────────────────────── */
+.banner {
+  display: flex; gap: 10px;
+  padding: 12px;
+  border-radius: var(--radius);
+  border: 1px solid;
+  font-size: 14px;
+  margin-bottom: 14px;
+}
+.banner strong { display: block; }
+.banner.info    { background: #eef2f9; border-color: #c3d0e6; }
+.banner.warn    { background: #fdf3e6; border-color: #f0cfa0; }
+.banner.danger  { background: #fdecea; border-color: #f2b8b3; }
+.banner.success { background: #e9f6ef; border-color: #b3ddc7; }
+
+/* Admin "Semua Pengguna" broadcast — gold accent instead of the blue hero
+   or a neutral banner, so a school-wide announcement reads as distinct from
+   both the dashboard header and routine per-child notices. */
+.spotlight {
+  display: flex; gap: 12px;
+  align-items: flex-start;
+  padding: 14px 16px;
+  border-radius: var(--radius);
+  margin-bottom: 16px;
+  background: linear-gradient(135deg, #FFF6DE, #FDECB8);
+  border: 1px solid #F0CE72;
+  box-shadow: 0 4px 14px rgba(245, 179, 1, .18);
+}
+.spotlight-ico   { font-size: 20px; line-height: 1; }
+.spotlight-title { font-size: 15px; font-weight: 800; color: var(--primary-dark); }
+.spotlight-body  { font-size: 13.5px; margin-top: 4px; color: var(--text); white-space: pre-line; }
+.spotlight-dismiss { margin-top: 6px; }
+
+.chip {
+  display: inline-block;
+  padding: 3px 9px;
+  border-radius: 999px;
+  font-size: 12px;
+  font-weight: 600;
+  white-space: nowrap;
+}
+.chip.ok     { background: #e9f6ef; color: var(--success); }
+.chip.warn   { background: #fdf3e6; color: var(--warning); }
+.chip.danger { background: #fdecea; color: var(--danger); }
+.chip.neutral{ background: #eef0f5; color: var(--text-muted); }
+
+/* "Tugas N" duty-number label — the pale, small .chip.neutral treatment
+   reads fine for a secondary tag but is too easy to miss for the number
+   that actually tells a driver/helper/parent which unit is which; bigger
+   and solid-colour instead of pale. Background colour is set per-instance
+   (chip-duty-besar/chip-duty-kecil below) so Bis Besar and Bis Kecil read as
+   visibly different groups at a glance, not just by their plate number. */
+.chip-duty {
+  font-size: 15px;
+  font-weight: 800;
+  padding: 4px 12px;
+  color: #fff;
+}
+/* Same blue/green pairing as the Jadwal page's Bis Besar/Bis Kecil section
+   headers (see CATEGORIES in SchedulePage.jsx) — one shared meaning for
+   "besar" vs "kecil" colour across the app, not a second colour code. */
+.chip-duty-besar { background: #13407a; }
+.chip-duty-kecil { background: #1a7a4c; }
+/* Kecil Tugas 5 is the one fixed (non-rotating) slot — same amber already
+   used for its "Bis Kecil — Tugas 5 (Tetap)" section header, so it reads as
+   its own thing rather than just another kecil unit. */
+.chip-duty-tugas5 { background: #b5790a; }
+
+/* ── Stepper ────────────────────────────────────────────────────────────── */
+.stepper { display: flex; gap: 6px; margin-bottom: 8px; }
+.stepper span { flex: 1; height: 6px; border-radius: 3px; background: var(--outline); }
+.stepper span.done { background: var(--primary); }
+
+/* ── Sticky footer actions ──────────────────────────────────────────────── */
+.actions {
+  position: fixed; left: 0; right: 0; bottom: 0;
+  display: flex; gap: 12px;
+  padding: 12px 16px calc(12px + env(safe-area-inset-bottom));
+  background: #fff;
+  border-top: 1px solid var(--outline);
+}
+.actions .grow { flex: 2; }
+
+/* ── Photo & signature capture ──────────────────────────────────────────── */
+.photo-box {
+  width: 104px; height: 128px; flex: none;
+  border: 1px solid var(--outline); border-radius: var(--radius);
+  background: var(--surface);
+  display: grid; place-items: center;
+  overflow: hidden;
+}
+.photo-box img { width: 100%; height: 100%; object-fit: cover; }
+.photo-box.error { border-color: var(--danger); border-width: 2px; }
+
+.sign-pad {
+  width: 100%; height: 190px;
+  background: #fff;
+  border: 1px solid var(--outline); border-radius: var(--radius);
+  touch-action: none;   /* stop the page scrolling while signing */
+}
+.sign-pad.error { border-color: var(--danger); border-width: 2px; }
+
+.rules-box {
+  height: 320px; overflow-y: auto;
+  padding: 14px;
+  background: var(--surface);
+  border: 1px solid var(--outline); border-radius: var(--radius);
+  font-size: 14px;
+}
+.rules-box h2 { font-size: 15px; margin-top: 16px; }
+.rules-box ul { padding-left: 20px; }
+
+/* ── Bus ID card ────────────────────────────────────────────────────────── */
+.bus-card {
+  border-radius: 20px;
+  background: linear-gradient(135deg, var(--primary), var(--primary-dark));
+  padding: 16px 12px 12px;
+  color: #fff;
+}
+/* Frame colour flags the TPS group at a glance — TPS#1 (RWB KK, its own run)
+   is green; TPS#2–TPS#6 (the Timika Indah / Petrosea corridor) is red. Every
+   other stop keeps the default YPJ blue. */
+.bus-card.frame-green { background: linear-gradient(135deg, var(--success), var(--success-dark)); }
+.bus-card.frame-red   { background: linear-gradient(135deg, var(--danger),  var(--danger-dark)); }
+
+.bus-card .head { display: flex; align-items: center; gap: 10px; padding: 0 6px 12px; }
+/* The crest sits on the card's dark blue header. The logo artwork has a white
+   outline of its own, so it needs no plate behind it. */
+.bus-card .head img { filter: drop-shadow(0 1px 2px rgba(0, 0, 0, .25)); }
+.bus-card .org   { font-size: 13px; font-weight: 700; letter-spacing: .6px; }
+.bus-card .kind  { font-size: 11px; font-weight: 600; letter-spacing: 1.1px; color: var(--accent); }
+.bus-card .body  { background: #fff; color: var(--text); border-radius: 14px; padding: 16px; }
+/* Real bus photo (background removed), sitting in-flow in the top row beside
+   the student's name — above the divider, clear of the QR entirely. Kept
+   translucent and grayscale so it reads as a watermark rather than another
+   photo competing with the student's own. Same-origin static file so
+   html2canvas rasterises it correctly when the card is saved or printed. */
+.bus-card .watermark {
+  width: 150px;
+  height: auto;
+  margin-left: auto;
+  align-self: center;
+  opacity: 0.35;
+  filter: grayscale(1);
+  pointer-events: none;
+}
+.bus-card .foot  { font-size: 9.5px; color: rgba(255,255,255,.7); padding: 12px 6px 0; }
+.bus-card .name  { font-size: 17px; font-weight: 800; line-height: 1.2; }
+.bus-card .photo { width: 84px; height: 104px; flex: none; border: 1px solid var(--outline);
+                   border-radius: 10px; overflow: hidden; background: var(--surface); }
+.bus-card .photo img { width: 100%; height: 100%; object-fit: cover; }
+.bus-card .qr    { padding: 8px; background: #fff; border: 1px solid var(--outline); border-radius: 10px; }
+.bus-card .qr img { display: block; width: 108px; height: 108px; }
+
+.micro { font-size: 9px; letter-spacing: .9px; font-weight: 700; color: var(--text-muted); }
+.micro + div { font-size: 13.5px; font-weight: 600; }
+
+/* ── Tables (admin portal) ──────────────────────────────────────────────── */
+table { width: 100%; border-collapse: collapse; font-size: 14px; }
+th, td { padding: 10px 12px; text-align: left; border-bottom: 1px solid var(--outline); }
+th { font-size: 12px; text-transform: uppercase; letter-spacing: .5px; color: var(--text-muted); }
+tbody tr:hover { background: var(--surface); }
+.table-wrap { overflow-x: auto; }
+
+/* Admin figures: icon badge + number, colour-coded by what needs attention.
+   Auto-fit grid so six tiles reflow cleanly instead of stretching oddly. */
+.stat-row {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(152px, 1fr));
+  gap: 12px;
+  margin-bottom: 16px;
+}
+.stat {
+  display: flex; align-items: center; gap: 12px;
+  background: #fff; border: 1px solid transparent; border-radius: 18px;
+  padding: 14px 16px;
+  box-shadow: var(--shadow);
+}
+.stat .badge {
+  width: 40px; height: 40px; flex: none;
+  border-radius: 13px;
+  display: grid; place-items: center;
+  font-size: 17px;
+  background: rgba(255,255,255,.65);
+}
+/* Pastel tiles, one hue per card — the flat white+icon-only version read as
+   a spreadsheet; a full-tinted card scans faster at a glance. */
+.stat.warn   { background: #fff4e5; }
+.stat.ok     { background: #e9f9ef; }
+.stat.danger { background: #fdecea; }
+.stat.info   { background: #eaf1fe; }
+.stat.purple { background: #f3ecfe; }
+.stat.cyan   { background: #e6f7fa; }
+.stat.warn   .n, .stat.warn   .badge { color: var(--warning); }
+.stat.ok     .n, .stat.ok     .badge { color: var(--success); }
+.stat.danger .n, .stat.danger .badge { color: var(--danger); }
+.stat.info   .n, .stat.info   .badge { color: #3b6fe0; }
+.stat.purple .n, .stat.purple .badge { color: #7c4fe0; }
+.stat.cyan   .n, .stat.cyan   .badge { color: #0e7c86; }
+.stat .n { font-size: 23px; font-weight: 800; line-height: 1.05; }
+.stat .k { font-size: 11.5px; color: var(--text-muted); margin-top: 2px; }
+
+/* Donut chart — pure CSS conic-gradient ring, no charting library. */
+.donut-ring {
+  width: 118px; height: 118px; border-radius: 50%; flex: none;
+  display: grid; place-items: center;
+}
+.donut-ring-hole {
+  width: 72px; height: 72px; border-radius: 50%;
+  background: #fff;
+  display: flex; flex-direction: column; align-items: center; justify-content: center;
+}
+.donut-legend { display: grid; gap: 8px; flex: 1; min-width: 0; }
+.donut-legend-row { display: flex; align-items: center; gap: 8px; font-size: 12.5px; }
+.donut-legend-dot { width: 9px; height: 9px; border-radius: 50%; flex: none; }
+.donut-legend-label { flex: 1; color: var(--text-muted); }
+.donut-legend-value { font-weight: 700; }
+
+/* Admin page header — same hero language as the parent dashboard, so the two
+   sides of the app feel like one product. */
+.admin-hero {
+  position: relative; overflow: hidden;
+  border-radius: 22px;
+  padding: 20px 22px;
+  margin-bottom: 16px;
+  background: linear-gradient(135deg, var(--primary-dark) 0%, var(--primary) 65%);
+  color: #fff;
+  box-shadow: 0 10px 26px rgba(12, 42, 82, .20);
+}
+/* Pushed further off-canvas than the parent hero: this banner is short and the
+   Export button lives top-right, so the bus reads as texture, not an object
+   competing with a control. */
+.admin-hero .hero-bus {
+  position: absolute; right: -52px; top: -8px;
+  width: 150px; opacity: .10;
+  filter: grayscale(1) brightness(2.4);
+  pointer-events: none;
+}
+.admin-hero h1 { font-size: 22px; font-weight: 800; margin: 0; }
+.admin-hero .sub { font-size: 12.5px; color: rgba(255,255,255,.78); margin-top: 4px; }
+.admin-hero-top {
+  position: relative; z-index: 1;
+  display: flex; align-items: flex-start; gap: 12px;
+}
+@media (max-width: 560px) {
+  /* Side-by-side squeezed the title into three lines and pushed the button over
+     the bus; stack instead. */
+  .admin-hero-top { flex-direction: column; }
+  .admin-hero-top button { align-self: stretch; }
+}
+
+/* Date/rotation strip — sits above the stat tiles as its own banded row,
+   distinct from the plain white dash-cards below so it reads as a header,
+   not another data tile. */
+.today-bar {
+  display: flex; align-items: center; justify-content: space-between;
+  flex-wrap: wrap; gap: 12px;
+  border-radius: 16px;
+  padding: 14px 18px;
+  margin-bottom: 16px;
+  background: linear-gradient(135deg, #eaf1fe 0%, #f3ecfe 100%);
+  border: 1px solid var(--outline);
+}
+.today-bar-ico {
+  width: 40px; height: 40px; flex: none;
+  border-radius: 12px; background: #fff;
+  display: grid; place-items: center; font-size: 19px;
+  box-shadow: var(--shadow);
+}
+.today-bar-day { font-weight: 800; font-size: 16px; }
+.today-bar-date { font-size: 13px; color: var(--text-muted); }
+.today-bar-period { text-align: right; }
+.today-bar-period-label { font-size: 12.5px; color: var(--text-muted); }
+.today-bar-period-value { font-weight: 800; font-size: 16px; color: var(--primary); }
+@media (max-width: 480px) {
+  .today-bar { justify-content: flex-start; }
+  .today-bar-period { text-align: left; }
+}
+
+/* Bis Besar / Bis Kecil switch inside the trip timeline card — smaller than
+   the page-level .seg so it doesn't compete with the card title above it. */
+.trip-bus-seg { margin: 2px 0 0; padding: 3px; }
+.trip-bus-seg button { min-height: 30px; padding: 5px 12px; font-size: 12.5px; }
+
+/* Dashboard widget row (date/rotation, today's departures, busiest TPS) —
+   restyled to the reference dashboard's card language, but built from data the
+   app already has. No live map: this app has no GPS (see db.js), so the
+   departures timeline stands in for it with real data instead of a fake pin. */
+.dash-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 12px;
+  margin-bottom: 16px;
+}
+.dash-card {
+  display: flex; flex-direction: column; gap: 10px;
+  background: #fff; border: 1px solid var(--outline); border-radius: 16px;
+  padding: 14px;
+  box-shadow: var(--shadow);
+}
+
+/* Siswa per Jenjang / per Kategori Sekolah pair — 2:1 split on desktop, but
+   auto-fit's min(220px) let a narrow phone shrink the 1fr column enough to
+   clip "Siswa per Kategori Sekolah" off-screen. Stack them below ~640px. */
+.grade-charts-grid { grid-template-columns: 2fr 1fr; }
+@media (max-width: 640px) {
+  .grade-charts-grid { grid-template-columns: 1fr; }
+}
+.dash-card-head { display: flex; align-items: center; gap: 10px; }
+.dash-card-head .ico {
+  width: 34px; height: 34px; flex: none;
+  border-radius: 10px; background: var(--surface);
+  display: grid; place-items: center; font-size: 16px;
+}
+.dash-card-title { font-weight: 700; font-size: 14px; }
+.dash-card-body { flex: 1; }
+
+.trip-timeline {
+  list-style: none; margin: 0; padding: 0;
+  display: grid; gap: 12px;
+  max-height: 220px; overflow-y: auto;
+}
+.trip-timeline li { display: flex; gap: 10px; font-size: 13px; line-height: 1.4; }
+.trip-timeline .dot {
+  width: 8px; height: 8px; margin-top: 5px; flex: none;
+  border-radius: 50%; background: var(--primary);
+}
+
+/* Segmented status filter, replacing the row of separate buttons. */
+.seg {
+  display: flex; flex-wrap: wrap; gap: 4px;
+  padding: 4px;
+  background: #fff;
+  border: 1px solid var(--outline);
+  border-radius: 14px;
+  margin-bottom: 12px;
+}
+.seg button {
+  min-height: 38px; padding: 8px 14px;
+  font-size: 13.5px; font-weight: 600;
+  background: transparent; color: var(--text-muted);
+  border: 0; border-radius: 10px;
+}
+.seg button.on { background: var(--primary); color: #fff; }
+
+/* Collapsible panel headers (capacity, schedule, complaints). */
+.panel-summary {
+  display: flex; align-items: center; gap: 10px;
+  cursor: pointer; font-weight: 600;
+  list-style: none;
+}
+.panel-summary::-webkit-details-marker { display: none; }
+.panel-summary .ico {
+  width: 32px; height: 32px; flex: none;
+  border-radius: 10px; background: var(--surface);
+  display: grid; place-items: center; font-size: 15px;
+}
+.panel-summary .grow { min-width: 0; }
+.panel-summary .sub { font-size: 12px; font-weight: 400; color: var(--text-muted); }
+
+/* Bus + crew summary on the parent-facing schedule, one strip per route. */
+.crew-strip {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+  gap: 8px;
+  padding: 10px 12px;
+  margin-bottom: 12px;
+  background: var(--surface);
+  border: 1px solid var(--outline);
+  border-radius: 14px;
+}
+.crew-item { display: flex; gap: 9px; align-items: center; min-width: 0; }
+.crew-item .ico { font-size: 16px; flex: none; }
+.crew-item .k {
+  display: block;
+  font-size: 10.5px; font-weight: 700; letter-spacing: .5px;
+  color: var(--text-muted); text-transform: uppercase;
+}
+.crew-item .v { display: block; font-size: 13.5px; font-weight: 600; }
+.crew-item .v em { font-weight: 400; font-style: normal; font-size: 12.5px; }
+
+/* Schedule times table. The two time columns are fixed and narrow so the stop
+   name takes the slack; on small phones everything tightens rather than
+   forcing the parent to scroll sideways to see the dropoff time. */
+.sched-table .t { width: 104px; }
+.sched-school-row td { background: rgba(19, 64, 122, .05); }
+@media (max-width: 480px) {
+  .sched-table th, .sched-table td { padding: 8px 6px; }
+  .sched-table th { font-size: 9.5px; letter-spacing: .2px; }
+  .sched-table td { font-size: 12.5px; }
+  .sched-table .t { width: 76px; }
+}
+
+/* Parent view: the buses serving one route, one card each. */
+.bus-list { display: grid; gap: 8px; margin-bottom: 12px; }
+.bus-item {
+  padding: 10px 12px;
+  background: var(--surface);
+  border: 1px solid var(--outline);
+  border-radius: 14px;
+}
+.bus-head { display: flex; align-items: center; gap: 8px; font-size: 14.5px; }
+.bus-head .ico { font-size: 16px; }
+.bus-crew {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+  gap: 6px 12px;
+  margin-top: 8px;
+  padding-left: 24px;
+}
+.bus-crew .k {
+  display: block;
+  font-size: 10.5px; font-weight: 700; letter-spacing: .5px;
+  color: var(--text-muted); text-transform: uppercase;
+}
+.bus-crew .v { display: block; font-size: 13.5px; font-weight: 600; }
+.bus-crew .v em { font-weight: 400; font-style: normal; font-size: 12.5px; }
+
+/* Admin editor: one block per bus unit, holding its identity, crew and the TPS
+   it covers this rotation. */
+.bus-editor {
+  padding: 14px;
+  margin-bottom: 14px;
+  border: 1px solid var(--outline);
+  border-radius: 16px;
+}
+.tps-picker {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+  gap: 8px;
+}
+.tps-opt {
+  display: flex; align-items: center; gap: 8px;
+  padding: 8px 10px;
+  background: var(--surface);
+  border: 1px solid var(--outline);
+  border-radius: 12px;
+  font-size: 13px;
+}
+/* A ticked stop is visibly part of this unit's run, so a rotation is readable
+   at a glance rather than by hunting for checked boxes. Stacked vertically
+   once selected: the times block can grow tall (several dropoff trips), and
+   a side-by-side row would squeeze the TPS name into a sliver and wrap it
+   behind the inputs instead of just going full width below it. */
+.tps-opt.on { background: #eef2f9; border-color: #c3d0e6; flex-direction: column; align-items: stretch; }
+.tps-check { display: flex; align-items: center; gap: 8px; flex: 1; min-width: 0; cursor: pointer; }
+.tps-check input { width: 20px; height: 20px; flex: none; }
+.tps-times { display: flex; gap: 6px; flex: none; }
+.tps-times input { width: 92px; padding: 6px 8px; font-size: 12.5px; }
+.tps-opt.on .tps-times { flex-wrap: wrap; margin-top: 4px; }
+
+@media (max-width: 480px) {
+  .tps-opt { flex-direction: column; align-items: stretch; }
+  .tps-times input { flex: 1; width: auto; }
+}
+
+/* Admin editor: the fleet assigned to a route, one editable row per bus. */
+.fleet { margin-bottom: 12px; }
+.fleet-row {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)) 44px;
+  gap: 10px;
+  align-items: end;
+  padding: 10px;
+  margin-bottom: 8px;
+  background: var(--surface);
+  border: 1px solid var(--outline);
+  border-radius: 14px;
+}
+.fleet-row label { display: block; }
+.fleet-row .lbl {
+  display: block;
+  font-size: 11.5px; font-weight: 600;
+  color: var(--text-muted);
+  margin-bottom: 4px;
+}
+.fleet-del { min-height: 44px; padding: 0; color: var(--danger); }
+
+@media (max-width: 560px) {
+  /* Stack the fields; the delete button spans the full width beneath them so
+     it never ends up a sliver next to a wrapped input. */
+  .fleet-row { grid-template-columns: 1fr; }
+  .fleet-del { min-height: 40px; }
+}
+
+/* ── Drawer (review panel) ──────────────────────────────────────────────── */
+.drawer-backdrop {
+  position: fixed; inset: 0; background: rgba(18,24,38,.45); z-index: 30;
+  display: flex; justify-content: flex-end;
+}
+.drawer {
+  width: min(760px, 100%); height: 100%; overflow-y: auto;
+  background: var(--surface); padding: 16px;
+}
+
+/* ── Load bar (stop capacity) ───────────────────────────────────────────── */
+.load-bar { height: 8px; border-radius: 4px; background: var(--outline); overflow: hidden; }
+.load-bar > span { display: block; height: 100%; background: var(--success); }
+.load-bar > span.warn   { background: var(--warning); }
+.load-bar > span.danger { background: var(--danger); }
+
+/* ── Parent dashboard ───────────────────────────────────────────────────────
+   Hero + tile layout. Borrowed structure from modern transport-app design:
+   a vehicle image behind a gradient header, summary figures as glass tiles,
+   and icon-led action tiles. Kept within the YPJ blue/gold palette rather
+   than the reference's orange, and every tap target stays ≥48 dp with body
+   text ≥13 px, since parents read this outdoors on mid-range Android. */
+.hero {
+  position: relative;
+  overflow: hidden;
+  border-radius: 24px;
+  padding: 22px 20px 20px;
+  margin-bottom: 16px;
+  background: linear-gradient(135deg, var(--primary) 0%, var(--primary-dark) 72%);
+  color: #fff;
+  box-shadow: 0 10px 26px rgba(12, 42, 82, .20);
+}
+/* The same bus photo used on the ID card, washed out to sit behind the text.
+   Anchored top-right and kept clear of the stat tiles below — a photo showing
+   through translucent tiles made the figures hard to read. */
+.hero .hero-bus {
+  position: absolute;
+  right: -28px;
+  top: 4px;
+  width: 165px;
+  opacity: .13;
+  filter: grayscale(1) brightness(2.4);
+  pointer-events: none;
+}
+.hero-greet { font-size: 12.5px; font-weight: 600; letter-spacing: .4px; color: var(--accent); }
+.hero-name  { font-size: 24px; font-weight: 800; line-height: 1.15; margin-top: 2px; }
+.hero-sub   { font-size: 13px; color: rgba(255,255,255,.78); margin-top: 6px; max-width: 24ch; }
+/* Date + rotation period row on the crew hero banners (Scan/Checklist) —
+   its own class rather than reusing .hero-sub so it isn't clipped by that
+   rule's 24ch max-width, and "Periode rotasi" can sit flush right. */
+.hero-today {
+  position: relative; z-index: 1;
+  display: flex; justify-content: space-between; align-items: baseline;
+  flex-wrap: wrap; gap: 6px 16px;
+  margin-top: 8px;
+  font-size: 14.5px; color: rgba(255,255,255,.85);
+}
+.hero-today-period { text-align: right; }
+.hero-today-weekend { color: var(--accent); font-weight: 600; }
+.hero-stats { position: relative; z-index: 1; display: flex; gap: 8px; margin-top: 18px; }
+.hero-stat {
+  flex: 1;
+  padding: 10px 12px;
+  border-radius: 14px;
+  background: rgba(255,255,255,.18);
+  border: 1px solid rgba(255,255,255,.24);
+}
+.hero-stat .n { font-size: 21px; font-weight: 800; line-height: 1; }
+.hero-stat .k { font-size: 11px; color: rgba(255,255,255,.82); margin-top: 4px; }
+
+.quick-grid {
+  display: grid;
+  /* Four tiles: 2×2 on a phone reads better than 3+1 orphaned on a second row. */
+  grid-template-columns: repeat(2, 1fr);
+  gap: 10px;
+  margin-bottom: 20px;
+}
+@media (min-width: 560px) { .quick-grid { grid-template-columns: repeat(4, 1fr); } }
+.quick-tile {
+  display: flex; flex-direction: column; align-items: center; justify-content: center;
+  gap: 7px;
+  min-height: 86px;            /* comfortably past the 48 dp minimum */
+  padding: 12px 6px;
+  font: inherit;
+  color: var(--text);
+  text-align: center;
+  background: #fff;
+  border: 1px solid var(--outline);
+  border-radius: 18px;
+  box-shadow: var(--shadow);
+}
+.quick-tile .ico { position: relative; font-size: 21px; line-height: 1; }
+/* Unread count on the chat tile. */
+.tile-badge {
+  position: absolute; top: -6px; right: -14px;
+  min-width: 18px; height: 18px; padding: 0 5px;
+  background: var(--danger); color: #fff;
+  border-radius: 999px;
+  font-size: 11px; font-weight: 700; line-height: 18px; text-align: center;
+}
+.quick-tile .lbl { font-size: 12px; font-weight: 600; line-height: 1.25; }
+
+.section-title {
+  font-size: 12px; font-weight: 700; letter-spacing: .7px;
+  color: var(--text-muted); margin: 0 0 10px 2px;
+}
+
+.kid-card { border-radius: 20px; }
+.kid-head { display: flex; gap: 14px; align-items: flex-start; }
+.kid-photo {
+  width: 66px; height: 80px; flex: none;
+  border-radius: 14px; overflow: hidden;
+  background: var(--surface); border: 1px solid var(--outline);
+  display: grid; place-items: center;
+}
+.kid-photo img { width: 100%; height: 100%; object-fit: cover; }
+.kid-name { font-size: 16px; font-weight: 700; line-height: 1.25; }
+/* Inset panel: route, stop and times read as one block of trip facts rather
+   than four loose muted lines. */
+.kid-facts {
+  margin-top: 12px; padding: 10px 12px;
+  background: var(--surface);
+  border-radius: 14px;
+  border: 1px solid var(--outline);
+}
+.kid-fact { display: flex; gap: 9px; align-items: baseline; font-size: 13.5px; padding: 3px 0; }
+.kid-fact .ico { width: 17px; flex: none; text-align: center; opacity: .75; }
+.kid-fact .val { font-weight: 600; }
+
+@media (max-width: 380px) {
+  /* Three stat tiles get cramped on the smallest phones; labels shrink first. */
+  .hero-stat .k { font-size: 10px; }
+  .quick-tile .lbl { font-size: 11px; }
+}
+
+@media (min-width: 560px) {
+  /* Past phone width there is room beside the bus, so stop wrapping so early. */
+  .hero-sub { max-width: 42ch; }
+}
+
+@media print {
+  .app-bar, .actions, button { display: none !important; }
+  body { background: #fff; }
+}
+
+/* Attendant departure checklist: one row per TPS on the unit's run. */
+.run-stop {
+  display: flex; align-items: center; gap: 10px;
+  padding: 10px 12px;
+  margin-bottom: 8px;
+  background: var(--surface);
+  border: 1px solid var(--outline);
+  border-radius: 12px;
+}
+.run-stop button { min-height: 40px; padding: 8px 14px; }
+.run-stop-school {
+  background: rgba(19, 64, 122, .06);
+  border-style: dashed;
+}
+
+/* ── Chat ───────────────────────────────────────────────────────────────── */
+.chat-box {
+  max-height: 60vh;
+  overflow-y: auto;
+  display: flex; flex-direction: column; gap: 8px;
+}
+.bubble-row { display: flex; }
+.bubble-row.parent { justify-content: flex-end; }
+.bubble {
+  max-width: 84%;
+  padding: 9px 12px;
+  border-radius: 14px;
+  font-size: 14.5px;
+  line-height: 1.45;
+}
+/* The parent's own messages sit right and in brand blue; the school's sit left
+   in grey, so a glance tells you who said what without reading names. */
+.bubble.parent { background: var(--primary); color: #fff; border-bottom-right-radius: 4px; }
+.bubble.staff  { background: var(--surface); border: 1px solid var(--outline);
+                 border-bottom-left-radius: 4px; }
+.bubble .who {
+  font-size: 10.5px; font-weight: 700; letter-spacing: .3px;
+  color: var(--text-muted); margin-bottom: 3px;
+}
+.bubble .when { font-size: 10.5px; margin-top: 4px; opacity: .7; }
+.bubble.parent .when { color: rgba(255,255,255,.85); }
+.bubble.staff  .when { color: var(--text-muted); }
+
+.chat-compose { display: flex; gap: 8px; align-items: flex-end; }
+.chat-compose textarea { min-height: 52px; }
+.chat-compose button { flex: none; }
+
+/* Admin: conversation list beside the open thread. */
+.thread-row {
+  display: flex; align-items: center; gap: 10px;
+  width: 100%; text-align: left;
+  padding: 10px 12px; margin-bottom: 8px;
+  background: #fff; color: var(--text);
+  border: 1px solid var(--outline); border-radius: 12px;
+  font: inherit; min-height: 0;
+}
+.thread-row.on { border-color: var(--primary); background: #eef2f9; }
+.thread-row .preview {
+  font-size: 12.5px; color: var(--text-muted);
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 100%;
+}
+
+/* Staff chat: conversation list beside the open thread on wide screens. */
+.chat-admin { display: grid; grid-template-columns: 1fr; gap: 14px; }
+@media (min-width: 900px) {
+  .chat-admin { grid-template-columns: 300px 1fr; align-items: start; }
+  .thread-list { max-height: 60vh; overflow-y: auto; }
+}
+.thread-row .grow { display: flex; flex-direction: column; gap: 2px; }
+.thread-open { border: 1px solid var(--outline); border-radius: 14px; padding: 12px; }
+
+/* Lacak Bus map — bus emoji marker over the leaflet divIcon default box. */
+.bus-track-icon { background: none; border: none; }
+.bus-track-icon span {
+  display: flex; align-items: center; justify-content: center;
+  width: 30px; height: 30px; font-size: 20px;
+  background: #fff; border: 2px solid var(--primary); border-radius: 50%;
+  box-shadow: 0 1px 4px rgba(0, 0, 0, .3);
+}

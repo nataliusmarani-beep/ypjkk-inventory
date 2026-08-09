@@ -1,0 +1,16 @@
+node_modules/
+.env
+.DS_Store
+
+# Local database + uploads (production lives on the Railway volume)
+backend/bus.sqlite
+backend/bus.sqlite-shm
+backend/bus.sqlite-wal
+backend/uploads/
+backend/backups/
+
+frontend/dist/
+
+# Sample student photo used only to preview the card locally. A real child's
+# photo must never be committed — the school logo (logo-ypj.png) is fine.
+frontend/public/sample-photo.*
