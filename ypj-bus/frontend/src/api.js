@@ -176,6 +176,7 @@ export const api = {
   scanManifest:    (p) => request(`/scan/manifest${qs(p)}`),
   scanRoute:       (p) => request(`/scan/route${qs(p)}`),
   markDeparture:   (b) => request('/scan/departure', { method: 'POST', body: JSON.stringify(b) }),
+  markArrival:     (b) => request('/scan/arrival',   { method: 'POST', body: JSON.stringify(b) }),
   startTrip:       (bus_id, direction) => request('/scan/trip/start', { method: 'POST', body: JSON.stringify({ bus_id, direction }) }),
   returnTrip:      (bus_id, direction) => request('/scan/trip/return', { method: 'POST', body: JSON.stringify({ bus_id, direction }) }),
 

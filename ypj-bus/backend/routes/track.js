@@ -53,6 +53,18 @@ router.get('/:busId', (req, res, next) => {
         const inCurrentLeg = currentStart
           ? [...departures].reverse().find((d) => d.created_at >= currentStart.created_at)
           : null;
+        // "Tiba di TPS Terakhir" — see POST /api/scan/arrival. Read the same
+        // way as departed_at; only the last stop's value actually gets used
+        // below, but every stop carries it for the map/list to show.
+        const arrivals = db.prepare(`
+          SELECT created_at FROM trip_events
+          WHERE bus_id = ? AND bus_stop_id = ? AND direction = ? AND event = 'arrived'
+            AND date(created_at, '+9 hours') = date('now', '+9 hours')
+          ORDER BY id ASC
+        `).all(busId, s.bus_stop_id, direction);
+        const arrivedInCurrentLeg = currentStart
+          ? [...arrivals].reverse().find((a) => a.created_at >= currentStart.created_at)
+          : null;
         return {
           bus_stop_id: s.bus_stop_id,
           stop_code: s.code,
@@ -62,6 +74,7 @@ router.get('/:busId', (req, res, next) => {
           students: s.students,
           [timeField]: s.times[tripIndex0] ?? null,
           departed_at: inCurrentLeg?.created_at || null,
+          arrived_at: arrivedInCurrentLeg?.created_at || null,
         };
       })
       .filter(Boolean);
@@ -76,21 +89,24 @@ router.get('/:busId', (req, res, next) => {
 
     // Arrival status — the two moments a helper/parent/guru actually asks
     // "is it there yet?": back at school after a pickup round, or at the
-    // last TPS on a dropoff round. Neither is a GPS fact, just the same
-    // trip_events trail read from its other end:
-    //  - Pickup: a 'finished' school-level event ("Selesai Trip") IS the
-    //    crew's own confirmation the unit is back at school. No leg
-    //    currently running (currentStart null) is required so this doesn't
-    //    fire mid-way through a second trip that reuses the same direction.
-    //  - Dropoff: no equivalent "arrived" event exists — the last stop on
-    //    the leg simply hasn't been marked departed yet, same signal the map
-    //    marker itself uses (resolvedIndex sitting on the final stop).
+    // last TPS on a dropoff round. Both are now real, crew-tapped events
+    // rather than a guess, with a real timestamp:
+    //  - Pickup: a 'finished' school-level event ("Tiba di Sekolah") — the
+    //    crew's own confirmation. No leg currently running (currentStart
+    //    null) is required so this doesn't fire mid-way through a second
+    //    trip that reuses the same direction.
+    //  - Dropoff: an 'arrived' event on the LAST stop of the leg ("Tiba di
+    //    TPS Terakhir" — see POST /api/scan/arrival). Doesn't show until the
+    //    crew actually taps it; a stop the app merely presumes the bus is
+    //    approaching (the old heuristic) isn't the same claim as "arrived".
     let arrival = null;
     if (direction === 'pickup' && !tripInProgress && finishes.length > 0) {
       arrival = { type: 'at_school', at: finishes[finishes.length - 1].created_at, stop: null };
-    } else if (direction === 'dropoff' && stops.length > 0 && resolvedIndex === stops.length - 1) {
+    } else if (direction === 'dropoff' && stops.length > 0) {
       const last = stops[stops.length - 1];
-      arrival = { type: 'at_final_stop', at: null, stop: { code: last.stop_code, name: last.stop_name } };
+      if (last.arrived_at) {
+        arrival = { type: 'at_final_stop', at: last.arrived_at, stop: { code: last.stop_code, name: last.stop_name } };
+      }
     }
 
     res.json({

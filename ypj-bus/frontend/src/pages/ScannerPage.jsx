@@ -29,6 +29,7 @@ export default function ScannerPage({ user }) {
   const [reporting, setReporting] = useState(false);
   const [departing, setDeparting] = useState(null);
   const [lastDeparture, setLastDeparture] = useState(null);
+  const [arriving, setArriving] = useState(null);
   const [schoolBusy, setSchoolBusy] = useState(false);
   const [manualQuery, setManualQuery] = useState('');
   const [manualResults, setManualResults] = useState(null);
@@ -78,20 +79,6 @@ export default function ScannerPage({ user }) {
 
   useEffect(() => { loadRun(); }, [loadRun]);
 
-  // A bis besar always runs a single trip (no shuttling back for another
-  // round the way a 27/30-seat unit can) — trips_total === 1 is exactly that
-  // case, for any unit, not just besar by seat count. Once every stop on
-  // that one trip has departed there is no "trip berikutnya" to return for,
-  // so close the leg automatically instead of making the crew press
-  // "Kembali ke Sekolah" for a return that never happens.
-  useEffect(() => {
-    if (run?.trips_total === 1 && run.trip_in_progress && run.stops.length > 0
-        && run.all_departed_this_leg && !schoolBusy) {
-      returnTrip();
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [run]);
-
   async function startTrip() {
     setSchoolBusy(true);
     setError(null);
@@ -108,7 +95,7 @@ export default function ScannerPage({ user }) {
   async function returnTrip() {
     if (!run?.all_departed_this_leg
         && !confirm('Belum semua TPS pada trip ini ditandai berangkat. TPS yang belum berangkat akan '
-                   + `ditawarkan lagi pada trip berikutnya. ${direction === 'pickup' ? 'Selesaikan' : 'Kembali ke sekolah'} sekarang?`)) return;
+                   + `ditawarkan lagi pada trip berikutnya. Tandai ${direction === 'pickup' ? 'tiba di sekolah' : 'kembali ke sekolah'} sekarang?`)) return;
     setSchoolBusy(true);
     setError(null);
     try {
@@ -137,6 +124,23 @@ export default function ScannerPage({ user }) {
       setError(e.message);
     } finally {
       setDeparting(null);
+    }
+  }
+
+  // "Tiba di TPS Terakhir" — tapped on reaching the last stop of a dropoff
+  // leg, separate from (and before) Berangkat there. Gives parents/Guru a
+  // real arrival time instead of the app guessing from "nothing left
+  // undeparted" — see the matching comment in backend/routes/track.js.
+  async function markArrival(stop) {
+    setArriving(stop.bus_stop_id);
+    setError(null);
+    try {
+      await api.markArrival({ bus_id: Number(busId), bus_stop_id: stop.bus_stop_id, direction });
+      loadRun();
+    } catch (e) {
+      setError(e.message);
+    } finally {
+      setArriving(null);
     }
   }
 
@@ -471,64 +475,72 @@ export default function ScannerPage({ user }) {
             </div>
           )}
 
-          {run.stops.map((s) => (
-            <div className="run-stop" key={s.bus_stop_id}>
-              <div className="grow">
-                <div style={{ fontWeight: 600 }}>
-                  {s.stop_code} <span style={{ fontWeight: 400 }}>{s.stop_name}</span>
+          {run.stops.map((s, i) => {
+            // The last stop on a dropoff leg gets an extra "Tiba di TPS
+            // Terakhir" tap, separate from Berangkat — it's the one stop
+            // where parents/Guru care about arrival rather than departure
+            // (there's no next stop to notify). See POST /api/scan/arrival.
+            const isFinalDropoffStop = direction === 'dropoff' && i === run.stops.length - 1;
+            return (
+              <div className="run-stop" key={s.bus_stop_id}>
+                <div className="grow">
+                  <div style={{ fontWeight: 600 }}>
+                    {s.stop_code} <span style={{ fontWeight: 400 }}>{s.stop_name}</span>
+                  </div>
+                  <div className="muted" style={{ fontSize: 12.5 }}>
+                    {(direction === 'dropoff' ? s.dropoff_time_current : s.pickup_time_current) || 'jam belum diatur'}
+                    {' · '}{s.students} siswa
+                    {s.arrived_at && ` · tiba ${formatWIT(s.arrived_at)}`}
+                    {s.departed_at && ` · berangkat ${formatWIT(s.departed_at)}`}
+                  </div>
                 </div>
-                <div className="muted" style={{ fontSize: 12.5 }}>
-                  {(direction === 'dropoff' ? s.dropoff_time_current : s.pickup_time_current) || 'jam belum diatur'}
-                  {' · '}{s.students} siswa
-                  {s.departed_at && ` · berangkat ${formatWIT(s.departed_at)}`}
+                <div className="col" style={{ gap: 6, alignItems: 'flex-end' }}>
+                  {isFinalDropoffStop && !s.departed_at && (
+                    s.arrived_at
+                      ? <span className="chip ok">tiba</span>
+                      : (
+                        <button className="ghost" disabled={arriving === s.bus_stop_id || !run.trip_in_progress}
+                                onClick={() => markArrival(s)}>
+                          {arriving === s.bus_stop_id ? '…' : 'Tiba di TPS Terakhir'}
+                        </button>
+                      )
+                  )}
+                  {s.departed_at
+                    ? <span className="chip ok">berangkat</span>
+                    : (
+                      <button className="ghost" disabled={departing === s.bus_stop_id || !run.trip_in_progress}
+                              onClick={() => markDeparture(s)}>
+                        {departing === s.bus_stop_id ? '…' : 'Berangkat'}
+                      </button>
+                    )}
                 </div>
               </div>
-              {s.departed_at
-                ? <span className="chip ok">berangkat</span>
-                : (
-                  <button className="ghost" disabled={departing === s.bus_stop_id || !run.trip_in_progress}
-                          onClick={() => markDeparture(s)}>
-                    {departing === s.bus_stop_id ? '…' : 'Berangkat'}
-                  </button>
-                )}
-            </div>
-          ))}
+            );
+          })}
 
-          {/* "Kembali ke Sekolah"/"Selesai Trip" sits at the bottom of the
+          {/* "Tiba di Sekolah"/"Kembali ke Sekolah" sits at the bottom of the
               current leg and is available the whole time the leg is running
               — not gated on every TPS being departed, so the crew can close
               it out (and start the next leg) whenever they actually do, and
               anything skipped is simply offered again next leg (see GET
-              /route). A single-trip unit (bis besar) has no next leg to
-              offer a skipped stop on, and once every stop has departed the
-              effect above closes it automatically — so once that's underway
-              this just shows "Menyelesaikan…" instead of a button that
-              would otherwise flash then vanish. */}
-          {run.trip_in_progress && !(run.trips_total === 1 && run.all_departed_this_leg) && (
+              /route). No auto-close for a single-trip unit (bis besar)
+              either: "left the last TPS" and "back at school" are different
+              moments, so this always waits for the crew's own tap — the
+              whole point being an honest arrival time (see the matching
+              comment in backend/routes/scan.js's POST /departure). */}
+          {run.trip_in_progress && (
             <div className="run-stop run-stop-school">
               <div className="grow">
                 <div style={{ fontWeight: 600 }}>🏫 Sekolah</div>
                 <div className="muted" style={{ fontSize: 12.5 }}>
                   {run.all_departed_this_leg
-                    ? 'Semua TPS trip ini sudah berangkat'
-                    : run.trips_total === 1
-                      ? `TPS yang belum berangkat tidak akan dilayani lagi hari ini bila rit ${direction === 'dropoff' ? 'diakhiri' : 'diselesaikan'} sekarang`
-                      : `${direction === 'dropoff' ? 'Kembali' : 'Selesai'} kapan saja — TPS yang belum berangkat ditawarkan lagi di trip berikutnya`}
+                    ? `Semua TPS trip ini sudah berangkat — tekan saat benar-benar ${direction === 'dropoff' ? 'kembali' : 'tiba'} di sekolah`
+                    : `${direction === 'dropoff' ? 'Kembali' : 'Tiba di sekolah'} kapan saja — TPS yang belum berangkat ditawarkan lagi di trip berikutnya`}
                 </div>
               </div>
               <button className="ghost" disabled={schoolBusy} onClick={returnTrip}>
-                {schoolBusy ? '…' : (direction === 'dropoff' ? 'Kembali ke Sekolah' : 'Selesai Trip')}
+                {schoolBusy ? '…' : (direction === 'dropoff' ? 'Kembali ke Sekolah' : 'Tiba di Sekolah')}
               </button>
-            </div>
-          )}
-
-          {run.trip_in_progress && run.trips_total === 1 && run.all_departed_this_leg && (
-            <div className="run-stop run-stop-school">
-              <div className="grow">
-                <div style={{ fontWeight: 600 }}>🏫 Sekolah</div>
-                <div className="muted" style={{ fontSize: 12.5 }}>Semua TPS sudah berangkat — menutup rit hari ini</div>
-              </div>
-              <span className="chip ok">Menyelesaikan…</span>
             </div>
           )}
 

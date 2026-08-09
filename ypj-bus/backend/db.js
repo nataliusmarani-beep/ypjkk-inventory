@@ -1293,6 +1293,52 @@ db.exec(`
   }
 }
 
+// ── Migration: trip_events gains 'arrived' ──────────────────────────────────
+// A separate marker from 'departed': on a dropoff run there was previously no
+// way to record the one moment that isn't "left somewhere" — actually
+// reaching the LAST TPS on the leg, which parents/Guru care about seeing an
+// honest timestamp for (see routes/track.js's arrival banner) instead of the
+// old guess ("nothing left undeparted, so it must be there"). Table rebuild,
+// not ALTER TABLE, because SQLite can't widen a CHECK constraint in place —
+// same pattern as the users.role widening above. Nothing else references
+// trip_events(id), so no FK juggling is needed.
+{
+  const tripEventsSql = db.prepare(`
+    SELECT sql FROM sqlite_master WHERE type = 'table' AND name = 'trip_events'
+  `).get()?.sql || '';
+
+  if (!tripEventsSql.includes("'arrived'")) {
+    db.exec('BEGIN');
+    try {
+      db.exec(`
+        CREATE TABLE trip_events_new (
+          id          INTEGER PRIMARY KEY AUTOINCREMENT,
+          bus_id      INTEGER NOT NULL REFERENCES buses(id) ON DELETE CASCADE,
+          bus_stop_id INTEGER REFERENCES bus_stops(id),
+          direction   TEXT NOT NULL DEFAULT 'pickup'
+                        CHECK (direction IN ('pickup', 'dropoff')),
+          event       TEXT NOT NULL DEFAULT 'departed'
+                        CHECK (event IN ('departed', 'started', 'finished', 'arrived')),
+          recorded_by INTEGER REFERENCES users(id),
+          created_at  TEXT NOT NULL DEFAULT (datetime('now'))
+        );
+        INSERT INTO trip_events_new
+          (id, bus_id, bus_stop_id, direction, event, recorded_by, created_at)
+        SELECT id, bus_id, bus_stop_id, direction, event, recorded_by, created_at
+        FROM trip_events;
+        DROP TABLE trip_events;
+        ALTER TABLE trip_events_new RENAME TO trip_events;
+        CREATE INDEX IF NOT EXISTS trip_events_bus_day_idx
+          ON trip_events (bus_id, date(created_at));
+      `);
+      db.exec('COMMIT');
+    } catch (e) {
+      db.exec('ROLLBACK');
+      throw e;
+    }
+  }
+}
+
 // ── Seed: reference data ───────────────────────────────────────────────────
 // Everything below is idempotent, so it is safe to run on every boot.
 

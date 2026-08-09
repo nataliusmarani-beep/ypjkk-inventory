@@ -128,6 +128,7 @@ export default function TrackBusPage({ user }) {
                 <strong>
                   Bis sudah tiba di TPS akhir: {run.arrival.stop.code} {run.arrival.stop.name}
                 </strong>
+                {run.arrival.at && ` pukul ${formatWIT(run.arrival.at)} WIT.`}
               </div>
             </div>
           )}

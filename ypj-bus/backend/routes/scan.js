@@ -248,12 +248,24 @@ router.get('/route', (req, res, next) => {
         const inCurrentLeg = currentStart
           ? [...departures].reverse().find((d) => d.created_at >= currentStart.created_at)
           : null;
+        // "Tiba di TPS Terakhir" — see POST /arrival. Only meaningful on the
+        // last stop of a dropoff leg in practice, but read for every stop the
+        // same way departed_at is, rather than special-casing which index is
+        // "last" here too.
+        const arrival = db.prepare(`
+          SELECT created_at FROM trip_events
+          WHERE bus_id = ? AND bus_stop_id = ? AND direction = ? AND event = 'arrived'
+            AND date(created_at, '+9 hours') = date('now', '+9 hours')
+          ORDER BY id DESC
+        `).all(busId, s.bus_stop_id, direction)
+          .find((a) => !currentStart || a.created_at >= currentStart.created_at);
         return {
           ...s,
           stop_code: s.code,
           stop_name: s.name,
           [timeField]: s.times[tripIndex0] ?? null,
           departed_at: inCurrentLeg?.created_at || null,
+          arrived_at: arrival?.created_at || null,
         };
       })
       .filter(Boolean);
@@ -326,7 +338,7 @@ router.post('/departure', (req, res, next) => {
     // to know which TPS actually belong to this leg (see the same filter in
     // GET /route) rather than treating every stop the bus ever serves as
     // relevant to every trip.
-    const { tripIndex0, tripsTotal, currentStart } = tripState(bus_id, direction);
+    const { tripIndex0 } = tripState(bus_id, direction);
 
     // The stop immediately after this one on the same run/leg (see
     // tripStopsOrdered above — dropoff follows the admin's per-trip TPS
@@ -380,50 +392,59 @@ router.post('/departure', (req, res, next) => {
       }
     }
 
-    // A unit with only one scheduled trip this direction (a 60-seat bus that
-    // fits everyone in a single run, unlike a 27/30-seat unit shuttling back
-    // and forth) has no second leg to wait for — once every TPS on that trip
-    // has departed, the leg closes itself out instead of making the crew tap
-    // "Kembali ke Sekolah"/"Selesai Trip" as a separate, redundant step.
-    let autoFinished = false;
-    if (currentStart && tripIndex0 === tripsTotal - 1) {
-      // On a multi-trip bus, only stops actually assigned to this trip (a
-      // time set at this trip's index) count toward whether the leg is done
-      // — a TPS that only ever runs on a different trip shouldn't hold this
-      // one open. A single-trip bus has no "different trip" for a stop to
-      // belong to instead, so every assigned stop counts regardless of
-      // whether its time happens to be filled in yet (see the same
-      // distinction in GET /route).
-      const stopIds = tripStopsOrdered(bus_id, tripIndex0, direction).map((r) => r.bus_stop_id);
-      const stillPending = stopIds.some((stopId) => {
-        const departures = db.prepare(`
-          SELECT created_at FROM trip_events
-          WHERE bus_id = ? AND bus_stop_id = ? AND direction = ? AND event = 'departed'
-            AND date(created_at, '+9 hours') = date('now', '+9 hours')
-        `).all(bus_id, stopId, direction);
-        const servedOnEarlierLeg = departures.some((d) => d.created_at < currentStart.created_at);
-        const servedThisLeg = departures.some((d) => d.created_at >= currentStart.created_at);
-        return !servedOnEarlierLeg && !servedThisLeg;
-      });
-      if (!stillPending) {
-        db.prepare(`
-          INSERT INTO trip_events (bus_id, bus_stop_id, direction, event, recorded_by)
-          VALUES (?, NULL, ?, 'finished', ?)
-        `).run(bus_id, direction, req.user.id);
-        autoFinished = true;
-      }
-    }
-
-    logActivity(req, 'trip.departed', 'buses', Number(bus_id),
-                { stop: from.code, direction, notified, auto_finished: autoFinished || undefined });
+    // No auto-finish here on purpose: whether the leg is a single trip (bis
+    // besar) or one of several (bis kecil), "departed the last TPS" and
+    // "arrived back at school" are different moments — a besar unit still
+    // has the drive back ahead of it. The crew closes the leg themselves via
+    // POST /trip/return ("Tiba di Sekolah"/"Kembali ke Sekolah"), same as a
+    // kecil unit always has, so the timestamp on that event is a real
+    // arrival time instead of a copy of this departure's.
+    logActivity(req, 'trip.departed', 'buses', Number(bus_id), { stop: from.code, direction, notified });
 
     res.json({
       ok: true,
       from: { code: from.code, name: from.name },
       next: next ? { code: next.code, name: next.name } : null,
       notified,
-      auto_finished: autoFinished,
     });
+  } catch (err) {
+    next(err);
+  }
+});
+
+/**
+ * POST /api/scan/arrival
+ * Body: { bus_id, bus_stop_id, direction }
+ *
+ * "Tiba di TPS Terakhir" — the crew taps this on reaching (not leaving) the
+ * last stop of a dropoff leg, so parents/Guru get an honest arrival time
+ * instead of the app guessing from "nothing left undeparted". Separate from
+ * 'departed': the crew still taps Berangkat afterward as usual to close the
+ * stop out and eventually the leg. Not restricted to the last stop
+ * server-side — the button is what scopes it in practice — so this stays
+ * useful even if the crew taps it a stop early or the route changes shape.
+ */
+router.post('/arrival', (req, res, next) => {
+  const { bus_id, bus_stop_id } = req.body || {};
+  const direction = req.body?.direction === 'pickup' ? 'pickup' : 'dropoff';
+
+  try {
+    const bus = db.prepare(`SELECT id FROM buses WHERE id = ? AND is_active = 1`).get(bus_id);
+    if (!bus) throw fail(404, 'Bis tidak ditemukan.');
+
+    const stop = db.prepare(`
+      SELECT s.code, s.name FROM bus_route_stops brs JOIN bus_stops s ON s.id = brs.bus_stop_id
+      WHERE brs.bus_id = ? AND brs.bus_stop_id = ?
+    `).get(bus_id, bus_stop_id);
+    if (!stop) throw fail(400, 'TPS ini tidak dilayani unit tersebut.');
+
+    db.prepare(`
+      INSERT INTO trip_events (bus_id, bus_stop_id, direction, event, recorded_by)
+      VALUES (?, ?, ?, 'arrived', ?)
+    `).run(bus_id, bus_stop_id, direction, req.user.id);
+
+    logActivity(req, 'trip.arrived', 'buses', Number(bus_id), { stop: stop.code, direction });
+    res.json({ ok: true, stop: { code: stop.code, name: stop.name } });
   } catch (err) {
     next(err);
   }
