@@ -30,7 +30,7 @@ router.get('/:busId', (req, res, next) => {
     `).get(busId);
     if (!bus) throw fail(404, 'Bis tidak ditemukan.');
 
-    const { trips, tripsTotal, tripInProgress, tripNumber, tripIndex0, currentStart }
+    const { trips, tripsTotal, tripInProgress, tripNumber, tripIndex0, currentStart, finishes }
       = tripState(busId, direction);
     const timeField = direction === 'pickup' ? 'pickup_time' : 'dropoff_time';
     const legacyTime = null;
@@ -72,6 +72,26 @@ router.get('/:busId', (req, res, next) => {
     // If every remaining stop has already departed, the leg is effectively
     // done and the unit is presumed en route back to school.
     const currentIndex = stops.findIndex((s) => !s.departed_at);
+    const resolvedIndex = currentIndex === -1 ? (stops.length ? stops.length : null) : currentIndex;
+
+    // Arrival status — the two moments a helper/parent/guru actually asks
+    // "is it there yet?": back at school after a pickup round, or at the
+    // last TPS on a dropoff round. Neither is a GPS fact, just the same
+    // trip_events trail read from its other end:
+    //  - Pickup: a 'finished' school-level event ("Selesai Trip") IS the
+    //    crew's own confirmation the unit is back at school. No leg
+    //    currently running (currentStart null) is required so this doesn't
+    //    fire mid-way through a second trip that reuses the same direction.
+    //  - Dropoff: no equivalent "arrived" event exists — the last stop on
+    //    the leg simply hasn't been marked departed yet, same signal the map
+    //    marker itself uses (resolvedIndex sitting on the final stop).
+    let arrival = null;
+    if (direction === 'pickup' && !tripInProgress && finishes.length > 0) {
+      arrival = { type: 'at_school', at: finishes[finishes.length - 1].created_at, stop: null };
+    } else if (direction === 'dropoff' && stops.length > 0 && resolvedIndex === stops.length - 1) {
+      const last = stops[stops.length - 1];
+      arrival = { type: 'at_final_stop', at: null, stop: { code: last.stop_code, name: last.stop_name } };
+    }
 
     res.json({
       bus,
@@ -81,8 +101,9 @@ router.get('/:busId', (req, res, next) => {
       trip_scheduled_time: tripScheduledTime,
       trip_in_progress: tripInProgress,
       stops,
-      current_index: currentIndex === -1 ? (stops.length ? stops.length : null) : currentIndex,
+      current_index: resolvedIndex,
       all_departed_this_leg: stops.length > 0 && stops.every((s) => s.departed_at),
+      arrival,
     });
   } catch (err) {
     next(err);

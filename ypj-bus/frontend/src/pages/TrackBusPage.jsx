@@ -96,8 +96,10 @@ export default function TrackBusPage({ user }) {
                   {bus?.helper_name && `Helper: ${bus.helper_name}`}
                 </div>
               </div>
-              <span className={`chip ${run.trip_in_progress ? 'ok' : 'neutral'}`}>
-                {run.trip_in_progress ? `Rit ${run.trip_number} berjalan` : 'Belum berangkat'}
+              <span className={`chip ${run.trip_in_progress || run.arrival ? 'ok' : 'neutral'}`}>
+                {run.arrival?.type === 'at_school' ? 'Tiba di sekolah'
+                  : run.trip_in_progress ? `Rit ${run.trip_number} berjalan`
+                  : 'Belum berangkat'}
               </span>
             </div>
             {run.trip_scheduled_time && (
@@ -107,12 +109,39 @@ export default function TrackBusPage({ user }) {
             )}
           </div>
 
+          {/* Arrival status — the two moments people actually check for:
+              back at school after pickup, or at the last TPS on dropoff.
+              See the matching comment in backend/routes/track.js. */}
+          {run.arrival?.type === 'at_school' && (
+            <div className="banner success">
+              <span>🏫</span>
+              <div>
+                <strong>Bis sudah tiba di sekolah</strong>
+                {run.arrival.at && ` pukul ${formatWIT(run.arrival.at)} WIT.`}
+              </div>
+            </div>
+          )}
+          {run.arrival?.type === 'at_final_stop' && (
+            <div className="banner success">
+              <span>📍</span>
+              <div>
+                <strong>
+                  Bis sudah tiba di TPS akhir: {run.arrival.stop.code} {run.arrival.stop.name}
+                </strong>
+              </div>
+            </div>
+          )}
+
           <BusTrackMap stops={run.stops} currentIndex={run.current_index} />
 
           <div className="card" style={{ marginTop: 12 }}>
             <h3 style={{ marginBottom: 10 }}>TPS Rit Ini</h3>
             {run.stops.length === 0 && (
-              <p className="muted">Tidak ada TPS tersisa pada rit ini.</p>
+              <p className="muted">
+                {run.arrival?.type === 'at_school'
+                  ? 'Rit ini sudah selesai — bis sudah kembali ke sekolah.'
+                  : 'Tidak ada TPS tersisa pada rit ini.'}
+              </p>
             )}
             <div className="col" style={{ gap: 0 }}>
               {run.stops.map((s, i) => (

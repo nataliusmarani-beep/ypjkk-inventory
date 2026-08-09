@@ -41,6 +41,12 @@ export default function BusTrackMap({ stops, currentIndex }) {
 
     if (located.length === 0) return;
 
+    // The container is hidden (display: none) whenever there's nothing to
+    // plot — Leaflet measures the container on init/interaction, so a map
+    // that started hidden (or was hidden and is now reappearing) needs a
+    // nudge to pick up its real size before fitBounds runs.
+    map.invalidateSize();
+
     const latlngs = located.map((s) => [s.latitude, s.longitude]);
 
     // Segment already covered (solid, primary) vs still ahead (dashed, muted).
@@ -95,17 +101,26 @@ export default function BusTrackMap({ stops, currentIndex }) {
     }
   }, [located, currentIndex]);
 
-  if (located.length === 0) {
-    return (
-      <div className="banner info">
-        <span>🗺️</span>
-        <div>
-          Koordinat TPS untuk rute ini belum diatur. Progres bis tetap terlihat di daftar TPS
-          di bawah — peta akan muncul setelah Tim Transportasi mengisi lokasi TPS.
+  // The map container stays mounted even with nothing to plot — Leaflet is
+  // initialized against it once (see the empty-deps effect above), and an
+  // elRef that's only sometimes in the tree would leave that init effect
+  // permanently no-op'd the first time located.length happened to be 0 (its
+  // deps never change, so it never gets a second chance at a real element).
+  return (
+    <>
+      {located.length === 0 && (
+        <div className="banner info">
+          <span>🗺️</span>
+          <div>
+            Koordinat TPS untuk rute ini belum diatur. Progres bis tetap terlihat di daftar TPS
+            di bawah — peta akan muncul setelah Tim Transportasi mengisi lokasi TPS.
+          </div>
         </div>
-      </div>
-    );
-  }
-
-  return <div ref={elRef} style={{ height: 320, borderRadius: 14, overflow: 'hidden' }} />;
+      )}
+      <div ref={elRef} style={{
+        height: 320, borderRadius: 14, overflow: 'hidden',
+        display: located.length === 0 ? 'none' : 'block',
+      }} />
+    </>
+  );
 }
