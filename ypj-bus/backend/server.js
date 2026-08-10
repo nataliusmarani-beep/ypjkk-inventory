@@ -217,18 +217,31 @@ setInterval(runAutoBackup, 24 * 60 * 60 * 1000);
 // connection — never a second process opening the file independently, which
 // is the classic way to actually cause corruption on a volume whose file
 // locking can't be fully trusted — so a clean run costs nothing.
+function checkOk(rows) {
+  return rows.length === 1 && rows[0].integrity_check === 'ok';
+}
+
 function runIntegrityCheck() {
   try {
     const rows = db.prepare('PRAGMA integrity_check').all();
-    const ok = rows.length === 1 && rows[0].integrity_check === 'ok';
-    if (ok) return;
-    console.error('[integrity] Corruption detected:', JSON.stringify(rows));
+    if (checkOk(rows)) return;
+    console.error('[integrity] Problem detected:', JSON.stringify(rows));
+
+    // REINDEX fixes index/table mismatches ("wrong # of entries in index X",
+    // "row N missing from index X") — the corruption actually seen in
+    // production so far. It does nothing for orphaned/free pages ("Page N:
+    // never used"), which is a different class of finding and needs a full
+    // VACUUM (rewrites the file, reclaiming and renumbering every page) —
+    // tried second, only if REINDEX didn't already clear it.
     db.exec('REINDEX');
-    const after = db.prepare('PRAGMA integrity_check').all();
-    const fixed = after.length === 1 && after[0].integrity_check === 'ok';
-    console.log(fixed
-      ? '[integrity] REINDEX fixed it.'
-      : '[integrity] REINDEX did NOT fully fix it: ' + JSON.stringify(after));
+    let after = db.prepare('PRAGMA integrity_check').all();
+    if (!checkOk(after)) {
+      db.exec('VACUUM');
+      after = db.prepare('PRAGMA integrity_check').all();
+    }
+    console.log(checkOk(after)
+      ? '[integrity] Fixed.'
+      : '[integrity] Did NOT fully fix it: ' + JSON.stringify(after));
   } catch (e) {
     console.error('[integrity] Check failed:', e.message);
   }
