@@ -10,7 +10,7 @@ const requireAuth  = require('./middleware/auth');
 const { requireRole } = require('./middleware/auth');
 const db           = require('./db');
 const { reconcileCardStatuses, todayWIT, materializeDutySchedule, getSetting, setSetting } = require('./lib/cards');
-const { createBackup, createUploadsBackup } = require('./routes/backup');
+const { createBackup, createUploadsBackup, pruneStaleSnapshots } = require('./routes/backup');
 
 const app = express();
 
@@ -201,6 +201,15 @@ function runAutoBackup() {
     console.log('[backup] Auto-backup (uploads) saved.');
   } catch (e) {
     console.error('[backup] Auto-backup (uploads) failed:', e.message);
+  }
+  // One-off snapshots from a manual fix (pre_reindex_*, pre_dedup_delete_*,
+  // ...) don't follow the daily backup_/uploads_ naming the pruning above
+  // rotates on count, so they'd otherwise sit on the volume forever — swept
+  // by age instead, see pruneStaleSnapshots in routes/backup.js.
+  try {
+    pruneStaleSnapshots();
+  } catch (e) {
+    console.error('[backup] Stale snapshot cleanup failed:', e.message);
   }
 }
 runAutoBackup();

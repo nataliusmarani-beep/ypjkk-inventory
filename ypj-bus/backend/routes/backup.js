@@ -28,6 +28,25 @@ function pruneOld(prefix, suffix) {
   }
 }
 
+const STALE_SNAPSHOT_DAYS = 7;
+
+// One-off incident snapshots (pre_reindex_*, pre_dedup_delete_*, whatever
+// name a future manual fix uses — `pre_` isn't enforced, just a convention)
+// don't match the 'backup_'/'uploads_' prefixes pruneOld() rotates, so they
+// never age out on their own and would otherwise sit on the volume forever.
+// Age-based instead of count-based, and by file mtime rather than trying to
+// parse a timestamp out of the name, since these aren't named on a fixed
+// schedule the way the daily ones are.
+function pruneStaleSnapshots() {
+  if (!fs.existsSync(BACKUPS_DIR)) return;
+  const cutoff = Date.now() - STALE_SNAPSHOT_DAYS * 24 * 60 * 60 * 1000;
+  for (const f of fs.readdirSync(BACKUPS_DIR)) {
+    if (f.startsWith('backup_') || f.startsWith('uploads_')) continue;
+    const full = path.join(BACKUPS_DIR, f);
+    if (fs.statSync(full).mtimeMs < cutoff) fs.unlinkSync(full);
+  }
+}
+
 // Write a consistent snapshot to backups/ and return the destination path.
 //
 // VACUUM INTO, not a raw fs.copyFileSync of DB_PATH: a plain file copy reads
@@ -125,4 +144,4 @@ router.get('/list', (req, res) => {
   }
 });
 
-module.exports = { router, createBackup, createUploadsBackup };
+module.exports = { router, createBackup, createUploadsBackup, pruneStaleSnapshots };
