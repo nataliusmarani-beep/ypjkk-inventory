@@ -68,6 +68,13 @@ db.exec(`
 
 // ── Migrate users table if CHECK constraint needs updating ────────────────
 // Handles: Admin→Manager rename AND adding Principal role
+// The rebuild below copies telegram_chat_id from the old table, so that
+// column must exist on `users` before we start (older DBs may predate it).
+const preMigrationUserCols = db.prepare(`PRAGMA table_info(users)`).all().map(c => c.name);
+if (!preMigrationUserCols.includes('telegram_chat_id')) {
+  db.exec(`ALTER TABLE users ADD COLUMN telegram_chat_id TEXT`);
+}
+
 const userSchema = db.prepare(`SELECT sql FROM sqlite_master WHERE type='table' AND name='users'`).get();
 const needsMigration = userSchema && (
   userSchema.sql.includes("'Admin'") ||
