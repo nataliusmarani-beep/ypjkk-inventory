@@ -5,13 +5,41 @@ import BusTrackMap from '../components/BusTrackMap.jsx';
 const POLL_MS = 8000;
 
 /**
- * Lacak Bus — stop-progress map for Helper, Guru, and Parent.
+ * The accordion header label for a leg — what a helper/parent/guru actually
+ * asks about, not just "Rit N": for pickup that's arrival back at school;
+ * for dropoff it's the final TPS (arriving there is the moment that matters
+ * to a waiting parent, ahead of the crew's own drive back to school).
+ */
+function legLabel(direction, leg) {
+  if (leg.status === 'in_progress') return `Rit ${leg.trip_number} sedang berjalan`;
+  if (direction === 'pickup') {
+    return leg.at_school ? 'Tiba di Sekolah' : `Rit ${leg.trip_number} selesai`;
+  }
+  if (leg.at_final_stop) return `TPS Terakhir: ${leg.at_final_stop.stop.code} ${leg.at_final_stop.stop.name}`;
+  if (leg.returned_to_school) return 'Kembali ke Sekolah';
+  return `Rit ${leg.trip_number} selesai`;
+}
+
+function legTime(leg) {
+  if (leg.status === 'in_progress') return null;
+  if (leg.at_final_stop) return leg.at_final_stop.at;
+  if (leg.at_school) return leg.at_school.at;
+  if (leg.returned_to_school) return leg.returned_to_school.at;
+  return leg.finished_at;
+}
+
+/**
+ * Lacak Bus — stop-progress history for Helper, Guru, and Parent.
  *
  * Not GPS: this app has no tracker hardware (see the trip_events comment in
  * backend/db.js). What's plotted is the same "departed from stop X" trail
  * ScannerPage already records, just drawn on a map instead of a list — a
  * live position would just go stale in the SP2/SP3 dead zones exactly when
  * a parent needs it most.
+ *
+ * Every leg (rit) run today stays listed as its own accordion item, even
+ * after the bus arrives — so the whole day's route and timing can be
+ * reviewed, not just whatever leg is currently running.
  */
 export default function TrackBusPage({ user }) {
   const [meta, setMeta] = useState(null);
@@ -49,12 +77,15 @@ export default function TrackBusPage({ user }) {
   }, [load, busId]);
 
   const bus = meta?.buses?.find((b) => String(b.id) === String(busId));
+  const legs = run?.legs || [];
+  const lastTripNumber = legs.length ? legs[legs.length - 1].trip_number : null;
 
   return (
     <div className="page">
       <h1>Lacak Bus</h1>
       <p className="muted">
-        Progres bis di sepanjang rute hari ini, berdasarkan catatan keberangkatan tiap TPS.
+        Riwayat rit hari ini, berdasarkan catatan keberangkatan tiap TPS — tetap tampil
+        setelah bis tiba, supaya rute dan waktunya bisa direview.
       </p>
 
       {error && <div className="banner danger"><span>⚠</span><div>{error}</div></div>}
@@ -87,82 +118,106 @@ export default function TrackBusPage({ user }) {
       {run && (
         <>
           <div className="card">
-            <div className="row" style={{ justifyContent: 'space-between' }}>
-              <div>
-                <strong>{bus?.plate_number}{bus?.label ? ` — ${bus.label}` : ''}</strong>
-                <div className="muted" style={{ fontSize: 13 }}>
-                  {bus?.driver_name && `Sopir: ${bus.driver_name}`}
-                  {bus?.driver_name && bus?.helper_name && ' · '}
-                  {bus?.helper_name && `Helper: ${bus.helper_name}`}
-                </div>
-              </div>
-              <span className={`chip ${run.trip_in_progress || run.arrival ? 'ok' : 'neutral'}`}>
-                {run.arrival?.type === 'at_school' ? 'Tiba di sekolah'
-                  : run.trip_in_progress ? `Rit ${run.trip_number} berjalan`
-                  : 'Belum berangkat'}
-              </span>
+            <strong>{bus?.plate_number}{bus?.label ? ` — ${bus.label}` : ''}</strong>
+            <div className="muted" style={{ fontSize: 13 }}>
+              {bus?.driver_name && `Sopir: ${bus.driver_name}`}
+              {bus?.driver_name && bus?.helper_name && ' · '}
+              {bus?.helper_name && `Helper: ${bus.helper_name}`}
             </div>
-            {run.trip_scheduled_time && (
-              <div className="muted" style={{ fontSize: 13, marginTop: 6 }}>
-                Jadwal: {run.trip_scheduled_time} WIT
-              </div>
-            )}
           </div>
 
-          {/* Arrival status — the two moments people actually check for:
-              back at school after pickup, or at the last TPS on dropoff.
-              See the matching comment in backend/routes/track.js. */}
-          {run.arrival?.type === 'at_school' && (
-            <div className="banner success">
-              <span>🏫</span>
-              <div>
-                <strong>Bis sudah tiba di sekolah</strong>
-                {run.arrival.at && ` pukul ${formatWIT(run.arrival.at)} WIT.`}
-              </div>
-            </div>
-          )}
-          {run.arrival?.type === 'at_final_stop' && (
-            <div className="banner success">
-              <span>📍</span>
-              <div>
-                <strong>
-                  Bis sudah tiba di TPS akhir: {run.arrival.stop.code} {run.arrival.stop.name}
-                </strong>
-                {run.arrival.at && ` pukul ${formatWIT(run.arrival.at)} WIT.`}
-              </div>
+          {legs.length === 0 && (
+            <div className="card muted center">
+              Belum ada rit {direction === 'pickup' ? 'penjemputan' : 'pengantaran'} hari ini.
             </div>
           )}
 
-          <BusTrackMap stops={run.stops} currentIndex={run.current_index} />
-
-          <div className="card" style={{ marginTop: 12 }}>
-            <h3 style={{ marginBottom: 10 }}>TPS Rit Ini</h3>
-            {run.stops.length === 0 && (
-              <p className="muted">
-                {run.arrival?.type === 'at_school'
-                  ? 'Rit ini sudah selesai — bis sudah kembali ke sekolah.'
-                  : 'Tidak ada TPS tersisa pada rit ini.'}
-              </p>
-            )}
-            <div className="col" style={{ gap: 0 }}>
-              {run.stops.map((s, i) => (
-                <div key={s.bus_stop_id} className="row"
-                     style={{ padding: '8px 0', borderBottom: '1px solid var(--outline)' }}>
-                  <span className={`chip ${s.departed_at ? 'ok' : 'neutral'}`} style={{ minWidth: 26, textAlign: 'center' }}>
-                    {s.departed_at ? '✓' : i + 1}
-                  </span>
-                  <div className="grow">
-                    <strong>{s.stop_code} {s.stop_name}</strong>
-                    <div className="muted" style={{ fontSize: 12.5 }}>
-                      {s.students} siswa
-                      {s.pickup_time ? ` · jadwal ${s.pickup_time} WIT` : ''}
-                      {s.dropoff_time ? ` · jadwal ${s.dropoff_time} WIT` : ''}
-                      {s.departed_at && ` · berangkat ${formatWIT(s.departed_at)} WIT`}
+          <div className="col" style={{ gap: 10 }}>
+            {[...legs].reverse().map((leg) => (
+              <details key={leg.trip_number} className="card" open={leg.trip_number === lastTripNumber}
+                        style={{ padding: 0 }}>
+                <summary style={{ padding: 14, cursor: 'pointer', listStyle: 'none' }}>
+                  <div className="row" style={{ justifyContent: 'space-between' }}>
+                    <div>
+                      <strong>Rit {leg.trip_number}</strong>
+                      <div className="muted" style={{ fontSize: 13 }}>
+                        {legLabel(direction, leg)}
+                        {legTime(leg) && ` · ${formatWIT(legTime(leg))} WIT`}
+                      </div>
                     </div>
+                    <span className={`chip ${leg.status === 'in_progress' ? 'ok' : 'neutral'}`}>
+                      {leg.status === 'in_progress' ? 'Berjalan' : 'Selesai'}
+                    </span>
+                  </div>
+                </summary>
+
+                <div style={{ padding: '0 14px 14px' }}>
+                  {leg.trip_scheduled_time && (
+                    <div className="muted" style={{ fontSize: 13, marginBottom: 8 }}>
+                      Jadwal: {leg.trip_scheduled_time} WIT
+                    </div>
+                  )}
+
+                  {/* Status keterangan — the moments people actually check
+                      for. at_final_stop and returned_to_school can both be
+                      true at once for a dropoff leg (arrived at the last
+                      TPS, then back at school minutes later), so both
+                      render. See the matching comment in
+                      backend/routes/track.js. */}
+                  {leg.at_school && (
+                    <div className="banner success">
+                      <span>🏫</span>
+                      <div>
+                        <strong>Bis sudah tiba di sekolah</strong>
+                        {leg.at_school.at && ` pukul ${formatWIT(leg.at_school.at)} WIT.`}
+                      </div>
+                    </div>
+                  )}
+                  {leg.at_final_stop && (
+                    <div className="banner success">
+                      <span>📍</span>
+                      <div>
+                        <strong>
+                          Bis sudah tiba di titik pengantaran akhir: {leg.at_final_stop.stop.code} {leg.at_final_stop.stop.name}
+                        </strong>
+                        {leg.at_final_stop.at && ` pukul ${formatWIT(leg.at_final_stop.at)} WIT.`}
+                      </div>
+                    </div>
+                  )}
+                  {leg.returned_to_school && (
+                    <div className="banner success">
+                      <span>🏫</span>
+                      <div>
+                        <strong>Bis sudah kembali ke sekolah</strong>
+                        {leg.returned_to_school.at && ` pukul ${formatWIT(leg.returned_to_school.at)} WIT.`}
+                      </div>
+                    </div>
+                  )}
+
+                  <BusTrackMap stops={leg.stops} currentIndex={leg.current_index} />
+
+                  <div className="col" style={{ gap: 0, marginTop: 12 }}>
+                    {leg.stops.map((s, i) => (
+                      <div key={s.bus_stop_id} className="row"
+                           style={{ padding: '8px 0', borderBottom: '1px solid var(--outline)' }}>
+                        <span className={`chip ${s.departed_at ? 'ok' : 'neutral'}`} style={{ minWidth: 26, textAlign: 'center' }}>
+                          {s.departed_at ? '✓' : i + 1}
+                        </span>
+                        <div className="grow">
+                          <strong>{s.stop_code} {s.stop_name}</strong>
+                          <div className="muted" style={{ fontSize: 12.5 }}>
+                            {s.students} siswa
+                            {s.pickup_time ? ` · jadwal ${s.pickup_time} WIT` : ''}
+                            {s.dropoff_time ? ` · jadwal ${s.dropoff_time} WIT` : ''}
+                            {s.departed_at && ` · berangkat ${formatWIT(s.departed_at)} WIT`}
+                          </div>
+                        </div>
+                      </div>
+                    ))}
                   </div>
                 </div>
-              ))}
-            </div>
+              </details>
+            ))}
           </div>
         </>
       )}
