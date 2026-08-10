@@ -7,7 +7,6 @@ const { UPLOAD_DIR } = require('../lib/files');
 
 const router = express.Router();
 
-const DB_PATH     = process.env.DB_PATH || path.join(__dirname, '..', 'bus.sqlite');
 const BACKUPS_DIR = process.env.DB_PATH
   ? path.join(path.dirname(process.env.DB_PATH), 'backups')
   : path.join(__dirname, '..', 'backups');
@@ -29,15 +28,20 @@ function pruneOld(prefix, suffix) {
   }
 }
 
-// Write a checkpoint + copy to backups/ and return the destination path
+// Write a consistent snapshot to backups/ and return the destination path.
+//
+// VACUUM INTO, not a raw fs.copyFileSync of DB_PATH: a plain file copy reads
+// the live file byte-by-byte while the app can still be mid-write on the
+// same connection, on a volume whose file locking isn't guaranteed reliable
+// — exactly the conditions that produced real index corruption in
+// production (see the integrity-check job in server.js). VACUUM INTO is
+// SQLite's own atomic, consistent-snapshot mechanism and needs no external
+// locking to be correct.
 function createBackup() {
   if (!fs.existsSync(BACKUPS_DIR)) fs.mkdirSync(BACKUPS_DIR, { recursive: true });
 
-  // Flush WAL into the main file before copying
-  try { db.exec('PRAGMA wal_checkpoint(TRUNCATE)'); } catch { /* ignore if busy */ }
-
   const dest = path.join(BACKUPS_DIR, `backup_${stamp()}.sqlite`);
-  fs.copyFileSync(DB_PATH, dest);
+  db.exec(`VACUUM INTO '${dest.replace(/'/g, "''")}'`);
   pruneOld('backup_', '.sqlite');
 
   return dest;

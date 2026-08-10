@@ -206,6 +206,36 @@ function runAutoBackup() {
 runAutoBackup();
 setInterval(runAutoBackup, 24 * 60 * 60 * 1000);
 
+// ── Self-heal: periodic integrity check ─────────────────────────────────────
+// node:sqlite is still experimental (see the startup warning it prints), and
+// this app has hit real index corruption in production (indexes on
+// applications/consents/bus_id_cards/users out of sync with their table
+// data — table data itself was intact, REINDEX fixed it). It only ever
+// surfaces once some request happens to touch the specific broken index
+// entry, by which point a parent is looking at "Terjadi kesalahan pada
+// server." with no idea why. This runs on the app's own long-lived `db`
+// connection — never a second process opening the file independently, which
+// is the classic way to actually cause corruption on a volume whose file
+// locking can't be fully trusted — so a clean run costs nothing.
+function runIntegrityCheck() {
+  try {
+    const rows = db.prepare('PRAGMA integrity_check').all();
+    const ok = rows.length === 1 && rows[0].integrity_check === 'ok';
+    if (ok) return;
+    console.error('[integrity] Corruption detected:', JSON.stringify(rows));
+    db.exec('REINDEX');
+    const after = db.prepare('PRAGMA integrity_check').all();
+    const fixed = after.length === 1 && after[0].integrity_check === 'ok';
+    console.log(fixed
+      ? '[integrity] REINDEX fixed it.'
+      : '[integrity] REINDEX did NOT fully fix it: ' + JSON.stringify(after));
+  } catch (e) {
+    console.error('[integrity] Check failed:', e.message);
+  }
+}
+runIntegrityCheck();
+setInterval(runIntegrityCheck, 10 * 60 * 1000);
+
 // ── Duty-slot rotation: re-materialize when a new WIT day starts ───────────
 // Daily, not just weekly: a duty slot's TPS/trips can differ by weekday
 // (small buses split dropoff coverage across days — Senin/Rabu vs Selasa/
