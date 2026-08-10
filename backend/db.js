@@ -75,6 +75,9 @@ const needsMigration = userSchema && (
 );
 if (needsMigration) {
   db.exec(`PRAGMA foreign_keys = OFF`);
+  db.exec(`DROP TABLE IF EXISTS users_new`);
+  db.exec(`BEGIN`);
+  try {
   db.exec(`
     CREATE TABLE users_new (
       id               INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -99,8 +102,14 @@ if (needsMigration) {
     DROP TABLE users;
     ALTER TABLE users_new RENAME TO users;
   `);
-  db.exec(`PRAGMA foreign_keys = ON`);
+  db.exec(`COMMIT`);
   console.log('[db] Migration: users table updated (Principal role added).');
+  } catch (err) {
+    db.exec(`ROLLBACK`);
+    throw err;
+  } finally {
+    db.exec(`PRAGMA foreign_keys = ON`);
+  }
 }
 
 // Migrations for existing databases
