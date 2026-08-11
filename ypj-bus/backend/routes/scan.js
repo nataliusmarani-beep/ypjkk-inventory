@@ -212,12 +212,10 @@ router.get('/route', (req, res, next) => {
     // Both directions can now shuttle back and forth several times — pickup
     // TPS#1 twice in one morning at different times for different units
     // (regular vs PAUD) is exactly why this exists. Each round is its own
-    // leg, tracked as a 'started'/'finished' pair of school events. The crew
-    // decides when a leg is done (see "Kembali ke Sekolah"/"Selesai Trip"
-    // below) rather than the app requiring every configured TPS to be
-    // visited first — a stop skipped on this leg simply carries over and
-    // stays offered on the next one. Once a stop has actually been marked
-    // departed on any earlier leg today, it drops out of the list for good.
+    // leg, tracked as a 'started'/'finished' pair of school events, and the
+    // crew decides when a leg is done (see "Kembali ke Sekolah"/"Selesai
+    // Trip" below) rather than the app requiring every configured TPS to be
+    // visited first.
     const { trips, tripsTotal, tripInProgress, tripNumber, tripIndex0, currentStart, starts }
       = tripState(busId, direction);
     const timeField = direction === 'pickup' ? 'pickup_time_current' : 'dropoff_time_current';
@@ -233,6 +231,15 @@ router.get('/route', (req, res, next) => {
     // tripStopsOrdered above) rather than always following fixed TPS
     // numbering — a trip's route is whatever order it was built in on the
     // schedule page.
+    // Each stop's departed/arrived status is bounded to THIS trip's own leg
+    // window (currentStart..now) rather than "any time today" — a TPS can
+    // legitimately belong to more than one trip (e.g. bis kecil's shared
+    // starting waypoint on both Trip 2 and Trip 3), and a departure recorded
+    // for an EARLIER trip must not make it look already-served on a LATER
+    // trip it's independently assigned to. (Previously this used a
+    // day-wide "already departed" check that did exactly that, silently
+    // emptying Trip 3's list — and blocking it from ever starting, see
+    // POST /trip/start below — whenever it shared a stop with Trip 1/2.)
     const stops = tripStopsOrdered(busId, tripIndex0, direction)
       .map((s) => {
         const departures = db.prepare(`
@@ -241,10 +248,6 @@ router.get('/route', (req, res, next) => {
             AND date(created_at, '+9 hours') = date('now', '+9 hours')
           ORDER BY id ASC
         `).all(busId, s.bus_stop_id, direction);
-        const servedOnEarlierLeg = currentStart
-          ? departures.some((d) => d.created_at < currentStart.created_at)
-          : departures.length > 0;
-        if (servedOnEarlierLeg) return null;
         const inCurrentLeg = currentStart
           ? [...departures].reverse().find((d) => d.created_at >= currentStart.created_at)
           : null;
@@ -267,8 +270,7 @@ router.get('/route', (req, res, next) => {
           departed_at: inCurrentLeg?.created_at || null,
           arrived_at: arrival?.created_at || null,
         };
-      })
-      .filter(Boolean);
+      });
 
     // A read-only preview of every scheduled trip (not just the one
     // currently running) — so the crew can see the whole plan (e.g. Trip 2's
@@ -338,29 +340,30 @@ router.post('/departure', (req, res, next) => {
     // to know which TPS actually belong to this leg (see the same filter in
     // GET /route) rather than treating every stop the bus ever serves as
     // relevant to every trip.
-    const { tripIndex0 } = tripState(bus_id, direction);
+    const { tripIndex0, currentStart } = tripState(bus_id, direction);
 
     // The stop immediately after this one on the same run/leg (see
     // tripStopsOrdered above — dropoff follows the admin's per-trip TPS
-    // order, pickup follows its own). A stop already departed today (on this
-    // leg or an earlier one) is skipped: it's either already done or the
-    // crew is deliberately leaving it for a later leg, neither of which is
-    // "next". On a bus with more than one scheduled trip, a stop with no time
-    // set for THIS trip isn't part of this leg at all (admin picks TPS per
-    // trip on the schedule page) — but on a single-trip bus a blank time just
-    // means "not filled in yet", so every assigned stop is still in play
-    // (see the same distinction in GET /route).
+    // order, pickup follows its own). A stop already departed THIS leg is
+    // skipped — it's already done, so it's not "next". Bounded to this leg's
+    // own window (currentStart..now), not "any time today": a TPS can
+    // legitimately belong to more than one trip (e.g. bis kecil's shared
+    // starting waypoint on both Trip 2 and Trip 3), and a departure from an
+    // EARLIER trip must not make this leg think it's already past a stop
+    // it hasn't visited yet itself.
     const next = (() => {
       const ordered = tripStopsOrdered(bus_id, tripIndex0, direction);
       const fromPos = ordered.findIndex((s) => s.bus_stop_id === from.id);
       if (fromPos === -1) return null;
-      const departedToday = new Set(db.prepare(`
+      const departedThisLeg = new Set(db.prepare(`
         SELECT bus_stop_id FROM trip_events
         WHERE bus_id = ? AND direction = ? AND event = 'departed'
           AND date(created_at, '+9 hours') = date('now', '+9 hours')
-      `).all(bus_id, direction).map((r) => r.bus_stop_id));
+          AND (? IS NULL OR created_at >= ?)
+      `).all(bus_id, direction, currentStart?.created_at ?? null, currentStart?.created_at ?? null)
+        .map((r) => r.bus_stop_id));
       for (let i = fromPos + 1; i < ordered.length; i++) {
-        if (!departedToday.has(ordered[i].bus_stop_id)) return ordered[i];
+        if (!departedThisLeg.has(ordered[i].bus_stop_id)) return ordered[i];
       }
       return null;
     })();
@@ -487,15 +490,15 @@ router.post('/trip/start', (req, res, next) => {
     const tripIndex0 = startCount;
 
     // First stop on this trip's route, in the admin's chosen order (see
-    // tripStopsOrdered) — not necessarily every configured TPS, since
-    // earlier legs today may have already served some.
-    const departedToday = new Set(db.prepare(`
-      SELECT bus_stop_id FROM trip_events
-      WHERE bus_id = ? AND direction = ? AND event = 'departed'
-        AND date(created_at, '+9 hours') = date('now', '+9 hours')
-    `).all(bus_id, direction).map((r) => r.bus_stop_id));
-    const first = tripStopsOrdered(bus_id, tripIndex0, direction)
-      .find((s) => !departedToday.has(s.bus_stop_id));
+    // tripStopsOrdered). tripIndex0 here is always a leg that has never run
+    // today (startCount only ever increases, and a new leg can't open until
+    // the previous one is closed — see the 409 check above), so none of its
+    // stops can already have a departure of their own; no "already served"
+    // filter is needed. (Previously this excluded any stop departed at ANY
+    // point today, which wrongly blocked a trip from ever starting when it
+    // shared a TPS with an earlier trip — e.g. bis kecil's Trip 2 and Trip 3
+    // both starting from the same waypoint.)
+    const first = tripStopsOrdered(bus_id, tripIndex0, direction)[0];
     if (!first) {
       throw fail(409, direction === 'pickup'
         ? 'Semua TPS sudah selesai dijemput hari ini.'
