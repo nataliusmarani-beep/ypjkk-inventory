@@ -22,6 +22,10 @@ import TodayBanner from '../components/TodayBanner.jsx';
  */
 export default function SafetyChecklistPage({ user }) {
   const navigate = useNavigate();
+  // Contractor (bus company leadership) reaches this page for the fleet-wide
+  // history only — see App.jsx's canViewChecklistHistory — never the
+  // submission form, so every crew-only section below is skipped for them.
+  const isContractor = user?.role === 'contractor';
   const [defs, setDefs] = useState(null);
   const [buses, setBuses] = useState(null);
   // Default to the form matching the logged-in role, so a helper doesn't land
@@ -144,44 +148,61 @@ export default function SafetyChecklistPage({ user }) {
 
   return (
     <div className="page">
-      <section className="hero">
-        <img className="hero-bus" src="/bus-icon.png" alt="" aria-hidden="true" />
-        <div className="hero-greet">SELAMAT BERTUGAS</div>
-        <div className="hero-name">{user?.name?.split(' ')[0] || 'Petugas'}</div>
-        <div className="hero-sub">
-          Isi checklist keselamatan harian sebelum unit beroperasi.
+      {isContractor ? (
+        <div className="seg" style={{ marginBottom: 12 }}>
+          <button className="on">Riwayat Checklist</button>
+          <button onClick={() => navigate('/jadwal')}>📅 Jadwal</button>
+          <button onClick={() => navigate('/lacak')}>🗺️ Lacak Bus</button>
+          <button onClick={() => navigate('/kontraktor')}>Dashboard</button>
         </div>
-        <TodayBanner />
-        <div className="hero-stats">
-          <div className="hero-stat">
-            <div className="n">{buses?.length ?? 0}</div>
-            <div className="k">Unit Aktif</div>
-          </div>
-          <div className="hero-stat">
-            <div className="n">{answeredCount}</div>
-            <div className="k">Poin Terisi</div>
-          </div>
-          <div className="hero-stat">
-            <div className="n">{allKeys.length}</div>
-            <div className="k">Total Item</div>
-          </div>
-        </div>
-      </section>
+      ) : (
+        <>
+          <section className="hero">
+            <img className="hero-bus" src="/bus-icon.png" alt="" aria-hidden="true" />
+            <div className="hero-greet">SELAMAT BERTUGAS</div>
+            <div className="hero-name">{user?.name?.split(' ')[0] || 'Petugas'}</div>
+            <div className="hero-sub">
+              Isi checklist keselamatan harian sebelum unit beroperasi.
+            </div>
+            <TodayBanner />
+            <div className="hero-stats">
+              <div className="hero-stat">
+                <div className="n">{buses?.length ?? 0}</div>
+                <div className="k">Unit Aktif</div>
+              </div>
+              <div className="hero-stat">
+                <div className="n">{answeredCount}</div>
+                <div className="k">Poin Terisi</div>
+              </div>
+              <div className="hero-stat">
+                <div className="n">{allKeys.length}</div>
+                <div className="k">Total Item</div>
+              </div>
+            </div>
+          </section>
 
-      <div className="seg" style={{ marginBottom: 12 }}>
-        <button className="on">Checklist Keselamatan</button>
-        <button onClick={() => navigate('/scan')}>Pindai</button>
-        <button onClick={() => navigate('/jadwal')}>📅 Jadwal</button>
-        {['driver', 'helper'].includes(user?.role) && (
-          <button onClick={() => navigate('/event-request')}>🎉 Acara</button>
-        )}
-      </div>
+          <div className="seg" style={{ marginBottom: 12 }}>
+            <button className="on">Checklist Keselamatan</button>
+            <button onClick={() => navigate('/scan')}>Pindai</button>
+            <button onClick={() => navigate('/jadwal')}>📅 Jadwal</button>
+            {['driver', 'helper'].includes(user?.role) && (
+              <button onClick={() => navigate('/event-request')}>🎉 Acara</button>
+            )}
+          </div>
+        </>
+      )}
 
-      <h1>Checklist Keselamatan Harian</h1>
-      <p className="muted">Form Checklist & SOP Operasional Bus Sekolah — diisi setiap hari sebelum beroperasi.</p>
+      <h1>{isContractor ? 'Riwayat Checklist Keselamatan' : 'Checklist Keselamatan Harian'}</h1>
+      <p className="muted">
+        {isContractor
+          ? 'Pengisian checklist keselamatan harian setiap unit bis, oleh Driver dan Helper.'
+          : 'Form Checklist & SOP Operasional Bus Sekolah — diisi setiap hari sebelum beroperasi.'}
+      </p>
 
       {error && <div className="banner danger"><span>⚠</span><div>{error}</div></div>}
 
+      {!isContractor && (
+      <>
       <div className="card">
         <div className="field">
           <label>Jenis Checklist</label>
@@ -282,6 +303,8 @@ export default function SafetyChecklistPage({ user }) {
             </>
           )}
         </>
+      )}
+      </>
       )}
 
       {history && <ChecklistHistoryPanel rows={history} dayIndex={dayIndex} setDayIndex={setDayIndex} />}

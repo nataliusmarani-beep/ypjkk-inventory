@@ -16,7 +16,7 @@ db.exec(`PRAGMA foreign_keys = ON`);
 
 // ── Schema ─────────────────────────────────────────────────────────────────
 // Roles: parent | transport_admin | attendant | school_staff | driver | helper
-//        | leader | super_admin
+//        | leader | admin | super_admin | contractor
 db.exec(`
   CREATE TABLE IF NOT EXISTS users (
     id                     INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -931,6 +931,69 @@ db.exec(`
           role                   TEXT    NOT NULL DEFAULT 'parent'
                                    CHECK (role IN ('parent','transport_admin','attendant','school_staff',
                                                    'driver','helper','leader','admin','super_admin')),
+          phone_primary          TEXT,
+          phone_alternate        TEXT,
+          phone_alternate_owner  TEXT,
+          employee_id            TEXT,
+          parent_category        TEXT,
+          department             TEXT,
+          home_address            TEXT,
+          is_active              INTEGER NOT NULL DEFAULT 1,
+          password_reset_token   TEXT,
+          password_reset_expires TEXT,
+          created_at             TEXT    DEFAULT (datetime('now')),
+          updated_at             TEXT    DEFAULT (datetime('now'))
+        );
+        INSERT INTO users_new
+          (id, name, email, password_hash, role, phone_primary, phone_alternate,
+           phone_alternate_owner, employee_id, parent_category, department,
+           home_address, is_active, password_reset_token, password_reset_expires,
+           created_at, updated_at)
+        SELECT
+          id, name, email, password_hash, role, phone_primary, phone_alternate,
+          phone_alternate_owner, employee_id, parent_category, department,
+          home_address, is_active, password_reset_token, password_reset_expires,
+          created_at, updated_at
+        FROM users;
+        DROP TABLE users;
+        ALTER TABLE users_new RENAME TO users;
+      `);
+      db.exec('COMMIT');
+    } catch (e) {
+      db.exec('ROLLBACK');
+      throw e;
+    } finally {
+      db.exec('PRAGMA foreign_keys = ON');
+    }
+  }
+}
+
+// ── Migration: widen users.role to add 'contractor' (bus company owners) ───
+// Same rebuild-required situation as the two migrations above. Contractor is
+// a view-only role — see the read-only guards in routes/safety.js and
+// routes/eventRequests.js, and requireRole('contractor', ...) in server.js —
+// for the bus companies' own leadership to check safety checklist history,
+// Lacak Bus, the schedule, Ruang Chat, broadcast history, and event bus
+// requests without being able to change any of it.
+{
+  const usersSql = db.prepare(`
+    SELECT sql FROM sqlite_master WHERE type = 'table' AND name = 'users'
+  `).get()?.sql || '';
+
+  if (!usersSql.includes("'contractor'")) {
+    db.exec('PRAGMA foreign_keys = OFF');
+    db.exec('BEGIN');
+    try {
+      db.exec(`
+        CREATE TABLE users_new (
+          id                     INTEGER PRIMARY KEY AUTOINCREMENT,
+          name                   TEXT    NOT NULL,
+          email                  TEXT    NOT NULL UNIQUE,
+          password_hash          TEXT,
+          role                   TEXT    NOT NULL DEFAULT 'parent'
+                                   CHECK (role IN ('parent','transport_admin','attendant','school_staff',
+                                                   'driver','helper','leader','admin','super_admin',
+                                                   'contractor')),
           phone_primary          TEXT,
           phone_alternate        TEXT,
           phone_alternate_owner  TEXT,

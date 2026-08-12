@@ -191,6 +191,9 @@ export const api = {
   track: (busId, direction) => request(`/track/${busId}?direction=${direction}`),
   updateStopLocation: (stopId, b) =>
     request(`/admin/stops/${stopId}/location`, { method: 'PUT', body: JSON.stringify(b) }),
+
+  // Contractor (bus company leadership) — read-only, see backend/routes/contractor.js
+  contractorBroadcasts: () => request('/contractor/broadcasts'),
 };
 
 // Photos and signatures are served through an authenticated route, never

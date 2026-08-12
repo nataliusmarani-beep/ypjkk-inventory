@@ -9,13 +9,14 @@ const ROLES = [
   { key: 'school_staff',    label: 'Guru' },
   { key: 'leader',          label: 'Leader' },
   { key: 'admin',           label: 'Admin Sekolah' },
+  { key: 'contractor',      label: 'Kontraktor (Perusahaan Bis)' },
 ];
 
 /**
  * Staff account management — Tim Transportasi Sekolah, Driver, Helper, Guru,
- * Leader, Admin Sekolah. Deliberately does not offer Super Admin (CLI-only, seed-admins.js)
- * or the legacy Petugas Bis role (superseded by the Driver/Helper split, but
- * left alone for whoever is already on it).
+ * Leader, Admin Sekolah, Kontraktor. Deliberately does not offer Super Admin
+ * (CLI-only, seed-admins.js) or the legacy Petugas Bis role (superseded by
+ * the Driver/Helper split, but left alone for whoever is already on it).
  *
  * Read-only for the Leader and Admin Sekolah roles — the backend enforces
  * this (routes/admin.js blocks every non-GET request from either role), this

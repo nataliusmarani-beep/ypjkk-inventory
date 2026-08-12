@@ -97,15 +97,20 @@ app.use('/api/files',        requireAuth, require('./routes/files'));
 app.use('/api/scan',         requireAuth,
                              requireRole('attendant', 'helper', 'transport_admin', 'school_staff'),
                              require('./routes/scan'));
+// 'contractor' (bus company leadership) is read-only in here — see the
+// write-guard near the top of routes/safety.js, same pattern as leader/admin
+// in routes/admin.js — so they can review the daily checklist history
+// without being able to submit or edit one themselves.
 app.use('/api/safety',       requireAuth,
-                             requireRole('attendant', 'driver', 'helper', 'transport_admin', 'school_staff'),
+                             requireRole('attendant', 'driver', 'helper', 'transport_admin', 'school_staff', 'contractor'),
                              require('./routes/safety'));
 // Stop-progress map — Helper, Parent, and Guru per the feature request, plus
 // the same supervisors read-only everywhere else gets in on (leader/admin/
-// transport_admin). Not GPS (see routes/track.js) so there's nothing
-// sensitive being exposed beyond what /api/meta's bus list already shows.
+// transport_admin/contractor). Not GPS (see routes/track.js) so there's
+// nothing sensitive being exposed beyond what /api/meta's bus list already
+// shows.
 app.use('/api/track',        requireAuth,
-                             requireRole('parent', 'helper', 'school_staff', 'leader', 'admin', 'transport_admin'),
+                             requireRole('parent', 'helper', 'school_staff', 'leader', 'admin', 'transport_admin', 'contractor'),
                              require('./routes/track'));
 // 'leader' and 'admin' (Admin Sekolah) are read-only supervisors — allowed
 // in here, but routes/admin.js itself blocks every non-GET request from
@@ -114,12 +119,20 @@ app.use('/api/admin',        requireAuth, requireRole('transport_admin', 'leader
                              require('./routes/admin'));
 // Not under /api/admin: Leader may raise a request here (unlike everywhere
 // else in that router), only approving one is Tim Transportasi-only, and
-// Driver/Helper/Guru are let in read-only (see the seesAll comment in
-// routes/eventRequests.js) to know about an upcoming event trip and which
-// bus gets assigned. Role checks live per-route inside eventRequests.js.
+// Driver/Helper/Guru/Contractor are let in read-only (see the seesAll
+// comment in routes/eventRequests.js) to know about an upcoming event trip
+// and which bus gets assigned. Role checks live per-route inside
+// eventRequests.js.
 app.use('/api/event-requests', requireAuth,
-                             requireRole('admin', 'leader', 'transport_admin', 'driver', 'helper', 'school_staff'),
+                             requireRole('admin', 'leader', 'transport_admin', 'driver', 'helper', 'school_staff', 'contractor'),
                              require('./routes/eventRequests'));
+// Contractor (bus company leadership) — a narrow, entirely read-only router,
+// same "don't widen /api/admin" reasoning as /api/guru: broadcast history is
+// the only data contractor needs that isn't already served by an existing
+// route (safety/track/event-requests above, or meta/chat which are open to
+// every signed-in role already).
+app.use('/api/contractor',   requireAuth, requireRole('contractor'),
+                             require('./routes/contractor'));
 // Database backups — Super Admin + Tim Transportasi only (leader/admin are
 // read-only supervisors and don't get this). super_admin passes every
 // requireRole check, so listing 'transport_admin' here covers both.

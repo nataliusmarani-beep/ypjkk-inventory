@@ -7,6 +7,14 @@ const router = express.Router();
 
 // Mounted behind requireRole('attendant', 'transport_admin', 'school_staff') —
 // the same staff tier as /api/scan, since this is filled in on the bus floor.
+// 'contractor' (bus company leadership) is also let in, but view-only — same
+// pattern as leader/admin's write-guard in routes/admin.js.
+router.use((req, res, next) => {
+  if (req.user.role === 'contractor' && req.method !== 'GET') {
+    return res.status(403).json({ error: 'Peran Anda hanya dapat melihat data, tidak dapat mengubah.' });
+  }
+  next();
+});
 
 // GET /api/safety/definitions — the two checklist forms, sections and item text,
 // so the frontend renders the form without duplicating the SOP wording.

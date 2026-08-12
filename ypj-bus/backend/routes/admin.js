@@ -1204,7 +1204,7 @@ router.get('/scans', (req, res) => {
 // ever created via the seed-admins.js CLI script — never self-service) and
 // 'attendant' (the legacy general "Petugas Bis" role, superseded by the
 // Driver/Helper split but left alone for any account already on it).
-const STAFF_ROLES = ['transport_admin', 'driver', 'helper', 'school_staff', 'leader', 'admin'];
+const STAFF_ROLES = ['transport_admin', 'driver', 'helper', 'school_staff', 'leader', 'admin', 'contractor'];
 const STAFF_ROLE_LABELS = {
   transport_admin: 'Tim Transportasi Sekolah',
   driver:          'Driver',
@@ -1212,6 +1212,7 @@ const STAFF_ROLE_LABELS = {
   school_staff:    'Guru',
   leader:          'Leader',
   admin:           'Admin Sekolah',
+  contractor:      'Kontraktor (Perusahaan Bis)',
   attendant:       'Petugas Bis (lama)',
   super_admin:     'Super Admin',
 };

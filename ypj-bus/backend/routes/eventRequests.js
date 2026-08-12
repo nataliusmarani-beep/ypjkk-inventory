@@ -21,13 +21,14 @@ const router = express.Router();
 // GET /api/event-requests — Tim Transportasi and Leader see every request
 // (Leader supervises the same data it can raise); Admin Sekolah (the 'admin'
 // role — the one who actually raises these) sees only their own. Driver,
-// Helper, and Guru ('school_staff' — a *different* role from Admin Sekolah,
-// despite the confusing name overlap) also see every request, read-only (no
-// canRequest/canDecide on the frontend for any of the three) — they need to
-// know about an upcoming event trip and, once approved, which bus was
-// assigned, even though they never raise the request themselves.
+// Helper, Guru ('school_staff' — a *different* role from Admin Sekolah,
+// despite the confusing name overlap), and Contractor also see every
+// request, read-only (no canRequest/canDecide on the frontend for any of
+// them) — they need to know about an upcoming event trip and, once
+// approved, which bus was assigned, even though they never raise the
+// request themselves.
 router.get('/', (req, res) => {
-  const seesAll = ['transport_admin', 'leader', 'super_admin', 'driver', 'helper', 'school_staff'].includes(req.user.role);
+  const seesAll = ['transport_admin', 'leader', 'super_admin', 'driver', 'helper', 'school_staff', 'contractor'].includes(req.user.role);
 
   const rows = db.prepare(`
     SELECT r.*, u.name AS requested_by_name, u.role AS requested_by_role,

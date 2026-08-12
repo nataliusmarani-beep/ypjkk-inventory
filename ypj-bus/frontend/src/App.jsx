@@ -15,6 +15,7 @@ import ChatPage from './pages/ChatPage.jsx';
 import EventRequestPage from './pages/EventRequestPage.jsx';
 import NotificationsPage from './pages/NotificationsPage.jsx';
 import GuruDashboardPage from './pages/GuruDashboardPage.jsx';
+import ContractorDashboardPage from './pages/ContractorDashboardPage.jsx';
 
 // Split out the heavy libraries so a parent on a weak Timika signal never
 // downloads them: the card page pulls in qrcode + html2canvas, the admin portal
@@ -25,6 +26,7 @@ const ScannerPage    = lazy(() => import('./pages/ScannerPage.jsx'));
 const SafetyChecklistPage  = lazy(() => import('./pages/SafetyChecklistPage.jsx'));
 const AdminAccountsPage    = lazy(() => import('./pages/AdminAccountsPage.jsx'));
 const BackupPage           = lazy(() => import('./pages/BackupPage.jsx'));
+const BroadcastHistoryPage = lazy(() => import('./pages/BroadcastHistoryPage.jsx'));
 // Pulls in leaflet — split out for the same reason as the card/admin/scanner
 // bundles above, so a parent on a weak Timika signal doesn't download it
 // unless they actually open Lacak Bus.
@@ -45,21 +47,29 @@ const canChecklist = (u) => isAdmin(u) || ['attendant', 'driver', 'helper', 'sch
 // Sekolah and Leader both raise these (and, like everywhere else, Leader
 // supervises the full list) — both folded into isSupervisor above.
 const canRequestEvent = (u) => isSupervisor(u);
-// Driver/Helper don't raise event requests themselves, but they need to see
-// which of their upcoming duty days has an extra event trip, and — once
-// approved — which bus was assigned, so the /event-request page (read-only
-// for them, same component EventRequestsSection already gates by role) is
-// open to them too.
-const canViewEvents = (u) => canRequestEvent(u) || ['driver', 'helper', 'school_staff'].includes(u?.role);
+// Driver/Helper/Contractor don't raise event requests themselves, but they
+// need to see which of their upcoming duty days has an extra event trip,
+// and — once approved — which bus was assigned, so the /event-request page
+// (read-only for them, same component EventRequestsSection already gates by
+// role) is open to them too.
+const canViewEvents = (u) => canRequestEvent(u) || ['driver', 'helper', 'school_staff', 'contractor'].includes(u?.role);
 // Guru (role key 'school_staff' — not to be confused with 'admin', labelled
 // "Admin Sekolah" in the UI, a different role) gets its own dashboard —
 // see backend/routes/guru.js for why it's a separate narrow router rather
 // than widening /api/admin.
 const canViewGuruDashboard = (u) => u?.role === 'school_staff';
-// Stop-progress map — Helper, Parent, Guru per the feature request, plus the
-// same read-only supervisors everywhere else gets in on. Matches
-// backend/server.js's requireRole on /api/track.
-const canViewTrack = (u) => ['parent', 'helper', 'school_staff'].includes(u?.role) || isSupervisor(u);
+// Stop-progress map — Helper, Parent, Guru, Contractor per the feature
+// request, plus the same read-only supervisors everywhere else gets in on.
+// Matches backend/server.js's requireRole on /api/track.
+const canViewTrack = (u) => ['parent', 'helper', 'school_staff', 'contractor'].includes(u?.role) || isSupervisor(u);
+// Contractor (bus company leadership) — entirely view-only, its own narrow
+// dashboard (see backend/routes/contractor.js for why it's a separate narrow
+// router rather than widening /api/admin).
+const isContractor = (u) => u?.role === 'contractor';
+// Safety checklist HISTORY only (no submission form) — SafetyChecklistPage
+// hides the form and shows just ChecklistHistoryPanel when the role is
+// 'contractor'. Matches /api/safety's role list.
+const canViewChecklistHistory = (u) => canChecklist(u) || isContractor(u);
 
 export default function App() {
   const [user, setUser] = useState(null);
@@ -212,6 +222,7 @@ export default function App() {
         {/* Parents */}
         <Route path="/" element={
           isSupervisor(user) ? <Navigate to="/admin" replace />
+            : isContractor(user) ? <Navigate to="/kontraktor" replace />
             : canViewGuruDashboard(user) ? <Navigate to="/guru" replace />
             : user.role === 'driver' ? <Navigate to="/checklist" replace />
             : canScan(user) ? <Navigate to="/scan" replace />
@@ -219,6 +230,12 @@ export default function App() {
         } />
         <Route path="/guru" element={
           canViewGuruDashboard(user) ? <GuruDashboardPage user={user} /> : <Navigate to="/" replace />
+        } />
+        <Route path="/kontraktor" element={
+          isContractor(user) ? <ContractorDashboardPage user={user} /> : <Navigate to="/" replace />
+        } />
+        <Route path="/riwayat-broadcast" element={
+          isContractor(user) ? <BroadcastHistoryPage /> : <Navigate to="/" replace />
         } />
         <Route path="/event-request" element={
           canViewEvents(user) ? <EventRequestPage user={user} /> : <Navigate to="/" replace />
@@ -256,7 +273,7 @@ export default function App() {
           canScan(user) ? <ScannerPage user={user} /> : <Navigate to="/" replace />
         } />
         <Route path="/checklist" element={
-          canChecklist(user) ? <SafetyChecklistPage user={user} /> : <Navigate to="/" replace />
+          canViewChecklistHistory(user) ? <SafetyChecklistPage user={user} /> : <Navigate to="/" replace />
         } />
 
         <Route path="*" element={<Navigate to="/" replace />} />
@@ -285,5 +302,6 @@ function roleLabel(role) {
     helper: 'Helper',
     leader: 'Leader',
     admin: 'Admin Sekolah',
+    contractor: 'Kontraktor',
   }[role] || role;
 }
