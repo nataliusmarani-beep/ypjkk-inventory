@@ -802,6 +802,14 @@ function tripEventLabel(e) {
   return e.event;
 }
 
+// One colour per nomor tugas (duty_number, 1-5) — besar and kecil are
+// viewed one group at a time (see the seg toggle below) so the same 5-colour
+// palette can be reused for both without the two ever being on screen at
+// once to clash. Lets an admin tell entries apart by unit at a glance in a
+// feed that otherwise interleaves every bus's events together.
+const DUTY_COLORS = ['#13407a', '#1a7a4c', '#b5790a', '#7a1a5c', '#1a5c7a'];
+const dutyColor = (n) => DUTY_COLORS[((n || 1) - 1) % DUTY_COLORS.length];
+
 function TripTimelineCard() {
   const [events, setEvents] = useState(null);
   const [error, setError] = useState(null);
@@ -844,8 +852,16 @@ function TripTimelineCard() {
           <ul className="trip-timeline">
             {filtered.map((e) => (
               <li key={e.id}>
-                <span className="dot" aria-hidden="true" />
+                <span className="dot" aria-hidden="true" style={{ background: dutyColor(e.duty_number) }} />
                 <div>
+                  {e.duty_number != null && (
+                    <span className="chip" style={{
+                      background: dutyColor(e.duty_number), color: '#fff',
+                      fontWeight: 700, marginRight: 6, fontSize: 11, padding: '1px 7px',
+                    }}>
+                      Tugas {e.duty_number}
+                    </span>
+                  )}
                   <strong>{e.plate_number}</strong>{e.label ? ` (${e.label})` : ''}
                   {' '}{tripEventLabel(e)}
                   <div className="muted" style={{ fontSize: 12 }}>

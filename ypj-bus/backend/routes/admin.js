@@ -596,7 +596,7 @@ router.get('/manifest', (req, res) => {
 // comment in db.js), so this is the closest real signal to "where are the buses".
 router.get('/trip-events', (req, res) => {
   const rows = db.prepare(`
-    SELECT te.id, te.direction, te.event, te.created_at,
+    SELECT te.id, te.direction, te.event, te.created_at, b.id AS bus_id,
            b.plate_number, b.label,
            CASE WHEN b.seat_capacity >= 45 THEN 'besar' ELSE 'kecil' END AS bus_group,
            s.code AS stop_code, s.name AS stop_name,
@@ -609,7 +609,18 @@ router.get('/trip-events', (req, res) => {
     ORDER BY te.id DESC
     LIMIT 30
   `).all();
-  res.json(rows);
+
+  // Nomor tugas (duty_number) per unit for TODAY, so the dashboard feed can
+  // tell buses apart at a glance instead of just reading plate numbers —
+  // same rotation resolveDutySchedule already computes for the schedule
+  // page, just inverted from duty_number->bus_id to bus_id->duty_number.
+  const mapping = resolveDutySchedule(todayWIT());
+  const dutyByBus = new Map();
+  for (const group of ['besar', 'kecil']) {
+    for (const { duty_number, bus_id } of mapping[group]) dutyByBus.set(bus_id, duty_number);
+  }
+
+  res.json(rows.map((r) => ({ ...r, duty_number: dutyByBus.get(r.bus_id) ?? null })));
 });
 
 // GET /api/admin/violations
