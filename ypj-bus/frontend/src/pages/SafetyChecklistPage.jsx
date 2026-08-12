@@ -186,6 +186,9 @@ export default function SafetyChecklistPage({ user }) {
             <button onClick={() => navigate('/scan')}>Pindai</button>
             <button onClick={() => navigate('/jadwal')}>📅 Jadwal</button>
             {['driver', 'helper'].includes(user?.role) && (
+              <button onClick={() => navigate('/lacak')}>🗺️ Lacak Bus</button>
+            )}
+            {['driver', 'helper'].includes(user?.role) && (
               <button onClick={() => navigate('/event-request')}>🎉 Acara</button>
             )}
           </div>

@@ -58,10 +58,10 @@ const canViewEvents = (u) => canRequestEvent(u) || ['driver', 'helper', 'school_
 // see backend/routes/guru.js for why it's a separate narrow router rather
 // than widening /api/admin.
 const canViewGuruDashboard = (u) => u?.role === 'school_staff';
-// Stop-progress map — Helper, Parent, Guru, Contractor per the feature
-// request, plus the same read-only supervisors everywhere else gets in on.
-// Matches backend/server.js's requireRole on /api/track.
-const canViewTrack = (u) => ['parent', 'helper', 'school_staff', 'contractor'].includes(u?.role) || isSupervisor(u);
+// Stop-progress map — Helper, Parent, Guru, Driver, Contractor per the
+// feature request, plus the same read-only supervisors everywhere else gets
+// in on. Matches backend/server.js's requireRole on /api/track.
+const canViewTrack = (u) => ['parent', 'driver', 'helper', 'school_staff', 'contractor'].includes(u?.role) || isSupervisor(u);
 // Contractor (bus company leadership) — entirely view-only, its own narrow
 // dashboard (see backend/routes/contractor.js for why it's a separate narrow
 // router rather than widening /api/admin).

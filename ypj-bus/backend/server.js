@@ -104,13 +104,13 @@ app.use('/api/scan',         requireAuth,
 app.use('/api/safety',       requireAuth,
                              requireRole('attendant', 'driver', 'helper', 'transport_admin', 'school_staff', 'contractor'),
                              require('./routes/safety'));
-// Stop-progress map — Helper, Parent, and Guru per the feature request, plus
-// the same supervisors read-only everywhere else gets in on (leader/admin/
-// transport_admin/contractor). Not GPS (see routes/track.js) so there's
-// nothing sensitive being exposed beyond what /api/meta's bus list already
-// shows.
+// Stop-progress map — Helper, Parent, Guru, and Driver per the feature
+// request, plus the same supervisors read-only everywhere else gets in on
+// (leader/admin/transport_admin/contractor). Not GPS (see routes/track.js)
+// so there's nothing sensitive being exposed beyond what /api/meta's bus
+// list already shows.
 app.use('/api/track',        requireAuth,
-                             requireRole('parent', 'helper', 'school_staff', 'leader', 'admin', 'transport_admin', 'contractor'),
+                             requireRole('parent', 'driver', 'helper', 'school_staff', 'leader', 'admin', 'transport_admin', 'contractor'),
                              require('./routes/track'));
 // 'leader' and 'admin' (Admin Sekolah) are read-only supervisors — allowed
 // in here, but routes/admin.js itself blocks every non-GET request from
