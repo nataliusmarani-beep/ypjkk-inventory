@@ -11,7 +11,9 @@ const MAX_BODY = 2000;
 // super_admin), Driver, Helper. Leader/Admin Sekolah get the same read-only
 // treatment they get everywhere else in the admin surface (see
 // routes/admin.js), so they can see the room without posting into it.
-const canViewGroup = (user) => isAdmin(user) || ['leader', 'admin', 'driver', 'helper'].includes(user?.role);
+// Contractor (bus company leadership) is the same: view-only, matching the
+// entirely-view-only access it gets everywhere else in the app.
+const canViewGroup = (user) => isAdmin(user) || ['leader', 'admin', 'driver', 'helper', 'contractor'].includes(user?.role);
 const canPostGroup  = (user) => isAdmin(user) || ['driver', 'helper'].includes(user?.role);
 
 // "Ruang Chat" — the public room. Every logged-in account can read it (the

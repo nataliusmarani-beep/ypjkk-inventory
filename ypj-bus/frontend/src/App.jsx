@@ -95,10 +95,10 @@ export default function App() {
   // Admin Sekolah excepted since they already see every conversation in
   // "Chat Orang Tua" from inside the admin dashboard.
   const canChat = !!user && !isSupervisor(user);
-  // Driver/Helper also have the internal group room — fold its unread count
-  // into the same header badge so a new group message isn't missed just
-  // because it didn't come through the personal thread.
-  const hasGroupChat = user?.role === 'driver' || user?.role === 'helper';
+  // Driver/Helper/Contractor also have the internal group room — fold its
+  // unread count into the same header badge so a new group message isn't
+  // missed just because it didn't come through the personal thread.
+  const hasGroupChat = ['driver', 'helper', 'contractor'].includes(user?.role);
   useEffect(() => {
     if (!canChat) return;
     let alive = true;

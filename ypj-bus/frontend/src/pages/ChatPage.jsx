@@ -23,7 +23,10 @@ import { api } from '../api';
  */
 export default function ChatPage({ user }) {
   const navigate = useNavigate();
-  const showGroupTab = user?.role === 'driver' || user?.role === 'helper';
+  // Contractor sees the group room too (view-only — see canPostGroup in
+  // backend/routes/chat.js), same access as Driver/Helper just without the
+  // ability to post into it.
+  const showGroupTab = ['driver', 'helper', 'contractor'].includes(user?.role);
   const [tab, setTab] = useState('personal');
 
   return (
