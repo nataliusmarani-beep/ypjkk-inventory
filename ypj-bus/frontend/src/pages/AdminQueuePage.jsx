@@ -2643,6 +2643,17 @@ function SafetyChecklistPanel() {
     api.safetyChecklist(openId).then(setDetail).catch((e) => setError(e.message));
   }, [openId]);
 
+  // A modal, not an inline banner below the table: with the table itself
+  // often running to a full page of rows, "Lihat" used to append the detail
+  // at the very bottom, off-screen below whatever row was clicked — the
+  // admin had to scroll all the way down just to read one NO's catatan.
+  useEffect(() => {
+    if (!openId) return;
+    const onKey = (e) => { if (e.key === 'Escape') setOpenId(null); };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [openId]);
+
   const issueCount = rows?.filter((r) => r.has_issues).length ?? 0;
   const todayCount = rows?.filter((r) => r.checklist_date === todayWIT()).length ?? 0;
 
@@ -2714,18 +2725,24 @@ function SafetyChecklistPanel() {
       </div>
 
       {openId && (
-        <div className="banner info" style={{ marginTop: 12, alignItems: 'flex-start' }}>
-          <span>🦺</span>
-          <div style={{ width: '100%' }}>
+        <div style={{
+          position: 'fixed', inset: 0, zIndex: 100, background: 'rgba(18, 24, 38, .45)',
+          display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 16,
+        }} onClick={() => setOpenId(null)}>
+          <div className="card" style={{ maxWidth: 520, width: '100%', maxHeight: '85vh', overflowY: 'auto' }}
+               onClick={(e) => e.stopPropagation()}>
             {!detail && <p className="muted">Memuat…</p>}
             {detail && (
               <>
-                <strong>
-                  {detail.plate_number}{detail.label ? ` (${detail.label})` : ''} ·{' '}
-                  {detail.type_label} · {shortDate(detail.checklist_date)}
-                  {formatWIT(detail.updated_at || detail.created_at)
-                    ? ` ${formatWIT(detail.updated_at || detail.created_at)} WIT` : ''}
-                </strong>
+                <div className="row" style={{ alignItems: 'flex-start', gap: 8, marginBottom: 4 }}>
+                  <span style={{ fontSize: 20 }}>🦺</span>
+                  <strong className="grow">
+                    {detail.plate_number}{detail.label ? ` (${detail.label})` : ''} ·{' '}
+                    {detail.type_label} · {shortDate(detail.checklist_date)}
+                    {formatWIT(detail.updated_at || detail.created_at)
+                      ? ` ${formatWIT(detail.updated_at || detail.created_at)} WIT` : ''}
+                  </strong>
+                </div>
                 <div className="muted" style={{ fontSize: 12, marginBottom: 8 }}>
                   Petugas: {detail.crew_name || '—'} · Diisi oleh: {detail.submitted_by_name || '—'}
                 </div>
