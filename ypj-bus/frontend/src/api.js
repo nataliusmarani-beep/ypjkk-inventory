@@ -52,6 +52,8 @@ export const api = {
   meta: () => request('/meta'),
   notifications:     ()   => request('/meta/notifications'),
   markNotification:  (id) => request(`/meta/notifications/${id}/read`, { method: 'PUT' }),
+  deleteNotification: (id) => request(`/meta/notifications/${id}`, { method: 'DELETE' }),
+  deleteAllNotifications: () => request('/meta/notifications', { method: 'DELETE' }),
 
   // Bus service schedule — read-only for parents, editable by the Transport Team
   schedule:       (day) => request(`/meta/schedule${day === 'besok' ? '?day=besok' : ''}`),

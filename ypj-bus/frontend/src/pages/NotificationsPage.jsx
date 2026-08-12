@@ -23,6 +23,7 @@ export default function NotificationsPage() {
   const [notes, setNotes] = useState(null);
   const [error, setError] = useState(null);
   const [marking, setMarking] = useState(null);
+  const [deleting, setDeleting] = useState(null);
   const [page, setPage] = useState(0);
 
   const load = useCallback(() => {
@@ -56,6 +57,32 @@ export default function NotificationsPage() {
     }
   }
 
+  async function deleteOne(id) {
+    setDeleting(id);
+    try {
+      await api.deleteNotification(id);
+      load();
+    } catch (err) {
+      setError(err.message);
+    } finally {
+      setDeleting(null);
+    }
+  }
+
+  async function deleteAll() {
+    if (!confirm('Hapus semua pemberitahuan? Tindakan ini tidak dapat dibatalkan.')) return;
+    setDeleting('all');
+    try {
+      await api.deleteAllNotifications();
+      setPage(0);
+      load();
+    } catch (err) {
+      setError(err.message);
+    } finally {
+      setDeleting(null);
+    }
+  }
+
   const unreadCount = notes?.filter((n) => !n.read_at).length ?? 0;
   const pageCount = notes ? Math.max(1, Math.ceil(notes.length / PAGE_SIZE)) : 1;
   const clampedPage = Math.min(page, pageCount - 1);
@@ -63,11 +90,16 @@ export default function NotificationsPage() {
 
   return (
     <div className="page">
-      <div className="row" style={{ marginBottom: 4 }}>
+      <div className="row" style={{ marginBottom: 4, flexWrap: 'wrap', gap: 8 }}>
         <h1 className="grow">Pemberitahuan</h1>
         {unreadCount > 0 && (
           <button className="ghost" disabled={marking === 'all'} onClick={markAllRead}>
             {marking === 'all' ? 'Menandai…' : 'Tandai Semua Dibaca'}
+          </button>
+        )}
+        {notes?.length > 0 && (
+          <button className="ghost" disabled={deleting === 'all'} onClick={deleteAll}>
+            {deleting === 'all' ? 'Menghapus…' : 'Hapus Semua'}
           </button>
         )}
       </div>
@@ -113,12 +145,17 @@ export default function NotificationsPage() {
 
               <div style={{ padding: '0 14px 12px 40px' }}>
                 <div style={{ whiteSpace: 'pre-line', fontSize: 14 }}>{n.body}</div>
-                {!n.read_at && (
-                  <button className="link" style={{ marginTop: 6 }}
-                          disabled={marking === n.id} onClick={() => markRead(n.id)}>
-                    {marking === n.id ? 'Menandai…' : 'Tandai sudah dibaca'}
+                <div className="row" style={{ gap: 14, marginTop: 6 }}>
+                  {!n.read_at && (
+                    <button className="link" disabled={marking === n.id} onClick={() => markRead(n.id)}>
+                      {marking === n.id ? 'Menandai…' : 'Tandai sudah dibaca'}
+                    </button>
+                  )}
+                  <button className="link" style={{ color: 'var(--danger)' }}
+                          disabled={deleting === n.id} onClick={() => deleteOne(n.id)}>
+                    {deleting === n.id ? 'Menghapus…' : 'Hapus'}
                   </button>
-                )}
+                </div>
               </div>
             </details>
           ))}

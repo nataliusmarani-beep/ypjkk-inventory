@@ -211,4 +211,20 @@ router.put('/notifications/:id/read', (req, res) => {
   res.json({ ok: true });
 });
 
+// DELETE /api/meta/notifications/:id — scoped to the caller's own inbox,
+// same as the read endpoint above; deleting someone else's id is a silent
+// no-op rather than a 404, so this can't be used to probe which ids exist.
+router.delete('/notifications/:id', (req, res) => {
+  db.prepare(`DELETE FROM notifications WHERE id = ? AND user_id = ?`)
+    .run(req.params.id, req.user.id);
+  res.json({ ok: true });
+});
+
+// DELETE /api/meta/notifications — clear the whole inbox at once, for
+// clearing out a long backlog instead of deleting one at a time.
+router.delete('/notifications', (req, res) => {
+  db.prepare(`DELETE FROM notifications WHERE user_id = ?`).run(req.user.id);
+  res.json({ ok: true });
+});
+
 module.exports = router;
