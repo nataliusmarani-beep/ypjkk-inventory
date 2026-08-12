@@ -91,14 +91,18 @@ export default function App() {
   useEffect(() => { refresh(); }, [refresh]);
 
   // Chat used to only be reachable from the parent dashboard's own tile —
-  // every role now gets a way in from the header, Tim Transportasi/Leader/
-  // Admin Sekolah excepted since they already see every conversation in
-  // "Chat Orang Tua" from inside the admin dashboard.
-  const canChat = !!user && !isSupervisor(user);
-  // Driver/Helper/Contractor also have the internal group room — fold its
-  // unread count into the same header badge so a new group message isn't
-  // missed just because it didn't come through the personal thread.
-  const hasGroupChat = ['driver', 'helper', 'contractor'].includes(user?.role);
+  // every role now gets a way in from the header, Tim Transportasi (transport_
+  // admin/super_admin) excepted since they already see every conversation in
+  // "Chat Orang Tua" from inside the admin dashboard. Leader and Admin
+  // Sekolah don't have that view, so they keep header chat access same as
+  // everyone else.
+  const canChat = !!user && !isAdmin(user);
+  // Driver/Helper/Contractor/Leader/Admin Sekolah also have the internal
+  // group room (view-only for the latter two, same as canViewGroup in
+  // backend/routes/chat.js) — fold its unread count into the same header
+  // badge so a new group message isn't missed just because it didn't come
+  // through the personal thread.
+  const hasGroupChat = ['driver', 'helper', 'contractor', 'leader', 'admin'].includes(user?.role);
   useEffect(() => {
     if (!canChat) return;
     let alive = true;
