@@ -95,6 +95,20 @@ router.post('/checklists', (req, res, next) => {
   const checklistDate = (req.body?.checklist_date || '').trim() || null;
 
   try {
+    // The client sends its own computed "today" (see todayWIT() in
+    // frontend/src/api.js) rather than trusting the server's clock, since
+    // that's what actually decides which day's row this replaces. A device
+    // whose Intl implementation doesn't fully support 'en-CA' can silently
+    // fall back to a different date shape (e.g. "8/12/2026" instead of
+    // "2026-08-12") — same calendar day, but a string that no longer
+    // matches every other submission's ISO date, which broke
+    // ChecklistHistoryPanel's day grouping in production (2026-08-12).
+    // Rejecting anything not already ISO here is a backstop in case some
+    // other client-side quirk produces a similar mismatch again.
+    if (checklistDate && !/^\d{4}-\d{2}-\d{2}$/.test(checklistDate)) {
+      throw fail(400, 'Format tanggal checklist tidak valid.');
+    }
+
     const def = checklistDef(checklist_type);
     if (!def) throw fail(400, 'Jenis checklist tidak dikenal.');
 

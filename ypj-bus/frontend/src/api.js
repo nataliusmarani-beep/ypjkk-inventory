@@ -226,5 +226,20 @@ export const formatWIT = (sqliteDatetime) => {
 // checklist_date (also WIT, see backend/routes/safety.js) is what makes the
 // daily safety checklist "today" check actually mean the same "today" for
 // staff filling it in on the bus floor.
-export const todayWIT = () =>
-  new Intl.DateTimeFormat('en-CA', { timeZone: 'Asia/Jayapura' }).format(new Date());
+//
+// Built from formatToParts, not the formatted string itself: some devices'
+// Intl implementation (seen on older/budget Android WebViews on the actual
+// bus crew's phones) silently falls back to a different locale's ordering
+// when it doesn't have full 'en-CA' data, e.g. "8/12/2026" instead of the
+// requested "2026-08-12" — same calendar day, but a checklist_date stored
+// in that shape no longer string-matches every other submission's ISO date,
+// which broke ChecklistHistoryPanel's day grouping (2026-08-12). Reading
+// the typed parts and assembling them by hand, the same approach formatWIT
+// below already uses, can't drift with the locale like the raw string can.
+export const todayWIT = () => {
+  const parts = new Intl.DateTimeFormat('en-CA', {
+    timeZone: 'Asia/Jayapura', year: 'numeric', month: '2-digit', day: '2-digit',
+  }).formatToParts(new Date());
+  const get = (type) => parts.find((p) => p.type === type)?.value;
+  return `${get('year')}-${get('month')}-${get('day')}`;
+};
