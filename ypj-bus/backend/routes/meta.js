@@ -34,10 +34,17 @@ router.get('/', (req, res) => {
   `).get();
 
   // Active units, so the attendant scanner can offer them; nothing sensitive,
-  // and it saves that screen an admin-only round trip.
+  // and it saves that screen an admin-only round trip. Ordered Bis Besar
+  // Tugas 1-4 then Bis Kecil Tugas 1-3, 5 (the rotation's own order, matching
+  // how the Transport Team actually thinks about the fleet) rather than
+  // alphabetically by plate — a unit picker sorted by nomor tugas is what
+  // lets someone jump straight to "Tugas 3" without reading every plate.
+  // Units outside today's rotation (no duty_number resolved) sort after
+  // their group's rotating units, still grouped by seat_capacity.
   const buses = db.prepare(`
-    SELECT id, plate_number, label, driver_name, helper_name
-    FROM buses WHERE is_active = 1 ORDER BY plate_number
+    SELECT id, plate_number, label, driver_name, helper_name,
+           CASE WHEN seat_capacity >= 45 THEN 'besar' ELSE 'kecil' END AS bus_group
+    FROM buses WHERE is_active = 1
   `).all();
 
   // Nomor tugas (duty_number) per unit for TODAY, so any unit picker across
@@ -50,6 +57,13 @@ router.get('/', (req, res) => {
     for (const { duty_number, bus_id } of dutyMapping[group]) dutyByBus.set(bus_id, duty_number);
   }
   buses.forEach((b) => { b.duty_number = dutyByBus.get(b.id) ?? null; });
+  buses.sort((a, b) => {
+    if (a.bus_group !== b.bus_group) return a.bus_group === 'besar' ? -1 : 1;
+    if (a.duty_number == null && b.duty_number == null) return a.plate_number.localeCompare(b.plate_number);
+    if (a.duty_number == null) return 1;
+    if (b.duty_number == null) return -1;
+    return a.duty_number - b.duty_number;
+  });
 
   res.json({
     academic_year: currentAcademicYear(),
