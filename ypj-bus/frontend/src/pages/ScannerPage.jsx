@@ -302,6 +302,7 @@ export default function ScannerPage({ user }) {
             <option value="">— Pilih unit —</option>
             {meta?.buses?.map((b) => (
               <option key={b.id} value={b.id}>
+                {b.duty_number != null ? `Tugas ${b.duty_number} — ` : ''}
                 {b.plate_number}{b.label ? ` (${b.label})` : ''}
               </option>
             ))}

@@ -222,7 +222,10 @@ export default function SafetyChecklistPage({ user }) {
           <select value={busId} onChange={(e) => setBusId(e.target.value)}>
             <option value="">— Pilih unit —</option>
             {buses?.map((b) => (
-              <option key={b.id} value={b.id}>{b.plate_number}{b.label ? ` (${b.label})` : ''}</option>
+              <option key={b.id} value={b.id}>
+                {b.duty_number != null ? `Tugas ${b.duty_number} — ` : ''}
+                {b.plate_number}{b.label ? ` (${b.label})` : ''}
+              </option>
             ))}
           </select>
         </div>
