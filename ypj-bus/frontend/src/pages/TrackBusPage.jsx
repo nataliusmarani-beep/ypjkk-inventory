@@ -97,6 +97,7 @@ export default function TrackBusPage({ user }) {
             <option value="">— Pilih unit —</option>
             {meta?.buses?.map((b) => (
               <option key={b.id} value={b.id}>
+                {b.duty_number != null ? `Tugas ${b.duty_number} — ` : ''}
                 {b.plate_number}{b.label ? ` (${b.label})` : ''}
               </option>
             ))}
@@ -118,7 +119,10 @@ export default function TrackBusPage({ user }) {
       {run && (
         <>
           <div className="card">
-            <strong>{bus?.plate_number}{bus?.label ? ` — ${bus.label}` : ''}</strong>
+            <div className="row" style={{ gap: 8 }}>
+              {bus?.duty_number != null && <span className="chip ok">Tugas {bus.duty_number}</span>}
+              <strong>{bus?.plate_number}{bus?.label ? ` — ${bus.label}` : ''}</strong>
+            </div>
             <div className="muted" style={{ fontSize: 13 }}>
               {bus?.driver_name && `Sopir: ${bus.driver_name}`}
               {bus?.driver_name && bus?.helper_name && ' · '}

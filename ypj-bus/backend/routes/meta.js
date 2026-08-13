@@ -40,6 +40,17 @@ router.get('/', (req, res) => {
     FROM buses WHERE is_active = 1 ORDER BY plate_number
   `).all();
 
+  // Nomor tugas (duty_number) per unit for TODAY, so any unit picker across
+  // the app (Lacak Bus, Scanner, Checklist, ...) can show "Tugas N" next to
+  // a plate number instead of making someone memorize which bus is which —
+  // same inverted resolveDutySchedule lookup as GET /api/admin/trip-events.
+  const dutyMapping = resolveDutySchedule(todayWIT());
+  const dutyByBus = new Map();
+  for (const group of ['besar', 'kecil']) {
+    for (const { duty_number, bus_id } of dutyMapping[group]) dutyByBus.set(bus_id, duty_number);
+  }
+  buses.forEach((b) => { b.duty_number = dutyByBus.get(b.id) ?? null; });
+
   res.json({
     academic_year: currentAcademicYear(),
     grades: GRADES,
