@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useState } from 'react';
 import { api, documentUrl, formatWIT } from '../api';
+import { dutyColor } from '../lib/dutyColor.js';
 
 // v is a SQLite UTC timestamp with no offset ('YYYY-MM-DD HH:MM:SS') — read
 // it as UTC explicitly and re-render in WIT, same approach as formatWIT.
@@ -12,6 +13,8 @@ const STATUS = {
   approved:  { label: 'Disetujui',            chip: 'ok' },
   rejected:  { label: 'Ditolak',               chip: 'danger' },
 };
+
+const PAGE_SIZE = 5;
 
 const MAX_ATTACHMENT_BYTES = 5 * 1024 * 1024;
 const ATTACHMENT_TYPES = ['application/pdf', 'image/jpeg', 'image/jpg', 'image/png', 'image/webp'];
@@ -33,6 +36,7 @@ export default function EventRequestsSection({ user }) {
   const [form, setForm] = useState(emptyForm());
   const [busy, setBusy] = useState(null);
   const [error, setError] = useState(null);
+  const [page, setPage] = useState(1);
 
   const canRequest = ['admin', 'leader'].includes(user?.role);
   const canDecide = user?.role === 'transport_admin' || user?.role === 'super_admin';
@@ -99,6 +103,9 @@ export default function EventRequestsSection({ user }) {
   if (!rows) return null;
 
   const pending = rows.filter((r) => r.status === 'submitted').length;
+  const pageCount = Math.max(1, Math.ceil(rows.length / PAGE_SIZE));
+  const clampedPage = Math.min(page, pageCount);
+  const pageRows = rows.slice((clampedPage - 1) * PAGE_SIZE, clampedPage * PAGE_SIZE);
 
   return (
     <details className="card" open={pending > 0}>
@@ -188,10 +195,20 @@ export default function EventRequestsSection({ user }) {
 
       {rows.length === 0 && <p className="muted">Belum ada permintaan bis untuk acara.</p>}
 
-      {rows.map((r) => (
+      {pageRows.map((r) => (
         <EventRequestRow key={r.id} row={r} buses={buses} canDecide={canDecide}
                           busy={busy === r.id} onDecide={decide} />
       ))}
+
+      {rows.length > PAGE_SIZE && (
+        <div className="row" style={{ gap: 8, alignItems: 'center', justifyContent: 'center', marginTop: 8 }}>
+          <button className="ghost" disabled={clampedPage <= 1}
+                  onClick={() => setPage((p) => Math.max(1, p - 1))}>‹ Sebelumnya</button>
+          <span className="muted" style={{ fontSize: 13 }}>Halaman {clampedPage}/{pageCount}</span>
+          <button className="ghost" disabled={clampedPage >= pageCount}
+                  onClick={() => setPage((p) => Math.min(pageCount, p + 1))}>Berikutnya ›</button>
+        </div>
+      )}
     </details>
   );
 }
@@ -232,10 +249,16 @@ function EventRequestRow({ row, buses, canDecide, busy, onDecide }) {
       )}
 
       {row.status === 'approved' && row.assigned_buses?.length > 0 && (
-        <div className="muted" style={{ fontSize: 13 }}>
-          Unit ditugaskan: {row.assigned_buses
-            .map((b) => `${b.plate_number}${b.label ? ` (${b.label})` : ''}`)
-            .join(', ')}
+        <div className="row" style={{ gap: 6, flexWrap: 'wrap', alignItems: 'center', fontSize: 13, marginBottom: 4 }}>
+          <span className="muted">Unit ditugaskan:</span>
+          {row.assigned_buses.map((b) => (
+            <span key={b.id} style={{
+              background: dutyColor(b.duty_number), color: '#fff',
+              fontWeight: 600, borderRadius: 4, padding: '2px 8px',
+            }}>
+              {b.plate_number}{b.label ? ` (${b.label})` : ''}
+            </span>
+          ))}
         </div>
       )}
       {(row.status === 'approved' || row.status === 'rejected') && row.reviewed_by_name && (
@@ -255,19 +278,27 @@ function EventRequestRow({ row, buses, canDecide, busy, onDecide }) {
           {!rejecting ? (
             <div className="col" style={{ gap: 8 }}>
               <div>
-                <span className="lbl">Unit bis ditugaskan (opsional, bisa pilih lebih dari satu)</span>
+                <span className="lbl">Unit bis ditugaskan (wajib, bisa pilih lebih dari satu)</span>
                 <div className="col" style={{ gap: 4, marginTop: 4, maxHeight: 160, overflowY: 'auto' }}>
                   {buses.map((b) => (
                     <label key={b.id} className="row" style={{ gap: 6, alignItems: 'center', fontWeight: 400 }}>
                       <input type="checkbox" checked={busIds.includes(b.id)}
                              onChange={() => toggleBus(b.id)} />
-                      {b.plate_number}{b.label ? ` (${b.label})` : ''}
+                      <span style={{
+                        background: dutyColor(b.duty_number), color: '#fff',
+                        borderRadius: 4, padding: '1px 8px',
+                      }}>
+                        {b.plate_number}{b.label ? ` (${b.label})` : ''}
+                      </span>
                     </label>
                   ))}
                 </div>
+                {busIds.length === 0 && (
+                  <div className="hint">Pilih minimal satu unit sebelum menyetujui.</div>
+                )}
               </div>
               <div className="row" style={{ gap: 8, flexWrap: 'wrap' }}>
-                <button className="success" disabled={busy}
+                <button className="success" disabled={busy || busIds.length === 0}
                         onClick={() => onDecide(row, 'approve', { bus_ids: busIds })}>
                   {busy ? 'Menyimpan…' : 'Setujui'}
                 </button>

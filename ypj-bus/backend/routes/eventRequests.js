@@ -1,7 +1,7 @@
 const express = require('express');
 const db      = require('../db');
 const { notify } = require('../lib/notify');
-const { logActivity, fail, normaliseTime, normaliseDate } = require('../lib/cards');
+const { logActivity, fail, normaliseTime, normaliseDate, resolveDutySchedule, todayWIT } = require('../lib/cards');
 const { requireRole } = require('../middleware/auth');
 const { saveDataUrl, MAX_ATTACHMENT_BYTES, ATTACHMENT_MIMES } = require('../lib/files');
 
@@ -30,6 +30,10 @@ const router = express.Router();
 router.get('/', (req, res) => {
   const seesAll = ['transport_admin', 'leader', 'super_admin', 'driver', 'helper', 'school_staff', 'contractor'].includes(req.user.role);
 
+  // Pending (submitted) requests still float to the top — they need action —
+  // but within each status group, the most recently raised request leads,
+  // so someone opening the panel sees what just came in first instead of
+  // having to scroll past everything already settled.
   const rows = db.prepare(`
     SELECT r.*, u.name AS requested_by_name, u.role AS requested_by_role,
            rev.name AS reviewed_by_name
@@ -37,17 +41,26 @@ router.get('/', (req, res) => {
     JOIN users u ON u.id = r.requested_by
     LEFT JOIN users rev ON rev.id = r.reviewed_by
     WHERE (:mine IS NULL OR r.requested_by = :mine)
-    ORDER BY CASE r.status WHEN 'submitted' THEN 0 ELSE 1 END, r.event_date
+    ORDER BY CASE r.status WHEN 'submitted' THEN 0 ELSE 1 END, r.id DESC
   `).all({ mine: seesAll ? null : req.user.id });
 
   const busRows = db.prepare(`SELECT id, plate_number, label FROM buses`).all();
   const busById = new Map(busRows.map((b) => [b.id, b]));
 
+  // Nomor tugas per unit for TODAY, so "Unit ditugaskan" can show the same
+  // colour-coded badge as the rest of the app instead of a bare plate number.
+  const dutyMapping = resolveDutySchedule(todayWIT());
+  const dutyByBus = new Map();
+  for (const group of ['besar', 'kecil']) {
+    for (const { duty_number, bus_id } of dutyMapping[group]) dutyByBus.set(bus_id, duty_number);
+  }
+
   res.json(rows.map((r) => {
     const busIds = JSON.parse(r.assigned_bus_ids || '[]');
     return {
       ...r,
-      assigned_buses: busIds.map((id) => busById.get(id)).filter(Boolean),
+      assigned_buses: busIds.map((id) => busById.get(id)).filter(Boolean)
+        .map((b) => ({ ...b, duty_number: dutyByBus.get(b.id) ?? null })),
     };
   }));
 });
@@ -139,8 +152,13 @@ router.post('/:id/decision', requireRole('transport_admin'), (req, res, next) =>
     // A study tour or grade-wide event can need more than one unit, so this
     // takes a list rather than a single bus_id (kept as an array even for
     // the common one-bus case, rather than adding a second bus_id param).
+    // At least one unit is required on approval — a request can't be marked
+    // approved without actually committing a bus to it.
     let busIds = [];
-    if (decision === 'approve' && Array.isArray(req.body?.bus_ids) && req.body.bus_ids.length) {
+    if (decision === 'approve') {
+      if (!Array.isArray(req.body?.bus_ids) || !req.body.bus_ids.length) {
+        throw fail(400, 'Unit bis ditugaskan wajib dipilih sebelum menyetujui.');
+      }
       const placeholders = req.body.bus_ids.map(() => '?').join(',');
       const found = db.prepare(
         `SELECT id FROM buses WHERE is_active = 1 AND id IN (${placeholders})`,

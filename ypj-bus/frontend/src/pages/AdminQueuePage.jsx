@@ -5,6 +5,9 @@ import { api, photoUrl, signatureUrl, formatWIT, todayWIT } from '../api';
 import { gradeLabel } from './ParentHomePage.jsx';
 import EventRequestsSection from '../components/EventRequests.jsx';
 import { GRADES, StudentsByGradeCard, SchoolCategoryCard } from '../components/GradeCharts.jsx';
+// Lets an admin tell entries apart by unit at a glance in a feed that
+// otherwise interleaves every bus's events together.
+import { dutyColor } from '../lib/dutyColor.js';
 
 /**
  * Module 2 — Transport Team verification portal.
@@ -801,14 +804,6 @@ function tripEventLabel(e) {
   }
   return e.event;
 }
-
-// One colour per nomor tugas (duty_number, 1-5) — besar and kecil are
-// viewed one group at a time (see the seg toggle below) so the same 5-colour
-// palette can be reused for both without the two ever being on screen at
-// once to clash. Lets an admin tell entries apart by unit at a glance in a
-// feed that otherwise interleaves every bus's events together.
-const DUTY_COLORS = ['#13407a', '#1a7a4c', '#b5790a', '#7a1a5c', '#1a5c7a'];
-const dutyColor = (n) => DUTY_COLORS[((n || 1) - 1) % DUTY_COLORS.length];
 
 function TripTimelineCard() {
   const [events, setEvents] = useState(null);
