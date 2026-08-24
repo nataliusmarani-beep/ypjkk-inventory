@@ -52,12 +52,22 @@ const authLimiter = rateLimit({
   legacyHeaders:   false,
 });
 
+// Keyed per IP, which is shared by every device on a school/office network —
+// with several staff each leaving an admin tab open (multiple 20s polling
+// panels on AdminQueuePage alone), that budget drains fast. 600 gives that
+// legitimate shared-IP traffic headroom. Login/register are skipped here
+// entirely: they already have their own stricter authLimiter above, and
+// without this skip a login attempt from an IP that had merely exhausted
+// *this* limiter on unrelated traffic (chat polling, etc.) got the same
+// "too many requests" wall as someone actually brute-forcing a password —
+// which is exactly what happened to a real Tim Transportasi login in prod.
 const apiLimiter = rateLimit({
   windowMs: 60 * 1000,
-  max:      300,
+  max:      600,
   message:  { error: 'Terlalu banyak permintaan. Mohon perlambat.' },
   standardHeaders: true,
   legacyHeaders:   false,
+  skip: (req) => req.path === '/auth/login' || req.path === '/auth/register',
 });
 
 // Submitting is expensive (two file writes): 12 per hour per IP is generous for
