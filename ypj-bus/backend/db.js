@@ -141,6 +141,8 @@ db.exec(`
     weekday        INTEGER NOT NULL CHECK (weekday BETWEEN 1 AND 5),
     trip_number    INTEGER NOT NULL,
     departure_time TEXT,
+    -- Free-text tag admin can set on this trip, e.g. 'PAUD', shown to parents.
+    label          TEXT,
     UNIQUE (duty_slot_id, weekday, trip_number)
   );
 
@@ -155,6 +157,8 @@ db.exec(`
     weekday        INTEGER NOT NULL CHECK (weekday BETWEEN 1 AND 5),
     trip_number    INTEGER NOT NULL,
     arrival_time   TEXT,
+    -- Free-text tag admin can set on this trip, e.g. 'PAUD', shown to parents.
+    label          TEXT,
     UNIQUE (duty_slot_id, weekday, trip_number)
   );
 
@@ -465,6 +469,8 @@ db.exec(`
     bus_id         INTEGER NOT NULL REFERENCES buses(id) ON DELETE CASCADE,
     trip_number    INTEGER NOT NULL,
     departure_time TEXT,
+    -- Free-text tag admin can set on this trip, e.g. 'PAUD', shown to parents.
+    label          TEXT,
     UNIQUE (bus_id, trip_number)
   );
 
@@ -479,6 +485,8 @@ db.exec(`
     bus_id         INTEGER NOT NULL REFERENCES buses(id) ON DELETE CASCADE,
     trip_number    INTEGER NOT NULL,
     arrival_time   TEXT,
+    -- Free-text tag admin can set on this trip, e.g. 'PAUD', shown to parents.
+    label          TEXT,
     UNIQUE (bus_id, trip_number)
   );
 
@@ -1398,6 +1406,19 @@ db.exec(`
     } catch (e) {
       db.exec('ROLLBACK');
       throw e;
+    }
+  }
+}
+
+// ── Migration: free-text label per trip (e.g. "PAUD") ───────────────────────
+// A trip can serve a specific unit or purpose that isn't obvious from its
+// time alone (e.g. a separate PAUD pengantaran round); this is a plain
+// admin-entered tag shown to parents on the schedule, not a controlled value.
+{
+  for (const table of ['bus_trips', 'bus_pickup_trips', 'duty_slot_trips', 'duty_slot_pickup_trips']) {
+    const columns = db.prepare(`PRAGMA table_info(${table})`).all().map((c) => c.name);
+    if (!columns.includes('label')) {
+      db.exec(`ALTER TABLE ${table} ADD COLUMN label TEXT`);
     }
   }
 }

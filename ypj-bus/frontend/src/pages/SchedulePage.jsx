@@ -180,8 +180,11 @@ export default function SchedulePage() {
                   <p className="muted" style={{ margin: '0 0 12px', fontSize: 13 }}>Belum diatur.</p>
                 ) : b.pickup_trips.map((t) => (
                   <div key={`pickup-${t.trip_number}`} style={{ marginBottom: 10 }}>
-                    {b.pickup_trips.length > 1 && (
-                      <div className="muted" style={{ fontSize: 12.5, marginBottom: 4 }}><strong>Trip {t.trip_number}</strong></div>
+                    {(b.pickup_trips.length > 1 || t.label) && (
+                      <div className="muted" style={{ fontSize: 12.5, marginBottom: 4 }}>
+                        <strong>Trip {t.trip_number}</strong>
+                        {t.label && <span className="chip" style={{ marginLeft: 6, fontSize: 11 }}>{t.label}</span>}
+                      </div>
                     )}
                     {t.stops.map((s, i) => {
                       const isMine = myStops.has(s.code);
@@ -211,8 +214,11 @@ export default function SchedulePage() {
                   <p className="muted" style={{ margin: 0, fontSize: 13 }}>Belum diatur.</p>
                 ) : b.trips.map((t, ti) => (
                   <div key={`dropoff-${t.trip_number}`} style={{ marginBottom: 10 }}>
-                    {b.trips.length > 1 && (
-                      <div className="muted" style={{ fontSize: 12.5, marginBottom: 4 }}><strong>Trip {t.trip_number}</strong></div>
+                    {(b.trips.length > 1 || t.label) && (
+                      <div className="muted" style={{ fontSize: 12.5, marginBottom: 4 }}>
+                        <strong>Trip {t.trip_number}</strong>
+                        {t.label && <span className="chip" style={{ marginLeft: 6, fontSize: 11 }}>{t.label}</span>}
+                      </div>
                     )}
                     <SchedRow school label="🏫 Berangkat dari Sekolah" time={t.departure_time} />
                     {t.stops.map((s, i) => {

@@ -180,23 +180,23 @@ function scheduleByBus() {
   // each with its own departure_time. A stop's dropoff_times[i]/dropoff_sequences[i]
   // line up with trip_number i+1.
   const trips = db.prepare(`
-    SELECT bus_id, trip_number, departure_time FROM bus_trips ORDER BY bus_id, trip_number
+    SELECT bus_id, trip_number, departure_time, label FROM bus_trips ORDER BY bus_id, trip_number
   `).all();
   const tripsForBus = new Map();
   for (const t of trips) {
     if (!tripsForBus.has(t.bus_id)) tripsForBus.set(t.bus_id, []);
-    tripsForBus.get(t.bus_id).push({ trip_number: t.trip_number, departure_time: t.departure_time });
+    tripsForBus.get(t.bus_id).push({ trip_number: t.trip_number, departure_time: t.departure_time, label: t.label });
   }
 
   // Same idea for pickup legs (see bus_pickup_trips in db.js) — a stop's
   // pickup_times[i]/pickup_sequences[i] line up with trip_number i+1 here.
   const pickupTrips = db.prepare(`
-    SELECT bus_id, trip_number, arrival_time FROM bus_pickup_trips ORDER BY bus_id, trip_number
+    SELECT bus_id, trip_number, arrival_time, label FROM bus_pickup_trips ORDER BY bus_id, trip_number
   `).all();
   const pickupTripsForBus = new Map();
   for (const t of pickupTrips) {
     if (!pickupTripsForBus.has(t.bus_id)) pickupTripsForBus.set(t.bus_id, []);
-    pickupTripsForBus.get(t.bus_id).push({ trip_number: t.trip_number, arrival_time: t.arrival_time });
+    pickupTripsForBus.get(t.bus_id).push({ trip_number: t.trip_number, arrival_time: t.arrival_time, label: t.label });
   }
 
   return buses.map((b) => {
@@ -601,15 +601,15 @@ function writeBusScheduleRows(busId, pickupTrips, dropoffTrips) {
 
     db.prepare(`DELETE FROM bus_trips WHERE bus_id = ?`).run(busId);
     const insertTrip = db.prepare(`
-      INSERT INTO bus_trips (bus_id, trip_number, departure_time) VALUES (?, ?, ?)
+      INSERT INTO bus_trips (bus_id, trip_number, departure_time, label) VALUES (?, ?, ?, ?)
     `);
-    dropoffTripsFinal.forEach((t, i) => insertTrip.run(busId, i + 1, t.departure_time));
+    dropoffTripsFinal.forEach((t, i) => insertTrip.run(busId, i + 1, t.departure_time, t.label || null));
 
     db.prepare(`DELETE FROM bus_pickup_trips WHERE bus_id = ?`).run(busId);
     const insertPickupTrip = db.prepare(`
-      INSERT INTO bus_pickup_trips (bus_id, trip_number, arrival_time) VALUES (?, ?, ?)
+      INSERT INTO bus_pickup_trips (bus_id, trip_number, arrival_time, label) VALUES (?, ?, ?, ?)
     `);
-    pickupTripsFinal.forEach((t, i) => insertPickupTrip.run(busId, i + 1, t.arrival_time));
+    pickupTripsFinal.forEach((t, i) => insertPickupTrip.run(busId, i + 1, t.arrival_time, t.label || null));
 
     db.prepare(`DELETE FROM bus_route_stops WHERE bus_id = ?`).run(busId);
     const insert = db.prepare(`
@@ -651,15 +651,15 @@ function writeDutySlotScheduleRows(slotId, weekday, pickupTrips, dropoffTrips) {
 
     db.prepare(`DELETE FROM duty_slot_trips WHERE duty_slot_id = ? AND weekday = ?`).run(slotId, weekday);
     const insertTrip = db.prepare(`
-      INSERT INTO duty_slot_trips (duty_slot_id, weekday, trip_number, departure_time) VALUES (?, ?, ?, ?)
+      INSERT INTO duty_slot_trips (duty_slot_id, weekday, trip_number, departure_time, label) VALUES (?, ?, ?, ?, ?)
     `);
-    dropoffTripsFinal.forEach((t, i) => insertTrip.run(slotId, weekday, i + 1, t.departure_time));
+    dropoffTripsFinal.forEach((t, i) => insertTrip.run(slotId, weekday, i + 1, t.departure_time, t.label || null));
 
     db.prepare(`DELETE FROM duty_slot_pickup_trips WHERE duty_slot_id = ? AND weekday = ?`).run(slotId, weekday);
     const insertPickupTrip = db.prepare(`
-      INSERT INTO duty_slot_pickup_trips (duty_slot_id, weekday, trip_number, arrival_time) VALUES (?, ?, ?, ?)
+      INSERT INTO duty_slot_pickup_trips (duty_slot_id, weekday, trip_number, arrival_time, label) VALUES (?, ?, ?, ?, ?)
     `);
-    pickupTripsFinal.forEach((t, i) => insertPickupTrip.run(slotId, weekday, i + 1, t.arrival_time));
+    pickupTripsFinal.forEach((t, i) => insertPickupTrip.run(slotId, weekday, i + 1, t.arrival_time, t.label || null));
 
     db.prepare(`DELETE FROM duty_slot_stops WHERE duty_slot_id = ? AND weekday = ?`).run(slotId, weekday);
     const insert = db.prepare(`
@@ -726,11 +726,11 @@ function materializeDutySchedule(dateStr) {
     FROM duty_slot_stops WHERE duty_slot_id = ? AND weekday = ? ORDER BY sequence
   `);
   const slotTripsStmt = db.prepare(`
-    SELECT trip_number, departure_time FROM duty_slot_trips
+    SELECT trip_number, departure_time, label FROM duty_slot_trips
     WHERE duty_slot_id = ? AND weekday = ? ORDER BY trip_number
   `);
   const slotPickupTripsStmt = db.prepare(`
-    SELECT trip_number, arrival_time FROM duty_slot_pickup_trips
+    SELECT trip_number, arrival_time, label FROM duty_slot_pickup_trips
     WHERE duty_slot_id = ? AND weekday = ? ORDER BY trip_number
   `);
 
@@ -756,6 +756,7 @@ function materializeDutySchedule(dateStr) {
       const tripRows = slotTripsStmt.all(slot.id, weekday);
       const dropoffTrips = tripRows.map((t, i) => ({
         departure_time: t.departure_time,
+        label: t.label,
         stops: slotStops
           .filter((s) => s.dropoff_sequences[i] != null)
           .sort((a, b) => a.dropoff_sequences[i] - b.dropoff_sequences[i])
@@ -765,6 +766,7 @@ function materializeDutySchedule(dateStr) {
       const pickupTripRows = slotPickupTripsStmt.all(slot.id, weekday);
       const pickupTrips = pickupTripRows.map((t, i) => ({
         arrival_time: t.arrival_time,
+        label: t.label,
         stops: slotStops
           .filter((s) => s.pickup_sequences[i] != null)
           .sort((a, b) => a.pickup_sequences[i] - b.pickup_sequences[i])
@@ -816,11 +818,11 @@ function resolvedDutySlotSchedules(dateStr) {
     WHERE dss.duty_slot_id = ? AND dss.weekday = ? ORDER BY dss.sequence
   `);
   const slotTripsStmt = db.prepare(`
-    SELECT trip_number, departure_time FROM duty_slot_trips
+    SELECT trip_number, departure_time, label FROM duty_slot_trips
     WHERE duty_slot_id = ? AND weekday = ? ORDER BY trip_number
   `);
   const slotPickupTripsStmt = db.prepare(`
-    SELECT trip_number, arrival_time FROM duty_slot_pickup_trips
+    SELECT trip_number, arrival_time, label FROM duty_slot_pickup_trips
     WHERE duty_slot_id = ? AND weekday = ? ORDER BY trip_number
   `);
 
@@ -844,6 +846,7 @@ function resolvedDutySlotSchedules(dateStr) {
         return {
           trip_number: t.trip_number,
           departure_time: t.departure_time,
+          label: t.label,
           stops: stops
             .filter((s) => s.dropoff_sequences[idx] != null)
             .sort((a, b) => a.dropoff_sequences[idx] - b.dropoff_sequences[idx])
@@ -859,6 +862,7 @@ function resolvedDutySlotSchedules(dateStr) {
         return {
           trip_number: t.trip_number,
           arrival_time: t.arrival_time,
+          label: t.label,
           stops: stops
             .filter((s) => s.pickup_sequences[idx] != null)
             .sort((a, b) => a.pickup_sequences[idx] - b.pickup_sequences[idx])

@@ -1232,14 +1232,16 @@ function DutyRotationPanel({ canManage }) {
     if (slotEdits[key]) return slotEdits[key];
     const day = slot.days[weekday] || { pickup_trips: [], trips: [], school_arrival_time: null };
     return {
-      pickup_trips: (day.pickup_trips.length ? day.pickup_trips : [{ trip_number: 1, arrival_time: '', stops: [] }])
+      pickup_trips: (day.pickup_trips.length ? day.pickup_trips : [{ trip_number: 1, arrival_time: '', label: '', stops: [] }])
         .map((t) => ({
           arrival_time: t.arrival_time || '',
+          label: t.label || '',
           stops: (t.stops || []).map((s) => ({ bus_stop_id: s.bus_stop_id, pickup_time: s.pickup_time || '' })),
         })),
-      trips: (day.trips.length ? day.trips : [{ trip_number: 1, departure_time: '', stops: [] }])
+      trips: (day.trips.length ? day.trips : [{ trip_number: 1, departure_time: '', label: '', stops: [] }])
         .map((t) => ({
           departure_time: t.departure_time || '',
+          label: t.label || '',
           stops: (t.stops || []).map((s) => ({ bus_stop_id: s.bus_stop_id, dropoff_time: s.dropoff_time || '' })),
         })),
     };
@@ -1252,12 +1254,17 @@ function DutyRotationPanel({ canManage }) {
 
   function addPickupTrip(slot, weekday) {
     const d = draftFor(slot, weekday);
-    updateSlot(slot, weekday, { pickup_trips: [...d.pickup_trips, { arrival_time: '', stops: [] }] });
+    updateSlot(slot, weekday, { pickup_trips: [...d.pickup_trips, { arrival_time: '', label: '', stops: [] }] });
   }
 
   function setPickupTripTime(slot, weekday, tripIdx, value) {
     const d = draftFor(slot, weekday);
     updateSlot(slot, weekday, { pickup_trips: d.pickup_trips.map((t, i) => (i === tripIdx ? { ...t, arrival_time: value } : t)) });
+  }
+
+  function setPickupTripLabel(slot, weekday, tripIdx, value) {
+    const d = draftFor(slot, weekday);
+    updateSlot(slot, weekday, { pickup_trips: d.pickup_trips.map((t, i) => (i === tripIdx ? { ...t, label: value } : t)) });
   }
 
   function removePickupTrip(slot, weekday, tripIdx) {
@@ -1308,12 +1315,17 @@ function DutyRotationPanel({ canManage }) {
 
   function addTrip(slot, weekday) {
     const d = draftFor(slot, weekday);
-    updateSlot(slot, weekday, { trips: [...d.trips, { departure_time: '', stops: [] }] });
+    updateSlot(slot, weekday, { trips: [...d.trips, { departure_time: '', label: '', stops: [] }] });
   }
 
   function setTripTime(slot, weekday, tripIdx, value) {
     const d = draftFor(slot, weekday);
     updateSlot(slot, weekday, { trips: d.trips.map((t, i) => (i === tripIdx ? { ...t, departure_time: value } : t)) });
+  }
+
+  function setTripLabel(slot, weekday, tripIdx, value) {
+    const d = draftFor(slot, weekday);
+    updateSlot(slot, weekday, { trips: d.trips.map((t, i) => (i === tripIdx ? { ...t, label: value } : t)) });
   }
 
   function removeTrip(slot, weekday, tripIdx) {
@@ -1389,10 +1401,12 @@ function DutyRotationPanel({ canManage }) {
       await api.saveDutySlotDay(slot.id, weekday, {
         pickup_trips: d.pickup_trips.map((t) => ({
           arrival_time: t.arrival_time || null,
+          label: t.label || null,
           stops: t.stops.map((s) => ({ bus_stop_id: s.bus_stop_id, pickup_time: s.pickup_time || null })),
         })),
         trips: d.trips.map((t) => ({
           departure_time: t.departure_time || null,
+          label: t.label || null,
           stops: t.stops.map((s) => ({ bus_stop_id: s.bus_stop_id, dropoff_time: s.dropoff_time || null })),
         })),
       });
@@ -1653,6 +1667,11 @@ function DutyRotationPanel({ canManage }) {
                           <input type="time" title={`Trip ${ti + 1} — tiba di sekolah`}
                                  value={t.arrival_time}
                                  onChange={(e) => setPickupTripTime(slot, weekday, ti, e.target.value)} />
+                          <input type="text" placeholder="Keterangan (mis. PAUD)"
+                                 title={`Trip ${ti + 1} — keterangan`}
+                                 style={{ width: 160 }}
+                                 value={t.label}
+                                 onChange={(e) => setPickupTripLabel(slot, weekday, ti, e.target.value)} />
                           {d.pickup_trips.length > 1 && (
                             <button type="button" className="ghost"
                                     style={{ minHeight: 0, padding: '4px 8px', fontSize: 12 }}
@@ -1730,6 +1749,11 @@ function DutyRotationPanel({ canManage }) {
                           <input type="time" title={`Trip ${ti + 1} — berangkat sekolah`}
                                  value={t.departure_time}
                                  onChange={(e) => setTripTime(slot, weekday, ti, e.target.value)} />
+                          <input type="text" placeholder="Keterangan (mis. PAUD)"
+                                 title={`Trip ${ti + 1} — keterangan`}
+                                 style={{ width: 160 }}
+                                 value={t.label}
+                                 onChange={(e) => setTripLabel(slot, weekday, ti, e.target.value)} />
                           {d.trips.length > 1 && (
                             <button type="button" className="ghost"
                                     style={{ minHeight: 0, padding: '4px 8px', fontSize: 12 }}

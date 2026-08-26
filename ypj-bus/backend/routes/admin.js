@@ -832,7 +832,7 @@ router.get('/duty-schedule', (req, res) => {
   }
 
   const slotTrips = db.prepare(`
-    SELECT duty_slot_id, weekday, trip_number, departure_time FROM duty_slot_trips
+    SELECT duty_slot_id, weekday, trip_number, departure_time, label FROM duty_slot_trips
     ORDER BY duty_slot_id, weekday, trip_number
   `).all();
   const tripsBySlotDay = new Map();
@@ -848,7 +848,7 @@ router.get('/duty-schedule', (req, res) => {
   }
 
   const slotPickupTrips = db.prepare(`
-    SELECT duty_slot_id, weekday, trip_number, arrival_time FROM duty_slot_pickup_trips
+    SELECT duty_slot_id, weekday, trip_number, arrival_time, label FROM duty_slot_pickup_trips
     ORDER BY duty_slot_id, weekday, trip_number
   `).all();
   const pickupTripsBySlotDay = new Map();
@@ -919,6 +919,7 @@ router.put('/duty-schedule/slot/:id/day/:weekday', (req, res, next) => {
     const tripsBody = Array.isArray(req.body?.trips) ? req.body.trips : [];
     const trips = tripsBody.map((t) => ({
       departure_time: normaliseTime(t?.departure_time),
+      label: (typeof t?.label === 'string' ? t.label.trim() : '') || null,
       stops: (Array.isArray(t?.stops) ? t.stops : []).map((s) => ({
         bus_stop_id: Number(s.bus_stop_id),
         dropoff_time: normaliseTime(s.dropoff_time),
@@ -938,6 +939,7 @@ router.put('/duty-schedule/slot/:id/day/:weekday', (req, res, next) => {
     const pickupTripsBody = Array.isArray(req.body?.pickup_trips) ? req.body.pickup_trips : [];
     const pickupTrips = pickupTripsBody.map((t) => ({
       arrival_time: normaliseTime(t?.arrival_time),
+      label: (typeof t?.label === 'string' ? t.label.trim() : '') || null,
       stops: (Array.isArray(t?.stops) ? t.stops : []).map((s) => ({
         bus_stop_id: Number(s.bus_stop_id),
         pickup_time: normaliseTime(s.pickup_time),
