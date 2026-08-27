@@ -198,7 +198,20 @@ export default function InventoryPage({ role, user, showToast }) {
                                 : (item.icon || CAT_EMOJI[item.category] || '📦')}
                             </div>
                             <div>
-                              <div style={{ fontWeight: 700 }}>{item.name}</div>
+                              {isAdmin && canEdit(item) ? (
+                                <div
+                                  role="button"
+                                  tabIndex={0}
+                                  onClick={() => setModal({ type: 'edit', data: item })}
+                                  onKeyDown={e => { if (e.key === 'Enter') setModal({ type: 'edit', data: item }); }}
+                                  style={{ fontWeight: 700, color: 'var(--primary)', cursor: 'pointer', textDecoration: 'underline', textUnderlineOffset: 2 }}
+                                  title="Edit item details & description"
+                                >
+                                  {item.name}
+                                </div>
+                              ) : (
+                                <div style={{ fontWeight: 700 }}>{item.name}</div>
+                              )}
                               {item.code && <div className="mono" style={{ color: 'var(--muted)' }}>{item.code}</div>}
                             </div>
                           </div>
