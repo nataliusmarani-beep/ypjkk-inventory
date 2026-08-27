@@ -23,8 +23,16 @@ const EMOJIS = [
   '📦','🏷️','🔑','🗝️','📷','🖥️','📱','⌨️','🖱️',
 ];
 
-// Resize any uploaded image to a square PNG (max 72px) and return a base64 data URL
-function resizeToBase64(file, maxPx = 72) {
+const ICON_PX       = 50;
+const ICON_MAX_BYTES = 20 * 1024; // 20 KB
+
+function dataUrlBytes(dataUrl) {
+  const b64 = dataUrl.slice(dataUrl.indexOf(',') + 1);
+  return Math.ceil(b64.length * 3 / 4);
+}
+
+// Resize any uploaded image to a 50×50 JPEG, squeezed under 20 KB, as a base64 data URL
+function resizeToBase64(file, size = ICON_PX, maxBytes = ICON_MAX_BYTES) {
   return new Promise((resolve, reject) => {
     const reader = new FileReader();
     reader.onerror = reject;
@@ -32,17 +40,25 @@ function resizeToBase64(file, maxPx = 72) {
       const img = new Image();
       img.onerror = reject;
       img.onload = () => {
-        const size = Math.min(maxPx, Math.max(img.width, img.height));
         const canvas = document.createElement('canvas');
         canvas.width  = size;
         canvas.height = size;
         const ctx = canvas.getContext('2d');
-        // Scale to fill the square, centred
+        // White backing (JPEG has no alpha channel) then scale to fill the square, centred
+        ctx.fillStyle = '#ffffff';
+        ctx.fillRect(0, 0, size, size);
         const scale = size / Math.min(img.width, img.height);
         const x = (size - img.width  * scale) / 2;
         const y = (size - img.height * scale) / 2;
         ctx.drawImage(img, x, y, img.width * scale, img.height * scale);
-        resolve(canvas.toDataURL('image/png', 0.85));
+
+        let quality = 0.9;
+        let dataUrl = canvas.toDataURL('image/jpeg', quality);
+        while (dataUrlBytes(dataUrl) > maxBytes && quality > 0.1) {
+          quality = Math.round((quality - 0.1) * 10) / 10;
+          dataUrl = canvas.toDataURL('image/jpeg', quality);
+        }
+        resolve(dataUrl);
       };
       img.src = e.target.result;
     };
@@ -80,7 +96,7 @@ export default function EmojiPicker({ value, onChange }) {
     setUploadErr('');
     setUploading(true);
     try {
-      const dataUrl = await resizeToBase64(file, 72);
+      const dataUrl = await resizeToBase64(file);
       onChange(dataUrl);
       setOpen(false);
     } catch {
@@ -187,7 +203,7 @@ export default function EmojiPicker({ value, onChange }) {
             </div>
           )}
           {uploadErr && <div style={{ marginTop: 6, fontSize: 12, color: 'var(--red)' }}>⚠️ {uploadErr}</div>}
-          <div style={{ marginTop: 6, fontSize: 11, color: 'var(--muted)' }}>PNG, JPG, SVG, WebP — max 2 MB. Auto-resized to 72 × 72 px.</div>
+          <div style={{ marginTop: 6, fontSize: 11, color: 'var(--muted)' }}>PNG, JPG, SVG, WebP — max 2 MB. Auto-compressed to 50 × 50 px, ≤ 20 KB.</div>
 
           <button
             type="button"
