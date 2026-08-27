@@ -357,9 +357,14 @@ export default function RequestsPage({ role, user, showToast, refreshPending }) 
             <div className="modal-body">
               {/* Icon + name */}
               <div style={{ display:'flex', alignItems:'center', gap:14, marginBottom:16 }}>
-                <div style={{ fontSize:44, lineHeight:1 }}>
+                <div style={{
+                  width:88, height:88, flexShrink:0, borderRadius:12,
+                  border:'1.5px solid var(--border)', background:'var(--bg)',
+                  display:'flex', alignItems:'center', justifyContent:'center',
+                  padding:8, overflow:'hidden', fontSize:44, lineHeight:1,
+                }}>
                   {(detailItem.icon || '').startsWith('data:')
-                    ? <img src={detailItem.icon} alt="" style={{ width:52, height:52, objectFit:'contain', borderRadius:8 }} />
+                    ? <img src={detailItem.icon} alt="" style={{ width:'100%', height:'100%', objectFit:'contain', borderRadius:6 }} />
                     : (detailItem.icon || CAT_EMOJI[detailItem.category] || '📦')}
                 </div>
                 <div>
