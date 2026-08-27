@@ -118,7 +118,7 @@ export default function EmojiPicker({ value, onChange }) {
             width: 56, height: 56, borderRadius: 'var(--radius-sm)',
             border: '1.5px solid var(--border)', background: 'var(--off)',
             cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center',
-            padding: 4, overflow: 'hidden',
+            padding: 4, overflow: 'hidden', flexShrink: 0,
           }}
           title="Pick an icon"
         >
@@ -127,7 +127,7 @@ export default function EmojiPicker({ value, onChange }) {
             : <span style={{ fontSize: 32, lineHeight: 1 }}>{value || '📦'}</span>
           }
         </button>
-        <div>
+        <div style={{ flex: 1 }}>
           <div style={{ fontSize: 13, color: 'var(--muted)' }}>
             {isImage ? 'Custom image uploaded' : value ? 'Custom icon selected' : 'Using category default'}
           </div>
@@ -141,6 +141,19 @@ export default function EmojiPicker({ value, onChange }) {
             </button>
           )}
         </div>
+        {isImage && (
+          <div
+            style={{
+              width: 120, height: 120, borderRadius: 'var(--radius)',
+              border: '1.5px solid var(--border)', background: 'var(--off)',
+              display: 'flex', alignItems: 'center', justifyContent: 'center',
+              padding: 8, overflow: 'hidden', flexShrink: 0,
+            }}
+            title="Large preview"
+          >
+            <img src={value} alt="" style={{ width: '100%', height: '100%', objectFit: 'contain', borderRadius: 6 }} />
+          </div>
+        )}
       </div>
 
       {/* Dropdown */}
