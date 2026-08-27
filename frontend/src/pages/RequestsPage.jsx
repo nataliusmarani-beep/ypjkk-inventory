@@ -356,21 +356,21 @@ export default function RequestsPage({ role, user, showToast, refreshPending }) 
             </div>
             <div className="modal-body">
               {/* Icon + name */}
-              <div style={{ display:'flex', alignItems:'center', gap:14, marginBottom:16 }}>
+              <div style={{ display:'flex', flexDirection:'column', alignItems:'center', textAlign:'center', gap:10, marginBottom:16 }}>
                 <div style={{
-                  width:88, height:88, flexShrink:0, borderRadius:12,
+                  width:160, height:160, flexShrink:0, borderRadius:16,
                   border:'1.5px solid var(--border)', background:'var(--bg)',
                   display:'flex', alignItems:'center', justifyContent:'center',
-                  padding:8, overflow:'hidden', fontSize:44, lineHeight:1,
+                  padding:10, overflow:'hidden', fontSize:88, lineHeight:1,
                 }}>
                   {(detailItem.icon || '').startsWith('data:')
-                    ? <img src={detailItem.icon} alt="" style={{ width:'100%', height:'100%', objectFit:'contain', borderRadius:6 }} />
+                    ? <img src={detailItem.icon} alt="" style={{ width:'100%', height:'100%', objectFit:'contain', borderRadius:10 }} />
                     : (detailItem.icon || CAT_EMOJI[detailItem.category] || '📦')}
                 </div>
                 <div>
                   <div style={{ fontWeight:800, fontSize:16, color:'var(--navy)' }}>{detailItem.name}</div>
                   {detailItem.code && <div className="mono" style={{ fontSize:12, color:'var(--muted)', marginTop:2 }}>{detailItem.code}</div>}
-                  <div style={{ marginTop:6, display:'flex', gap:6, flexWrap:'wrap' }}>
+                  <div style={{ marginTop:6, display:'flex', gap:6, flexWrap:'wrap', justifyContent:'center' }}>
                     <CategoryBadge category={detailItem.category} />
                     <span className="badge badge-grey" style={{ fontSize:11 }}>{detailItem.store_category}</span>
                   </div>
