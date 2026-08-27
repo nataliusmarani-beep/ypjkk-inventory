@@ -1,7 +1,9 @@
 // YPJ KK Inventory — Service Worker
 // Strategy:
-//   /api/*        → Network-first (always fresh data; fall back to nothing)
-//   everything else → Cache-first (shell, icons, JS bundles)
+//   /api/*                 → Network-first (always fresh data; fall back to nothing)
+//   navigation (HTML shell) → Network-first (always the latest deploy; cache is only an offline fallback)
+//   everything else         → Cache-first (JS/CSS/images — Vite content-hashes these filenames,
+//                             so a given URL is immutable and safe to cache aggressively)
 
 const CACHE = 'ypj-inv-v12';
 
@@ -42,7 +44,24 @@ self.addEventListener('fetch', (e) => {
     return;
   }
 
-  // Cache-first for everything else (static assets, HTML shell)
+  // Network-first for the HTML shell so every deploy is visible immediately —
+  // cache-first here is what caused stale UI after past updates.
+  if (request.mode === 'navigate') {
+    e.respondWith(
+      fetch(request)
+        .then(response => {
+          if (response.status === 200) {
+            const clone = response.clone();
+            caches.open(CACHE).then(c => c.put(request, clone));
+          }
+          return response;
+        })
+        .catch(() => caches.match(request).then(cached => cached || caches.match('/')))
+    );
+    return;
+  }
+
+  // Cache-first for everything else (content-hashed JS/CSS, icons, manifest)
   e.respondWith(
     caches.match(request).then(cached => {
       if (cached) return cached;
@@ -55,9 +74,7 @@ self.addEventListener('fetch', (e) => {
         return response;
       }).catch(() => {
         // Offline fallback: serve the app shell so React Router still works
-        if (request.mode === 'navigate') {
-          return caches.match('/');
-        }
+        return caches.match('/');
       });
     })
   );
