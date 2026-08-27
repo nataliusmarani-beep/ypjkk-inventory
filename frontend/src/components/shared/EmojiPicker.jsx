@@ -24,14 +24,14 @@ const EMOJIS = [
 ];
 
 const ICON_PX       = 50;
-const ICON_MAX_BYTES = 20 * 1024; // 20 KB
+const ICON_MAX_BYTES = 50 * 1024; // 50 KB
 
 function dataUrlBytes(dataUrl) {
   const b64 = dataUrl.slice(dataUrl.indexOf(',') + 1);
   return Math.ceil(b64.length * 3 / 4);
 }
 
-// Resize any uploaded image to a 50×50 JPEG, squeezed under 20 KB, as a base64 data URL
+// Resize any uploaded image to a 50×50 JPEG, squeezed under 50 KB, as a base64 data URL
 function resizeToBase64(file, size = ICON_PX, maxBytes = ICON_MAX_BYTES) {
   return new Promise((resolve, reject) => {
     const reader = new FileReader();
@@ -216,7 +216,7 @@ export default function EmojiPicker({ value, onChange }) {
             </div>
           )}
           {uploadErr && <div style={{ marginTop: 6, fontSize: 12, color: 'var(--red)' }}>⚠️ {uploadErr}</div>}
-          <div style={{ marginTop: 6, fontSize: 11, color: 'var(--muted)' }}>PNG, JPG, SVG, WebP — max 2 MB. Auto-compressed to 50 × 50 px, ≤ 20 KB.</div>
+          <div style={{ marginTop: 6, fontSize: 11, color: 'var(--muted)' }}>PNG, JPG, SVG, WebP — max 2 MB. Auto-compressed to 50 × 50 px, ≤ 50 KB.</div>
 
           <button
             type="button"
