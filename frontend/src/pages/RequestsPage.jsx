@@ -29,6 +29,26 @@ export default function RequestsPage({ role, user, showToast, refreshPending }) 
   const [histLoading, setHL]    = useState(true);
   const [expandedGroup, setExpandedGroup] = useState(null);
 
+  /* "complete request" inline form (requester supplies info an admin asked for) */
+  const [completingGroup, setCompletingGroup] = useState(null); // group_id | null
+  const [completeNote,    setCompleteNote]    = useState('');
+  const [completeFile,    setCompleteFile]    = useState(null);
+  const [completing,      setCompleting]      = useState(false);
+
+  const handleCompleteInfo = async gid => {
+    if (!completeNote.trim() && !completeFile) { showToast('Add a note or attachment first.', 'error'); return; }
+    setCompleting(true);
+    try {
+      await api.completeInfo(gid, { purpose: completeNote.trim() || undefined }, completeFile);
+      showToast('✅ Sent! The storekeeper/manager will review again.', 'success');
+      setCompletingGroup(null); setCompleteNote(''); setCompleteFile(null);
+      loadHistory();
+    } catch (err) {
+      showToast(err.message, 'error');
+    }
+    setCompleting(false);
+  };
+
   /* cart mode toggle */
   const [cartMode, setCartMode] = useState(false);
 
@@ -522,7 +542,12 @@ export default function RequestsPage({ role, user, showToast, refreshPending }) 
                                 {g.requester_name}
                                 <br /><span style={{ fontSize:11, color:'var(--muted)' }}>{g.requester_email}</span>
                               </td>
-                              <td><span className={`badge ${STATUS_BADGE[g.status]}`}>{STATUS_LABEL[g.status]}</span></td>
+                              <td>
+                                <span className={`badge ${STATUS_BADGE[g.status]}`}>{STATUS_LABEL[g.status]}</span>
+                                {g.status === 'pending' && g.needs_info === 1 && (
+                                  <span className="badge badge-orange" style={{ marginLeft:4 }}>✏️ Info needed</span>
+                                )}
+                              </td>
                               <td>{g.created_at?.slice(0,10)}</td>
                             </tr>
                             {isExpanded && (
@@ -567,7 +592,56 @@ export default function RequestsPage({ role, user, showToast, refreshPending }) 
                                         {!g.approval_notes && <div style={{ marginTop:5, color:'#fca5a5', fontSize:12 }}>No reason provided.</div>}
                                       </div>
                                     )}
-                                    {g.status === 'pending' && (
+                                    {g.status === 'pending' && g.needs_info === 1 && (
+                                      <div style={{
+                                        background:'#fffbeb', border:'1px solid #fde68a',
+                                        borderRadius:8, padding:'10px 14px', fontSize:13, color:'#92400e',
+                                      }}>
+                                        <strong>✏️ More info needed:</strong> {g.info_request_note}
+
+                                        {completingGroup === gid ? (
+                                          <div style={{ marginTop:10, display:'flex', flexDirection:'column', gap:8 }} onClick={e => e.stopPropagation()}>
+                                            <textarea
+                                              value={completeNote}
+                                              onChange={e => setCompleteNote(e.target.value)}
+                                              rows={2}
+                                              placeholder="Explain or add the missing detail..."
+                                              style={{ fontSize:13 }}
+                                            />
+                                            {completeFile
+                                              ? <div style={{ display:'flex', alignItems:'center', gap:8, background:'white', borderRadius:6, padding:'6px 10px', fontSize:12, fontWeight:600 }}>
+                                                  <span style={{ flex:1, minWidth:0, overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>📎 {completeFile.name}</span>
+                                                  <button type="button" onClick={() => setCompleteFile(null)} style={{ background:'none', border:'none', color:'var(--red)', cursor:'pointer', fontWeight:700, padding:0 }}>✕</button>
+                                                </div>
+                                              : <>
+                                                  <input id={`complete-file-${gid}`} type="file" accept=".jpg,.jpeg,.png,.webp,.gif,.pdf,.eml,.msg" style={{ display:'none' }}
+                                                    onChange={e => { const f = e.target.files?.[0]; e.target.value=''; if (f) setCompleteFile(f); }} />
+                                                  <label htmlFor={`complete-file-${gid}`} className="btn btn-outline btn-sm" style={{ cursor:'pointer', textAlign:'center' }}>
+                                                    📎 Attach email, PDF, or image
+                                                  </label>
+                                                </>
+                                            }
+                                            <div style={{ display:'flex', gap:8 }}>
+                                              <button type="button" className="btn btn-primary btn-sm" disabled={completing} onClick={() => handleCompleteInfo(gid)}>
+                                                {completing ? 'Sending...' : '📤 Send to Reviewer'}
+                                              </button>
+                                              <button type="button" className="btn btn-ghost btn-sm" onClick={() => { setCompletingGroup(null); setCompleteNote(''); setCompleteFile(null); }}>Cancel</button>
+                                            </div>
+                                          </div>
+                                        ) : (
+                                          <div style={{ marginTop:8 }}>
+                                            <button
+                                              type="button"
+                                              className="btn btn-primary btn-sm"
+                                              onClick={e => { e.stopPropagation(); setCompletingGroup(gid); setCompleteNote(''); setCompleteFile(null); }}
+                                            >
+                                              ✏️ Complete Request
+                                            </button>
+                                          </div>
+                                        )}
+                                      </div>
+                                    )}
+                                    {g.status === 'pending' && g.needs_info !== 1 && (
                                       <div style={{
                                         background:'#fffbeb', border:'1px solid #fde68a',
                                         borderRadius:8, padding:'10px 14px', fontSize:13, color:'#92400e',

@@ -4,7 +4,7 @@ const fs      = require('fs');
 const crypto  = require('crypto');
 const multer  = require('multer');
 const db = require('../db');
-const { sendNewRequestAlert, sendRequestSubmitted, sendRequestApproved, sendRequestRejected, sendLowStockAlert, sendRequestForwarded, sendPrincipalSubmissionNotice, sendPrincipalDecisionNotice } = require('../mailer');
+const { sendNewRequestAlert, sendRequestSubmitted, sendRequestApproved, sendRequestRejected, sendLowStockAlert, sendRequestForwarded, sendInfoRequested, sendRequestInfoProvided, sendPrincipalSubmissionNotice, sendPrincipalDecisionNotice } = require('../mailer');
 const { sendTelegram, sendTelegramToMany } = require('../telegram');
 
 // ── Attachment uploads (email/PDF/image proof for a request) ───────────────
@@ -197,6 +197,8 @@ router.get('/groups', (req, res) => {
         approved_at:    row.approved_at,
         attachment_path: row.attachment_path || null,
         attachment_name: row.attachment_name || null,
+        needs_info:        row.needs_info || 0,
+        info_request_note: row.info_request_note || null,
         items: [],
       });
     }
@@ -538,6 +540,93 @@ router.put('/groups/:groupId/forward', (req, res) => {
     `${forwarded_note ? `\n\n📝 Note: ${forwarded_note}` : ''}\n\n` +
     `👉 Open app to review: kkinventory.ypj.sch.id/approvals`
   ).catch(() => {});
+});
+
+// ── PUT /api/requests/groups/:groupId/request-info ─────────────────────────
+// Storekeeper/Manager asks the requester for more justification (note and/or
+// an attachment) before the request can be reviewed. Status stays 'pending'.
+router.put('/groups/:groupId/request-info', (req, res) => {
+  const { note } = req.body || {};
+  const { groupId } = req.params;
+
+  if (!note?.trim()) return res.status(400).json({ error: 'Please describe what info is needed.' });
+
+  const rows = db.prepare(`${withItem} WHERE r.group_id = ? AND r.status = 'pending'`).all(groupId);
+  if (rows.length === 0) return res.status(404).json({ error: 'No pending items in this group.' });
+
+  db.prepare(`UPDATE requests SET needs_info = 1, info_request_note = ? WHERE group_id = ? AND status = 'pending'`)
+    .run(note.trim(), groupId);
+
+  res.json({ group_id: groupId, needs_info: rows.length });
+
+  const first = rows[0];
+  const itemsPayload = rows.map(r => ({ item_name: r.item_name, quantity: r.quantity, unit_name: r.unit_name }));
+  const itemsBullet  = rows.map(r => `• ${r.item_name} × ${r.quantity} ${r.unit_name}`).join('\n');
+
+  sendInfoRequested({
+    requesterName:  first.requester_name,
+    requesterEmail: first.requester_email,
+    items:          itemsPayload,
+    note:           note.trim(),
+    groupId,
+  }).catch(e => console.error('Info-requested email failed:', e.message));
+
+  const tgId = getTelegramId(first.requester_email);
+  if (tgId) sendTelegram(tgId,
+    `✏️ <b>More Info Needed</b>\n\n${itemsBullet}\n\n` +
+    `📝 ${note.trim()}\n\n` +
+    `👉 Open My Requests and tap Complete Request to add it.`
+  ).catch(() => {});
+});
+
+// ── PUT /api/requests/groups/:groupId/complete-info ─────────────────────────
+// Requester supplies the missing justification (note and/or attachment).
+router.put('/groups/:groupId/complete-info', uploadAttachment, (req, res) => {
+  const { groupId } = req.params;
+  const { purpose } = req.body || {};
+
+  const rows = db.prepare(`${withItem} WHERE r.group_id = ? AND r.status = 'pending'`).all(groupId);
+  if (rows.length === 0) {
+    if (req.file) fs.unlink(req.file.path, () => {});
+    return res.status(404).json({ error: 'No pending items in this group.' });
+  }
+  if (!rows[0].needs_info) {
+    if (req.file) fs.unlink(req.file.path, () => {});
+    return res.status(400).json({ error: 'This request is not awaiting more info.' });
+  }
+  if (!purpose?.trim() && !req.file) {
+    return res.status(400).json({ error: 'Add a note or an attachment before submitting.' });
+  }
+
+  const oldAttachmentPath = rows[0].attachment_path;
+  const info_request_note = rows[0].info_request_note;
+
+  db.prepare(`
+    UPDATE requests
+    SET needs_info = 0,
+        purpose = COALESCE(?, purpose),
+        attachment_path = COALESCE(?, attachment_path),
+        attachment_name = COALESCE(?, attachment_name)
+    WHERE group_id = ? AND status = 'pending'
+  `).run(purpose?.trim() || null, req.file?.filename || null, req.file?.originalname || null, groupId);
+
+  // Replaced attachment — remove the old file from disk
+  if (req.file && oldAttachmentPath) fs.unlink(path.join(UPLOAD_DIR, oldAttachmentPath), () => {});
+
+  const updated = db.prepare(`${withItem} WHERE r.group_id = ? ORDER BY r.id`).all(groupId);
+  res.json({ group_id: groupId, updated: updated.length });
+
+  const first = updated[0];
+  const itemsPayload = updated.map(r => ({ item_name: r.item_name, quantity: r.quantity, unit_name: r.unit_name }));
+
+  sendRequestInfoProvided({
+    requesterName: first.requester_name,
+    requesterUnit: first.unit_school,
+    items:         itemsPayload,
+    note:          info_request_note,
+    groupId,
+    recipients:    getApproverRecipients(first.unit_school),
+  }).catch(e => console.error('Info-provided email failed:', e.message));
 });
 
 // ── PUT /api/requests/:id/forward (single) ────────────────────────────────

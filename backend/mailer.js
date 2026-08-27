@@ -241,6 +241,61 @@ async function sendRequestForwarded({ storekeepName, requesterName, items, purpo
   );
 }
 
+// ── 6b. More Info Requested (to requester) ─────────────────────────────────
+async function sendInfoRequested({ requesterName, requesterEmail, items, note, groupId }) {
+  if (!requesterEmail) return;
+  const appUrl = process.env.FRONTEND_URL || 'https://kkinventory.ypj.sch.id';
+  await send({
+    to: requesterEmail,
+    subject: `[YPJ KK Inventory] ✏️ Additional info needed for your request`,
+    html: wrap(`
+      <p>Dear <strong>${requesterName}</strong>,</p>
+      <p>The storekeeper/manager needs <strong style="color:#d97706">more information</strong> before your request can be reviewed.</p>
+      ${table([
+        ['Request ID', groupId || '—'],
+      ])}
+      ${itemList(items)}
+      <div style="background:#fffbeb;border-left:4px solid #d97706;padding:12px 16px;border-radius:4px;font-size:13px;color:#92400e">
+        📝 <strong>What's needed:</strong> ${note}
+      </div>
+      <p style="font-size:13px;color:#475569;margin-top:16px">
+        Please log in to <strong>My Requests</strong> and click <strong>Complete Request</strong> to add the missing details or attachment.
+      </p>
+      <p style="text-align:center;margin-top:20px">
+        <a href="${appUrl}/requests" style="background:#1a2f5e;color:white;padding:10px 24px;border-radius:8px;text-decoration:none;font-weight:700;font-size:14px;display:inline-block">
+          Complete My Request
+        </a>
+      </p>
+    `),
+  }).catch(e => console.error('Info-requested email failed:', e.message));
+}
+
+// ── 6c. Info Provided (back to relevant Storekeepers + Managers) ──────────
+async function sendRequestInfoProvided({ requesterName, requesterUnit, items, note, groupId, recipients }) {
+  if (!recipients || recipients.length === 0) return;
+  const html = wrap(`
+    <p>Dear Storekeeper / Manager,</p>
+    <p><strong>${requesterName}</strong> has provided the additional information you requested — the request is ready for another look.</p>
+    ${table([
+      ['Request ID',    groupId || '—'],
+      ['From',          requesterName],
+      ['Unit / School', requesterUnit || '—'],
+      ...(note ? [['You had asked', note]] : []),
+    ])}
+    ${itemList(items)}
+    <div style="background:#eff6ff;border-left:4px solid #2563eb;padding:12px 16px;border-radius:4px;font-size:13px;color:#1e40af">
+      👉 Please log in to the inventory system to review and approve or reject this request.
+    </div>
+  `);
+  await Promise.all(
+    recipients.map(r => send({
+      to:      r.email,
+      subject: `[YPJ KK Inventory] 📝 Info provided — request from ${requesterName} ready for review`,
+      html,
+    }).catch(e => console.error(`Info-provided alert to ${r.email} failed:`, e.message)))
+  );
+}
+
 // ── 7. Welcome email — new user account created ───────────────────────────
 async function sendWelcomeEmail({ name, email, role, unit_school, setPasswordUrl }) {
   const appUrl = process.env.FRONTEND_URL || 'https://kkinventory.ypj.sch.id';
@@ -457,6 +512,8 @@ module.exports = {
   sendRequestRejected,
   sendLowStockAlert,
   sendRequestForwarded,
+  sendInfoRequested,
+  sendRequestInfoProvided,
   sendPrincipalSubmissionNotice,
   sendPrincipalDecisionNotice,
   sendCheckoutConfirmation,

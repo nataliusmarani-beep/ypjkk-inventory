@@ -30,10 +30,12 @@ export default function ApprovalsPage({ role, user, showToast, refreshPending })
   const [approveModal, setApproveModal] = useState(null); // group object
   const [rejectModal,  setRejectModal]  = useState(null); // group object
   const [forwardModal, setForwardModal] = useState(null); // group object
+  const [infoModal,    setInfoModal]    = useState(null); // group object
 
   const [approveNotes,  setApproveNotes]  = useState('');
   const [rejectNotes,   setRejectNotes]   = useState('');
   const [forwardNotes,  setForwardNotes]  = useState('');
+  const [infoNote,      setInfoNote]      = useState('');
 
   const isStorekeeper = role === 'Storekeeper';
   const isAdmin       = role === 'Manager';
@@ -100,6 +102,23 @@ export default function ApprovalsPage({ role, user, showToast, refreshPending })
       }
       showToast('📨 Request forwarded to Admin for review.', 'info');
       setForwardModal(null); setForwardNotes('');
+      load();
+    } catch (err) {
+      showToast(err.message, 'error');
+    }
+    setActing(null);
+  };
+
+  // ── Request Info ─────────────────────────────────────────────────────────
+  const handleRequestInfo = async () => {
+    const group = infoModal;
+    const gid   = group.group_id;
+    if (!gid || !infoNote.trim()) return;
+    setActing(gid);
+    try {
+      await api.requestInfo(gid, { note: infoNote.trim() });
+      showToast('✏️ Requester notified to complete the request.', 'info');
+      setInfoModal(null); setInfoNote('');
       load();
     } catch (err) {
       showToast(err.message, 'error');
@@ -233,6 +252,35 @@ export default function ApprovalsPage({ role, user, showToast, refreshPending })
           </div>
         </Modal>
       )}
+      {/* ── Request Info Modal ── */}
+      {infoModal && (
+        <Modal title="✏️ Request More Info" onClose={() => { setInfoModal(null); setInfoNote(''); }}>
+          <p style={{ marginBottom:8, fontSize:14 }}>
+            Ask <strong>{infoModal.requester_name}</strong> to complete this request with more justification
+            (a note and/or an attachment) before it can be reviewed.
+          </p>
+          <ul style={{ fontSize:13, color:'var(--muted)', marginBottom:14, paddingLeft:18 }}>
+            {infoModal.items.map(it => (
+              <li key={it.id}>{itemIcon(it.item_icon, it.item_category)} {it.item_name} × {it.quantity} {it.unit_name}</li>
+            ))}
+          </ul>
+          <div className="form-group">
+            <label className="form-label">What's needed <span className="req">*</span></label>
+            <textarea
+              value={infoNote}
+              onChange={e => setInfoNote(e.target.value)}
+              rows={3}
+              placeholder="e.g. Please attach the approval email or explain why this quantity is needed."
+            />
+          </div>
+          <div className="form-actions" style={{ marginTop:16 }}>
+            <button className="btn btn-primary" onClick={handleRequestInfo} disabled={acting || !infoNote.trim()}>
+              ✏️ Send Request
+            </button>
+            <button className="btn btn-ghost" onClick={() => { setInfoModal(null); setInfoNote(''); }}>Cancel</button>
+          </div>
+        </Modal>
+      )}
     </div>
   );
 
@@ -259,6 +307,11 @@ export default function ApprovalsPage({ role, user, showToast, refreshPending })
               📨 Forwarded by Storekeeper
             </span>
           )}
+          {group.needs_info === 1 && (
+            <span className="badge badge-orange" style={{ background:'#fffbeb', color:'#92400e' }}>
+              ✏️ Waiting on Requester
+            </span>
+          )}
           <span style={{ marginLeft:'auto', fontSize:13, color:'var(--muted)', fontWeight:700 }}>
             {group.created_at?.slice(0,10)}
           </span>
@@ -280,6 +333,11 @@ export default function ApprovalsPage({ role, user, showToast, refreshPending })
           {isForwarded && group.forwarded_note && (
             <div style={{ marginTop:6, padding:'6px 10px', background:'#dbeafe', borderRadius:6, fontSize:12, color:'#1d4ed8' }}>
               📨 <strong>Storekeeper note:</strong> {group.forwarded_note}
+            </div>
+          )}
+          {group.needs_info === 1 && (
+            <div style={{ marginTop:6, padding:'6px 10px', background:'#fffbeb', borderRadius:6, fontSize:12, color:'#92400e' }}>
+              ✏️ <strong>Asked for:</strong> {group.info_request_note} — <em>not yet completed</em>
             </div>
           )}
         </div>
@@ -333,6 +391,16 @@ export default function ApprovalsPage({ role, user, showToast, refreshPending })
               onClick={() => { setForwardModal(group); setForwardNotes(''); }}
             >
               📨 Forward to Admin
+            </button>
+          )}
+          {group.group_id && (
+            <button
+              className="btn btn-ghost"
+              disabled={isAct || group.needs_info === 1}
+              style={{ color:'var(--orange, #d97706)', borderColor:'var(--orange, #d97706)' }}
+              onClick={() => { setInfoModal(group); setInfoNote(''); }}
+            >
+              {group.needs_info === 1 ? '⏳ Awaiting Requester' : '✏️ Request Info'}
             </button>
           )}
         </div>

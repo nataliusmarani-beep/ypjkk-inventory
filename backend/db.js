@@ -135,6 +135,8 @@ if (!reqCols.includes('reminder_2d_sent')) db.exec(`ALTER TABLE requests ADD COL
 if (!reqCols.includes('reminder_1d_sent')) db.exec(`ALTER TABLE requests ADD COLUMN reminder_1d_sent INTEGER NOT NULL DEFAULT 0`);
 if (!reqCols.includes('attachment_path')) db.exec(`ALTER TABLE requests ADD COLUMN attachment_path TEXT`);
 if (!reqCols.includes('attachment_name')) db.exec(`ALTER TABLE requests ADD COLUMN attachment_name TEXT`);
+if (!reqCols.includes('needs_info'))        db.exec(`ALTER TABLE requests ADD COLUMN needs_info INTEGER NOT NULL DEFAULT 0`);
+if (!reqCols.includes('info_request_note')) db.exec(`ALTER TABLE requests ADD COLUMN info_request_note TEXT`);
 
 const itemCols = db.prepare(`PRAGMA table_info(items)`).all().map(c => c.name);
 const migrations = {

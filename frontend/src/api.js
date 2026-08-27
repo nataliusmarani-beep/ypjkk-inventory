@@ -67,6 +67,13 @@ export const api = {
   rejectGroup:    (gid, b) => request(`/requests/groups/${encodeURIComponent(gid)}/reject`,  { method: 'PUT', body: JSON.stringify(b || {}) }),
   forwardGroup:   (gid, b) => request(`/requests/groups/${encodeURIComponent(gid)}/forward`, { method: 'PUT', body: JSON.stringify(b || {}) }),
   returnRequest:  (id)     => request(`/requests/${id}/return`,   { method: 'PUT', body: JSON.stringify({}) }),
+  requestInfo:    (gid, b) => request(`/requests/groups/${encodeURIComponent(gid)}/request-info`, { method: 'PUT', body: JSON.stringify(b || {}) }),
+  completeInfo:   (gid, b, file) => {
+    const fd = new FormData();
+    if (b?.purpose) fd.append('purpose', b.purpose);
+    if (file) fd.append('attachment', file);
+    return request(`/requests/groups/${encodeURIComponent(gid)}/complete-info`, { method: 'PUT', body: fd });
+  },
 
   // Users (Manager only)
   getUsers:      (p)      => request(`/users${qs(p)}`),
