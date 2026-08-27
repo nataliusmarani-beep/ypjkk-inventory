@@ -270,6 +270,13 @@ export default function ApprovalsPage({ role, user, showToast, refreshPending })
           <span style={{ color:'var(--muted)', marginLeft:8 }}>{group.requester_email}</span>
           {group.purpose && <div style={{ color:'var(--muted)', marginTop:4, fontSize:12 }}>💬 {group.purpose}</div>}
           {group.return_date && <div style={{ color:'var(--muted)', fontSize:12 }}>↩ Return by {group.return_date}</div>}
+          {group.attachment_path && (
+            <div style={{ marginTop:4, fontSize:12 }}>
+              <a href={api.attachmentUrl(group.attachment_path)} target="_blank" rel="noreferrer" style={{ color:'var(--primary)', fontWeight:700, textDecoration:'underline' }}>
+                📎 {group.attachment_name || 'Attachment'}
+              </a>
+            </div>
+          )}
           {isForwarded && group.forwarded_note && (
             <div style={{ marginTop:6, padding:'6px 10px', background:'#dbeafe', borderRadius:6, fontSize:12, color:'#1d4ed8' }}>
               📨 <strong>Storekeeper note:</strong> {group.forwarded_note}

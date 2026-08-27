@@ -133,6 +133,8 @@ if (!reqCols.includes('forwarded_note'))  db.exec(`ALTER TABLE requests ADD COLU
 if (!reqCols.includes('approval_notes'))  db.exec(`ALTER TABLE requests ADD COLUMN approval_notes TEXT`);
 if (!reqCols.includes('reminder_2d_sent')) db.exec(`ALTER TABLE requests ADD COLUMN reminder_2d_sent INTEGER NOT NULL DEFAULT 0`);
 if (!reqCols.includes('reminder_1d_sent')) db.exec(`ALTER TABLE requests ADD COLUMN reminder_1d_sent INTEGER NOT NULL DEFAULT 0`);
+if (!reqCols.includes('attachment_path')) db.exec(`ALTER TABLE requests ADD COLUMN attachment_path TEXT`);
+if (!reqCols.includes('attachment_name')) db.exec(`ALTER TABLE requests ADD COLUMN attachment_name TEXT`);
 
 const itemCols = db.prepare(`PRAGMA table_info(items)`).all().map(c => c.name);
 const migrations = {
@@ -164,4 +166,5 @@ if (userCount === 0) {
   console.log('[db] First-run seed: Manager account created (nmarani@fmi.com).');
 }
 
+db.DATA_DIR = DB_DIR;
 module.exports = db;

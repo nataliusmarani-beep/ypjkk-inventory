@@ -51,6 +51,22 @@ export default function RequestsPage({ role, user, showToast, refreshPending }) 
   const [submitting, setSubmitting] = useState(false);
   const [formError, setFormError]   = useState(null);
   const [detailItem, setDetailItem] = useState(null);
+  const [attachment, setAttachment] = useState(null); // File | null
+
+  const ATTACHMENT_ACCEPT = '.jpg,.jpeg,.png,.webp,.gif,.pdf,.eml,.msg';
+  const ATTACHMENT_MAX_MB = 10;
+
+  const handleAttachmentChange = e => {
+    const file = e.target.files?.[0];
+    e.target.value = '';
+    if (!file) return;
+    if (file.size > ATTACHMENT_MAX_MB * 1024 * 1024) {
+      setFormError(`Attachment must be under ${ATTACHMENT_MAX_MB} MB.`);
+      return;
+    }
+    setFormError(null);
+    setAttachment(file);
+  };
 
   /* ── loaders ─────────────────────────────────────────────────────────── */
   // Teachers only see their own requests; Admins/Storekeepers see all
@@ -112,10 +128,11 @@ export default function RequestsPage({ role, user, showToast, refreshPending }) 
         ...form,
         category: null,          // mixed categories — no lock
         items: cart.map(c => ({ item_id: c.item.id, quantity: c.quantity })),
-      });
+      }, attachment);
       showToast('✅ Request submitted! Storekeeper will be notified.', 'success');
       setCart([]);
       setForm({ requester_name: user?.name || '', requester_email: user?.email || '', type:'used-up', unit_school: user?.unit_school || 'All', purpose:'', return_date:'' });
+      setAttachment(null);
       setCartMode(false);
       loadHistory(); refreshPending();
     } catch (err) {
@@ -331,12 +348,29 @@ export default function RequestsPage({ role, user, showToast, refreshPending }) 
                   <textarea value={form.purpose} onChange={set('purpose')} rows={2} placeholder="Reason for request..." style={{ marginTop:4 }} />
                 </label>
 
+                <label style={{ fontSize:12, fontWeight:800, color:'var(--navy)' }}>
+                  Attachment <span style={{ fontWeight:600, color:'var(--muted)' }}>(optional)</span>
+                  {attachment
+                    ? <div style={{ marginTop:4, display:'flex', alignItems:'center', gap:8, background:'var(--off)', borderRadius:'var(--radius-sm)', padding:'8px 10px', fontSize:12, fontWeight:600 }}>
+                        <span style={{ flex:1, minWidth:0, overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>📎 {attachment.name}</span>
+                        <button type="button" onClick={() => setAttachment(null)} style={{ background:'none', border:'none', color:'var(--red)', cursor:'pointer', fontWeight:700, padding:0 }}>✕</button>
+                      </div>
+                    : <>
+                        <input id="attachment-input" type="file" accept={ATTACHMENT_ACCEPT} onChange={handleAttachmentChange} style={{ display:'none' }} />
+                        <label htmlFor="attachment-input" className="btn btn-outline btn-sm" style={{ marginTop:4, width:'100%', textAlign:'center', cursor:'pointer' }}>
+                          📎 Attach email, PDF, or image
+                        </label>
+                      </>
+                  }
+                  <div style={{ fontSize:10, color:'var(--muted)', marginTop:3, fontWeight:600 }}>Max {ATTACHMENT_MAX_MB} MB — image, PDF, or .eml/.msg</div>
+                </label>
+
                 <button type="submit" className="btn btn-primary" disabled={submitting || cart.length === 0} style={{ width:'100%' }}>
                   {submitting ? 'Submitting...' : `📤 Submit (${cart.length} item${cart.length !== 1 ? 's' : ''})`}
                 </button>
 
                 {cart.length > 0 && (
-                  <button type="button" className="btn btn-ghost btn-sm" onClick={() => setCart([])} style={{ width:'100%' }}>
+                  <button type="button" className="btn btn-ghost btn-sm" onClick={() => { setCart([]); setAttachment(null); }} style={{ width:'100%' }}>
                     🗑 Clear Cart
                   </button>
                 )}
@@ -503,6 +537,13 @@ export default function RequestsPage({ role, user, showToast, refreshPending }) 
                                     {g.type === 'borrow' && g.return_date && (
                                       <div style={{ fontSize:13, color:'var(--text)' }}>
                                         <span style={{ fontWeight:700, color:'var(--navy)' }}>Return By: </span>{g.return_date}
+                                      </div>
+                                    )}
+                                    {g.attachment_path && (
+                                      <div style={{ fontSize:13 }}>
+                                        <a href={api.attachmentUrl(g.attachment_path)} target="_blank" rel="noreferrer" style={{ color:'var(--primary)', fontWeight:700, textDecoration:'underline' }}>
+                                          📎 {g.attachment_name || 'Attachment'}
+                                        </a>
                                       </div>
                                     )}
                                     {(g.status === 'approved' || g.status === 'returned') && (

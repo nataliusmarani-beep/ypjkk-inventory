@@ -3,6 +3,7 @@ backend/database.sqlite
 backend/database.sqlite-shm
 backend/database.sqlite-wal
 backend/backups/
+backend/uploads/
 frontend/dist/
 .DS_Store
 backend/.env
