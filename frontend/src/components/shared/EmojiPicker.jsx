@@ -23,7 +23,7 @@ const EMOJIS = [
   '📦','🏷️','🔑','🗝️','📷','🖥️','📱','⌨️','🖱️',
 ];
 
-const ICON_PX       = 50;
+const ICON_PX       = 240;
 const ICON_MAX_BYTES = 50 * 1024; // 50 KB
 
 function dataUrlBytes(dataUrl) {
@@ -31,7 +31,7 @@ function dataUrlBytes(dataUrl) {
   return Math.ceil(b64.length * 3 / 4);
 }
 
-// Resize any uploaded image to a 50×50 JPEG, squeezed under 50 KB, as a base64 data URL
+// Resize any uploaded image to a 240×240 JPEG, squeezed under 50 KB, as a base64 data URL
 function resizeToBase64(file, size = ICON_PX, maxBytes = ICON_MAX_BYTES) {
   return new Promise((resolve, reject) => {
     const reader = new FileReader();
@@ -216,7 +216,7 @@ export default function EmojiPicker({ value, onChange }) {
             </div>
           )}
           {uploadErr && <div style={{ marginTop: 6, fontSize: 12, color: 'var(--red)' }}>⚠️ {uploadErr}</div>}
-          <div style={{ marginTop: 6, fontSize: 11, color: 'var(--muted)' }}>PNG, JPG, SVG, WebP — max 2 MB. Auto-compressed to 50 × 50 px, ≤ 50 KB.</div>
+          <div style={{ marginTop: 6, fontSize: 11, color: 'var(--muted)' }}>PNG, JPG, SVG, WebP — max 2 MB. Auto-compressed to 240 × 240 px, ≤ 50 KB.</div>
 
           <button
             type="button"
