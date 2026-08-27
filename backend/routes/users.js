@@ -219,6 +219,7 @@ router.post('/import', async (req, res) => {
 
     let imported = 0, skipped = 0;
     const errors = [];
+    const invitees = [];
 
     for (let i = 0; i < rows.length; i++) {
       const r = rows[i];
@@ -238,14 +239,27 @@ router.post('/import', async (req, res) => {
       const loc  = validLocs.includes(r.location)     ? r.location    : null;
       const cat  = validCats.includes(r.store_category) ? r.store_category : null;
 
-      db.prepare(`
+      const result = db.prepare(`
         INSERT INTO users (name, email, role, unit_school, location, store_category, password_hash)
         VALUES (?,?,?,?,?,?,?)
       `).run(r.name.trim(), email, r.role, unit, loc || null, cat || null, hash);
       imported++;
+      invitees.push({ id: result.lastInsertRowid, name: r.name.trim(), email, role: r.role, unit_school: unit });
     }
 
     res.json({ imported, skipped, errors });
+
+    // Send welcome emails with set-password links (fire and forget)
+    for (const u of invitees) {
+      const setPasswordUrl = createWelcomeToken(u.id);
+      sendWelcomeEmail({
+        name:        u.name,
+        email:       u.email,
+        role:        u.role,
+        unit_school: u.unit_school,
+        setPasswordUrl,
+      }).catch(e => console.error('[mailer] Welcome email failed for', u.email, ':', e.message));
+    }
   } catch (err) {
     console.error('POST /users/import error:', err.message);
     res.status(500).json({ error: err.message });
