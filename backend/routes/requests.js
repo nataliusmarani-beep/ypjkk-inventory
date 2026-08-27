@@ -22,7 +22,7 @@ const upload = multer({
       cb(null, `${Date.now()}-${crypto.randomBytes(6).toString('hex')}${ext}`);
     },
   }),
-  limits: { fileSize: 10 * 1024 * 1024 }, // 10 MB
+  limits: { fileSize: 1 * 1024 * 1024 }, // 1 MB
   fileFilter: (req, file, cb) => {
     const ext = path.extname(file.originalname).toLowerCase();
     if (!ATTACHMENT_EXTENSIONS.includes(ext)) {
@@ -37,7 +37,7 @@ const upload = multer({
 function uploadAttachment(req, res, next) {
   upload.single('attachment')(req, res, (err) => {
     if (!err) return next();
-    if (err.code === 'LIMIT_FILE_SIZE') return res.status(400).json({ error: 'Attachment must be under 10 MB.' });
+    if (err.code === 'LIMIT_FILE_SIZE') return res.status(400).json({ error: 'Attachment must be under 1 MB.' });
     res.status(err.status || 400).json({ error: err.message });
   });
 }

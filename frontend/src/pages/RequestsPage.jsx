@@ -74,7 +74,7 @@ export default function RequestsPage({ role, user, showToast, refreshPending }) 
   const [attachment, setAttachment] = useState(null); // File | null
 
   const ATTACHMENT_ACCEPT = '.jpg,.jpeg,.png,.webp,.gif,.pdf,.eml,.msg';
-  const ATTACHMENT_MAX_MB = 10;
+  const ATTACHMENT_MAX_MB = 1;
 
   const handleAttachmentChange = e => {
     const file = e.target.files?.[0];
@@ -615,7 +615,12 @@ export default function RequestsPage({ role, user, showToast, refreshPending }) 
                                                 </div>
                                               : <>
                                                   <input id={`complete-file-${gid}`} type="file" accept=".jpg,.jpeg,.png,.webp,.gif,.pdf,.eml,.msg" style={{ display:'none' }}
-                                                    onChange={e => { const f = e.target.files?.[0]; e.target.value=''; if (f) setCompleteFile(f); }} />
+                                                    onChange={e => {
+                                                      const f = e.target.files?.[0]; e.target.value = '';
+                                                      if (!f) return;
+                                                      if (f.size > ATTACHMENT_MAX_MB * 1024 * 1024) { showToast(`Attachment must be under ${ATTACHMENT_MAX_MB} MB.`, 'error'); return; }
+                                                      setCompleteFile(f);
+                                                    }} />
                                                   <label htmlFor={`complete-file-${gid}`} className="btn btn-outline btn-sm" style={{ cursor:'pointer', textAlign:'center' }}>
                                                     📎 Attach email, PDF, or image
                                                   </label>
