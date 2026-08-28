@@ -26,22 +26,35 @@ const BrowseItemCard = memo(function BrowseItemCard({ item, inCart, onSetQty, on
         padding: 14,
         opacity: outOfStock ? .5 : 1,
         transition: 'border-color .15s',
+        minWidth: 0,
+        maxWidth: '100%',
+        boxSizing: 'border-box',
+        overflow: 'hidden',
       }}
     >
-      <div style={{ display:'flex', justifyContent:'space-between', alignItems:'flex-start', marginBottom:5 }}>
-        <div style={{ fontSize:26, lineHeight:1 }}>
-          {(item.icon || '').startsWith('data:')
-            ? <img src={item.icon} alt="" style={{ width:36, height:36, objectFit:'contain', borderRadius:6 }} />
-            : (item.icon || CAT_EMOJI[item.category] || '📦')}
+      <div style={{ display:'flex', justifyContent:'space-between', alignItems:'flex-start', gap:10, marginBottom:5 }}>
+        <div style={{ flex:1, minWidth:0 }}>
+          <div style={{ fontWeight:800, fontSize:13, lineHeight:1.3 }}>{item.name}</div>
+          {item.code && <div className="mono" style={{ color:'var(--muted)', marginTop:2, fontSize:11 }}>{item.code}</div>}
         </div>
-        <button
-          title="View item details"
-          onClick={() => onShowDetail(item)}
-          style={{ background:'none', border:'none', cursor:'pointer', fontSize:14, color:'var(--muted)', padding:0, lineHeight:1 }}
-        >ℹ️</button>
+        <div style={{ position:'relative', flexShrink:0 }}>
+          <div style={{ fontSize:44, lineHeight:1, width:56, height:56, display:'flex', alignItems:'center', justifyContent:'center' }}>
+            {(item.icon || '').startsWith('data:')
+              ? <img src={item.icon} alt="" style={{ width:56, height:56, objectFit:'contain', borderRadius:8 }} />
+              : (item.icon || CAT_EMOJI[item.category] || '📦')}
+          </div>
+          <button
+            title="View item details"
+            onClick={() => onShowDetail(item)}
+            style={{
+              position:'absolute', top:-6, right:-6, width:20, height:20,
+              background:'white', border:'1px solid var(--border)', borderRadius:'50%',
+              display:'flex', alignItems:'center', justifyContent:'center',
+              cursor:'pointer', fontSize:11, padding:0, lineHeight:1,
+            }}
+          >ℹ️</button>
+        </div>
       </div>
-      <div style={{ fontWeight:800, fontSize:13, marginBottom:2, lineHeight:1.3 }}>{item.name}</div>
-      {item.code && <div className="mono" style={{ color:'var(--muted)', marginBottom:4, fontSize:11 }}>{item.code}</div>}
       <div style={{ fontSize:11, fontWeight:700, marginBottom:8, color: outOfStock ? 'var(--red)' : isLow ? 'var(--amber)' : 'var(--green)' }}>
         {outOfStock ? 'Out of stock' : `${item.quantity} ${item.unit_name} available`}
         {isLow && !outOfStock && ' ⚠️'}
