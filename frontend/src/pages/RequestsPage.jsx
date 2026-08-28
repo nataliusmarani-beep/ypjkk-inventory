@@ -56,9 +56,9 @@ const BrowseItemCard = memo(function BrowseItemCard({ item, inCart, onSetQty, on
           {item.code && <div className="mono" style={{ color:'var(--muted)', marginTop:2, fontSize:11 }}>{item.code}</div>}
         </div>
         <div style={{ position:'relative', flexShrink:0 }}>
-          <div style={{ fontSize:52, lineHeight:1, width:68, height:68, display:'flex', alignItems:'center', justifyContent:'center' }}>
+          <div style={{ fontSize:58, lineHeight:1, width:78, height:78, display:'flex', alignItems:'center', justifyContent:'center' }}>
             {(item.icon || '').startsWith('data:')
-              ? <img src={item.icon} alt="" style={{ width:68, height:68, objectFit:'contain', borderRadius:8 }} />
+              ? <img src={item.icon} alt="" style={{ width:78, height:78, objectFit:'contain', borderRadius:8 }} />
               : (item.icon || CAT_EMOJI[item.category] || '📦')}
           </div>
           <button
