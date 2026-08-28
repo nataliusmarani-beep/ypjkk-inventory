@@ -128,7 +128,7 @@ export default function InventoryPage({ role, user, showToast }) {
           </div>
         </div>
         {isAdmin && (
-          <div style={{ display:'flex', gap:8 }}>
+          <div className="page-actions">
             <button className="btn btn-secondary" onClick={() => downloadTemplate(ITEM_HEADERS, ITEM_SAMPLE, 'items-template.csv')}>⬇ Template</button>
             <button className="btn btn-secondary" onClick={() => importRef.current.click()} disabled={importing}>
               {importing ? 'Importing...' : '📂 Import CSV'}
