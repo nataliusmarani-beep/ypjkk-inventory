@@ -317,6 +317,7 @@ textarea { resize: vertical; min-height: 80px; }
 .mono        { font-family: 'DM Mono', monospace; font-size: 12px; }
 .form-actions { display: flex; gap: 10px; justify-content: flex-end; margin-top: 8px; }
 .two-col     { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
+.two-col > .card { min-width: 0; overflow: hidden; }
 
 /* ── App footer ─────────────────────────────────────────────────────────── */
 .app-footer {

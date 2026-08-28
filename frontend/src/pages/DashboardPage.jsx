@@ -120,23 +120,25 @@ export default function DashboardPage({ role, user, showToast }) {
           </div>
           {lowItems.length === 0
             ? <p style={{ color: 'var(--muted)', fontSize: 13 }}>All items are sufficiently stocked. ✅</p>
-            : <table>
-                <thead><tr><th>Item</th><th>Location</th><th>Qty</th><th>Condition</th></tr></thead>
-                <tbody>
-                  {lowItems.map(item => (
-                    <tr key={item.id} className="low-stock-row">
-                      <td><strong>{item.name}</strong></td>
-                      <td>{item.location}</td>
-                      <td className={item.quantity === 0 ? 'qty-low' : 'qty-warn'}>
-                        {item.quantity === 0 ? <span className="badge badge-red" style={{fontSize:10}}>Out of Stock</span> : `${item.quantity} ${item.unit_name}`}
-                      </td>
-                      <td style={{fontSize:12, color:'var(--muted)'}}>
-                        {item.quantity === 0 ? 'N/A' : item.condition}
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
+            : <div className="table-wrap">
+                <table className="responsive-table">
+                  <thead><tr><th>Item</th><th>Location</th><th>Qty</th><th>Condition</th></tr></thead>
+                  <tbody>
+                    {lowItems.map(item => (
+                      <tr key={item.id} className="low-stock-row">
+                        <td><strong>{item.name}</strong></td>
+                        <td data-th="Location">{item.location}</td>
+                        <td data-th="Qty" className={item.quantity === 0 ? 'qty-low' : 'qty-warn'}>
+                          {item.quantity === 0 ? <span className="badge badge-red" style={{fontSize:10}}>Out of Stock</span> : `${item.quantity} ${item.unit_name}`}
+                        </td>
+                        <td data-th="Condition" style={{fontSize:12, color:'var(--muted)'}}>
+                          {item.quantity === 0 ? 'N/A' : item.condition}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
           }
         </div>
 
