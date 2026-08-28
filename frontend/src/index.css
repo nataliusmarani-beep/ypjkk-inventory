@@ -174,6 +174,10 @@ body {
 
 /* ── FILTER / SEARCH BAR ── */
 .filter-bar { display: flex; gap: 10px; margin-bottom: 18px; flex-wrap: wrap; }
+.sticky-filter-bar {
+  position: sticky; top: var(--topbar); z-index: 60;
+  background: var(--off); padding: 10px 0;
+}
 .search-box {
   flex: 1; min-width: 200px; display: flex; align-items: center; gap: 8px;
   background: white; border: 1.5px solid var(--border); border-radius: var(--radius-sm); padding: 8px 14px;

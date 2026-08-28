@@ -249,27 +249,30 @@ export default function RequestsPage({ role, user, showToast, refreshPending }) 
 
       {/* ── CART MODE ─────────────────────────────────────────────────── */}
       {cartMode && (
+        <>
+          {/* Search/filter stays reachable even after scrolling down to the
+              cart panel, so the requester can keep adding items without
+              scrolling all the way back up to the top of the item grid. */}
+          <div className="filter-bar sticky-filter-bar" style={{ marginBottom:14 }}>
+            <div className="search-box">
+              <span className="search-icon">🔍</span>
+              <input
+                type="text"
+                placeholder="Search items..."
+                value={search}
+                onChange={e => setSearch(e.target.value)}
+              />
+            </div>
+            <select value={filterCat} onChange={e => setFilterCat(e.target.value)}>
+              <option value="">All Categories</option>
+              {categories.map(c => <option key={c}>{c}</option>)}
+            </select>
+          </div>
+
         <div className="cart-layout">
 
           {/* LEFT: item browser */}
           <div>
-            {/* filters */}
-            <div className="filter-bar" style={{ marginBottom:14 }}>
-              <div className="search-box">
-                <span className="search-icon">🔍</span>
-                <input
-                  type="text"
-                  placeholder="Search items..."
-                  value={search}
-                  onChange={e => setSearch(e.target.value)}
-                />
-              </div>
-              <select value={filterCat} onChange={e => setFilterCat(e.target.value)}>
-                <option value="">All Categories</option>
-                {categories.map(c => <option key={c}>{c}</option>)}
-              </select>
-            </div>
-
             {/* item grid */}
             {browseItems.length === 0
               ? <p className="empty-state">No items found.</p>
@@ -414,6 +417,7 @@ export default function RequestsPage({ role, user, showToast, refreshPending }) 
             </div>
           </div>
         </div>
+        </>
       )}
 
       {/* ── Mobile-only floating "go to cart" bar — the cart/submit form sits
