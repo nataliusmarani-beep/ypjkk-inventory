@@ -26,7 +26,7 @@
 
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
-html, body { overflow-x: hidden; width: 100%; }
+html, body { overflow-x: hidden; max-width: 100vw; }
 
 body {
   font-family: 'Nunito', sans-serif;
@@ -93,7 +93,7 @@ body {
 .role-option.active { color: var(--blue); }
 
 /* ── LAYOUT ── */
-.layout { display: flex; margin-top: var(--topbar); min-height: calc(100vh - var(--topbar)); }
+.layout { display: flex; margin-top: var(--topbar); min-height: calc(100vh - var(--topbar)); max-width: 100vw; }
 
 /* ── SIDEBAR ── */
 .sidebar {
@@ -351,7 +351,7 @@ textarea { resize: vertical; min-height: 80px; }
   .form-grid  { grid-template-columns: 1fr; }
   .two-col    { grid-template-columns: 1fr; }
   .sidebar    { display: none; }
-  .main       { margin-left: 0; padding-left: 14px; padding-right: 14px; }
+  .main       { margin-left: 0; padding-left: 14px; padding-right: 20px; max-width: 100vw; }
 
   /* ── Cart layout: stack browser above cart, drop sticky ────────────── */
   .cart-layout { grid-template-columns: 1fr; gap: 16px; }
