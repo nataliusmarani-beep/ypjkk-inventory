@@ -175,7 +175,7 @@ export default function InventoryPage({ role, user, showToast }) {
         {loading ? <p className="loading">Loading...</p> : items.length === 0
           ? <p className="empty-state">No items found.</p>
           : <div className="table-wrap">
-              <table>
+              <table className="responsive-table">
                 <thead>
                   <tr>
                     <th>Item</th><th>Category</th><th>Location</th>
@@ -216,10 +216,10 @@ export default function InventoryPage({ role, user, showToast }) {
                             </div>
                           </div>
                         </td>
-                        <td><CategoryBadge category={item.category} /></td>
-                        <td><span style={{ fontSize: 12, fontWeight: 700 }}>📍 {item.location}</span></td>
-                        <td><span className={`badge ${item.unit_school === 'All' ? 'badge-grey' : 'badge-teal'}`}>{item.unit_school}</span></td>
-                        <td>
+                        <td data-th="Category"><CategoryBadge category={item.category} /></td>
+                        <td data-th="Location"><span style={{ fontSize: 12, fontWeight: 700 }}>📍 {item.location}</span></td>
+                        <td data-th="Unit"><span className={`badge ${item.unit_school === 'All' ? 'badge-grey' : 'badge-teal'}`}>{item.unit_school}</span></td>
+                        <td data-th="Stock">
                           <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
                             <span className="stock-bar">
                               <span className="stock-fill" style={{ width: `${pct}%`, background: col }}></span>
@@ -230,7 +230,7 @@ export default function InventoryPage({ role, user, showToast }) {
                             {low && <span className="badge badge-red" style={{ fontSize: 10 }}>{item.quantity === 0 ? 'Out of Stock' : 'Low Stock'}</span>}
                           </div>
                         </td>
-                        <td>
+                        <td data-th="Condition">
                           {item.quantity === 0
                             ? <span style={{ fontSize: 12, color: 'var(--muted)' }}>N/A</span>
                             : <span className={`badge ${item.condition === 'Good' ? 'badge-green' : item.condition === 'Fair' ? 'badge-orange' : 'badge-red'}`}>{item.condition}</span>

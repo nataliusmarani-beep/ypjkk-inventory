@@ -355,6 +355,25 @@ textarea { resize: vertical; min-height: 80px; }
   .modal-overlay { padding: 10px; }
   .modal          { width: 100%; max-width: 100%; padding: 18px; }
 
+  /* ── Responsive tables: stack rows into cards instead of side-scrolling ── */
+  .responsive-table thead { display: none; }
+  .responsive-table, .responsive-table tbody, .responsive-table tr, .responsive-table td { display: block; width: 100%; }
+  .responsive-table tr { padding: 14px 0; border-bottom: 8px solid var(--off); }
+  .responsive-table tr:last-child { border-bottom: none; }
+  .responsive-table td {
+    display: flex; align-items: flex-start; justify-content: space-between; gap: 12px;
+    padding: 6px 0; border-bottom: none; white-space: normal; text-align: right;
+  }
+  .responsive-table td[data-th]::before {
+    content: attr(data-th);
+    font-size: 10px; font-weight: 800; text-transform: uppercase; letter-spacing: .4px;
+    color: var(--muted); flex-shrink: 0; min-width: 64px; padding-top: 2px; text-align: left;
+  }
+  .responsive-table td:not([data-th]) { justify-content: flex-start; text-align: left; }
+  .responsive-table td:first-child {
+    padding-bottom: 10px; margin-bottom: 4px; border-bottom: 1px solid var(--border);
+  }
+
   /* ── Footer ─────────────────────────────────────────────────────────── */
   .app-footer   { flex-direction: column; align-items: center; text-align: center; gap: 4px; padding-top: 16px; margin-top: 32px; }
   .footer-links { white-space: normal; }
