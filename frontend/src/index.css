@@ -361,6 +361,14 @@ textarea { resize: vertical; min-height: 80px; }
   .sidebar    { display: none; }
   .main       { margin-left: 0; padding-left: 14px; padding-right: 17px; max-width: 100vw; }
 
+  /* ── Hard cap: no container on mobile can ever exceed the screen width ── */
+  .main, .card, .browse-grid, .browse-grid > *, .responsive-table, .table-wrap,
+  .cart-layout, .cart-panel, .stat-card, .quick-card, .two-col, .two-col > *,
+  .page-header, .page-actions, .filter-bar, .tabs, .modal, .dash-alert-card {
+    max-width: 100%;
+    box-sizing: border-box;
+  }
+
   /* ── Cart layout: stack browser above cart, drop sticky ────────────── */
   .cart-layout { grid-template-columns: 1fr; gap: 16px; }
   .cart-panel  { position: static; top: auto; }
