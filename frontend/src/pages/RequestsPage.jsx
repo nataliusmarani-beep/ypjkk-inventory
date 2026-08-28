@@ -42,7 +42,7 @@ const BrowseItemCard = memo(function BrowseItemCard({ item, inCart, onSetQty, on
         contain: 'layout',
       }}
     >
-      <div style={{ display:'flex', justifyContent:'space-between', alignItems:'flex-start', gap:6, marginBottom:5 }}>
+      <div style={{ display:'flex', justifyContent:'space-between', alignItems:'flex-start', gap:5, marginBottom:5 }}>
         <div style={{ flex:1, minWidth:0 }}>
           {(() => {
             const [line1, rest] = breakFirstLine(item.name);
