@@ -8,6 +8,16 @@ const CAT_EMOJI = {
   'Art & Craft':'🎨','Uniform':'👕','Sport Equipment':'⚽','Tools':'🔧','Medical/First Aid':'🏥',
 };
 
+// Force a line break at the nearest word boundary around `maxFirstLine`
+// chars instead of leaving it to CSS text-wrap.
+function breakFirstLine(name, maxFirstLine = 20) {
+  if (!name || name.length <= maxFirstLine) return [name || '', ''];
+  let idx = name.lastIndexOf(' ', maxFirstLine);
+  if (idx <= 0) idx = name.indexOf(' ', maxFirstLine);
+  if (idx === -1) return [name, ''];
+  return [name.slice(0, idx), name.slice(idx + 1)];
+}
+
 /* ── browse-grid item card ────────────────────────────────────────────────
    Memoized so bumping one item's qty only re-renders that one card, not the
    whole (potentially 400+ item) grid — on slow mobile devices, re-rendering
@@ -34,10 +44,15 @@ const BrowseItemCard = memo(function BrowseItemCard({ item, inCart, onSetQty, on
     >
       <div style={{ display:'flex', justifyContent:'space-between', alignItems:'flex-start', gap:10, marginBottom:5 }}>
         <div style={{ flex:1, minWidth:0 }}>
-          <div style={{
-            fontWeight:800, fontSize:13, lineHeight:1.3,
-            maxHeight: '2.6em', overflow:'hidden', wordBreak:'break-word',
-          }}>{item.name}</div>
+          {(() => {
+            const [line1, rest] = breakFirstLine(item.name);
+            return (
+              <div style={{ fontWeight:800, fontSize:13, lineHeight:1.3 }}>
+                <div>{line1}</div>
+                {rest && <div>{rest}</div>}
+              </div>
+            );
+          })()}
           {item.code && <div className="mono" style={{ color:'var(--muted)', marginTop:2, fontSize:11 }}>{item.code}</div>}
         </div>
         <div style={{ position:'relative', flexShrink:0 }}>
