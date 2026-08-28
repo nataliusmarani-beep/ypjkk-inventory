@@ -359,7 +359,7 @@ textarea { resize: vertical; min-height: 80px; }
   .form-grid  { grid-template-columns: 1fr; }
   .two-col    { grid-template-columns: 1fr; }
   .sidebar    { display: none; }
-  .main       { margin-left: 0; padding-left: 14px; padding-right: 36px; max-width: 100vw; }
+  .main       { margin-left: 0; padding-left: 14px; padding-right: 20px; max-width: 100vw; }
 
   /* ── Cart layout: stack browser above cart, drop sticky ────────────── */
   .cart-layout { grid-template-columns: 1fr; gap: 16px; }
