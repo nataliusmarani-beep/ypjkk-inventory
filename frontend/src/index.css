@@ -362,6 +362,11 @@ textarea { resize: vertical; min-height: 80px; }
   .modal-overlay { padding: 10px; }
   .modal          { width: 100%; max-width: 100%; padding: 18px; }
 
+  /* ── Dashboard alert card: drop the card's own padding so it isn't doubled with the responsive-table row padding ── */
+  .dash-alert-card { padding: 0; }
+  .dash-alert-card > .card-title { padding: 20px 16px 12px; margin-bottom: 0; }
+  .dash-alert-card > p { padding: 0 16px 20px; margin: 0; }
+
   /* ── Responsive tables: stack rows into cards instead of side-scrolling ── */
   .responsive-table thead { display: none; }
   .responsive-table, .responsive-table tbody, .responsive-table tr, .responsive-table td { display: block; width: 100%; }

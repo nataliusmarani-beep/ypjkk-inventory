@@ -111,7 +111,7 @@ export default function DashboardPage({ role, user, showToast }) {
       )}
 
       <div className="two-col">
-        <div className="card">
+        <div className="card dash-alert-card">
           <div className="card-title" style={{ display:'flex', alignItems:'center', justifyContent:'space-between' }}>
             <span>🔴 Low &amp; Out of Stock Alert</span>
             {lowItems.length > 0 && (
