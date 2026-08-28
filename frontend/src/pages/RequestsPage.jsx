@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, memo } from 'react';
 import { api } from '../api.js';
 import CategoryBadge from '../components/shared/CategoryBadge.jsx';
 
@@ -7,6 +7,73 @@ const CAT_EMOJI = {
   'Stationery':'📝','Housekeeping':'🧹','Learning Tools':'📚','Groceries':'🛒',
   'Art & Craft':'🎨','Uniform':'👕','Sport Equipment':'⚽','Tools':'🔧','Medical/First Aid':'🏥',
 };
+
+/* ── browse-grid item card ────────────────────────────────────────────────
+   Memoized so bumping one item's qty only re-renders that one card, not the
+   whole (potentially 400+ item) grid — on slow mobile devices, re-rendering
+   every card on every +/- tap was heavy enough to feel like the page had
+   frozen mid-scroll. */
+const BrowseItemCard = memo(function BrowseItemCard({ item, inCart, onSetQty, onAddToCart, onShowDetail }) {
+  const outOfStock = item.quantity === 0;
+  const isLow      = item.quantity > 0 && item.quantity <= item.min_threshold;
+
+  return (
+    <div
+      style={{
+        background: 'white',
+        border: `1.5px solid ${inCart > 0 ? 'var(--blue)' : 'var(--border)'}`,
+        borderRadius: 'var(--radius)',
+        padding: 14,
+        opacity: outOfStock ? .5 : 1,
+        transition: 'border-color .15s',
+      }}
+    >
+      <div style={{ display:'flex', justifyContent:'space-between', alignItems:'flex-start', marginBottom:5 }}>
+        <div style={{ fontSize:26, lineHeight:1 }}>
+          {(item.icon || '').startsWith('data:')
+            ? <img src={item.icon} alt="" style={{ width:36, height:36, objectFit:'contain', borderRadius:6 }} />
+            : (item.icon || CAT_EMOJI[item.category] || '📦')}
+        </div>
+        <button
+          title="View item details"
+          onClick={() => onShowDetail(item)}
+          style={{ background:'none', border:'none', cursor:'pointer', fontSize:14, color:'var(--muted)', padding:0, lineHeight:1 }}
+        >ℹ️</button>
+      </div>
+      <div style={{ fontWeight:800, fontSize:13, marginBottom:2, lineHeight:1.3 }}>{item.name}</div>
+      {item.code && <div className="mono" style={{ color:'var(--muted)', marginBottom:4, fontSize:11 }}>{item.code}</div>}
+      <div style={{ fontSize:11, fontWeight:700, marginBottom:8, color: outOfStock ? 'var(--red)' : isLow ? 'var(--amber)' : 'var(--green)' }}>
+        {outOfStock ? 'Out of stock' : `${item.quantity} ${item.unit_name} available`}
+        {isLow && !outOfStock && ' ⚠️'}
+      </div>
+      <div style={{ marginBottom:8 }}>
+        <CategoryBadge category={item.category} />
+      </div>
+
+      {inCart > 0 ? (
+        <div style={{ display:'flex', alignItems:'center', gap:6 }}>
+          <button className="btn btn-outline btn-sm" style={{ padding:'4px 10px', minWidth:28 }} onClick={() => onSetQty(item.id, inCart-1)}>−</button>
+          <span style={{ fontWeight:800, minWidth:22, textAlign:'center', fontSize:13 }}>{inCart}</span>
+          <button
+            className="btn btn-outline btn-sm"
+            style={{ padding:'4px 10px', minWidth:28 }}
+            onClick={() => inCart < item.quantity && onSetQty(item.id, inCart+1)}
+            disabled={inCart >= item.quantity}
+          >+</button>
+        </div>
+      ) : (
+        <button
+          className="btn btn-primary btn-sm"
+          style={{ width:'100%' }}
+          disabled={outOfStock}
+          onClick={() => onAddToCart(item)}
+        >
+          {outOfStock ? 'Out of Stock' : '+ Add to Cart'}
+        </button>
+      )}
+    </div>
+  );
+});
 const STATUS_BADGE = { pending:'badge-orange', approved:'badge-green', rejected:'badge-red', returned:'badge-teal' };
 const STATUS_LABEL = { pending:'⏳ Pending', approved:'✅ Approved', rejected:'❌ Rejected', returned:'↩ Returned' };
 const TYPE_BADGE   = { 'used-up':'badge-orange', borrow:'badge-purple' };
@@ -123,18 +190,18 @@ export default function RequestsPage({ role, user, showToast, refreshPending }) 
   const cartQtyOf  = id => cart.find(c => c.item.id === id)?.quantity || 0;
   const cartTotal  = cart.reduce((s, c) => s + c.quantity, 0);
 
-  const addToCart = item => {
+  const addToCart = useCallback(item => {
     setCart(prev => {
       const ex = prev.find(c => c.item.id === item.id);
       if (ex) return prev.map(c => c.item.id === item.id ? { ...c, quantity: c.quantity + 1 } : c);
       return [...prev, { item, quantity: 1 }];
     });
-  };
+  }, []);
 
-  const setQty = (id, qty) => {
+  const setQty = useCallback((id, qty) => {
     if (qty < 1) { setCart(prev => prev.filter(c => c.item.id !== id)); return; }
     setCart(prev => prev.map(c => c.item.id === id ? { ...c, quantity: qty } : c));
-  };
+  }, []);
 
   const set = f => e => setForm(p => ({ ...p, [f]: e.target.value }));
 
@@ -205,69 +272,16 @@ export default function RequestsPage({ role, user, showToast, refreshPending }) 
             {browseItems.length === 0
               ? <p className="empty-state">No items found.</p>
               : <div style={{ display:'grid', gridTemplateColumns:'repeat(auto-fill,minmax(190px,1fr))', gap:12 }}>
-                  {browseItems.map(item => {
-                    const inCart     = cartQtyOf(item.id);
-                    const outOfStock = item.quantity === 0;
-                    const isLow      = item.quantity > 0 && item.quantity <= item.min_threshold;
-
-                    return (
-                      <div
-                        key={item.id}
-                        style={{
-                          background: 'white',
-                          border: `1.5px solid ${inCart > 0 ? 'var(--blue)' : 'var(--border)'}`,
-                          borderRadius: 'var(--radius)',
-                          padding: 14,
-                          opacity: outOfStock ? .5 : 1,
-                          transition: 'border-color .15s',
-                        }}
-                      >
-                        <div style={{ display:'flex', justifyContent:'space-between', alignItems:'flex-start', marginBottom:5 }}>
-                          <div style={{ fontSize:26, lineHeight:1 }}>
-                            {(item.icon || '').startsWith('data:')
-                              ? <img src={item.icon} alt="" style={{ width:36, height:36, objectFit:'contain', borderRadius:6 }} />
-                              : (item.icon || CAT_EMOJI[item.category] || '📦')}
-                          </div>
-                          <button
-                            title="View item details"
-                            onClick={() => setDetailItem(item)}
-                            style={{ background:'none', border:'none', cursor:'pointer', fontSize:14, color:'var(--muted)', padding:0, lineHeight:1 }}
-                          >ℹ️</button>
-                        </div>
-                        <div style={{ fontWeight:800, fontSize:13, marginBottom:2, lineHeight:1.3 }}>{item.name}</div>
-                        {item.code && <div className="mono" style={{ color:'var(--muted)', marginBottom:4, fontSize:11 }}>{item.code}</div>}
-                        <div style={{ fontSize:11, fontWeight:700, marginBottom:8, color: outOfStock ? 'var(--red)' : isLow ? 'var(--amber)' : 'var(--green)' }}>
-                          {outOfStock ? 'Out of stock' : `${item.quantity} ${item.unit_name} available`}
-                          {isLow && !outOfStock && ' ⚠️'}
-                        </div>
-                        <div style={{ marginBottom:8 }}>
-                          <CategoryBadge category={item.category} />
-                        </div>
-
-                        {inCart > 0 ? (
-                          <div style={{ display:'flex', alignItems:'center', gap:6 }}>
-                            <button className="btn btn-outline btn-sm" style={{ padding:'4px 10px', minWidth:28 }} onClick={() => setQty(item.id, inCart-1)}>−</button>
-                            <span style={{ fontWeight:800, minWidth:22, textAlign:'center', fontSize:13 }}>{inCart}</span>
-                            <button
-                              className="btn btn-outline btn-sm"
-                              style={{ padding:'4px 10px', minWidth:28 }}
-                              onClick={() => inCart < item.quantity && setQty(item.id, inCart+1)}
-                              disabled={inCart >= item.quantity}
-                            >+</button>
-                          </div>
-                        ) : (
-                          <button
-                            className="btn btn-primary btn-sm"
-                            style={{ width:'100%' }}
-                            disabled={outOfStock}
-                            onClick={() => addToCart(item)}
-                          >
-                            {outOfStock ? 'Out of Stock' : '+ Add to Cart'}
-                          </button>
-                        )}
-                      </div>
-                    );
-                  })}
+                  {browseItems.map(item => (
+                    <BrowseItemCard
+                      key={item.id}
+                      item={item}
+                      inCart={cartQtyOf(item.id)}
+                      onSetQty={setQty}
+                      onAddToCart={addToCart}
+                      onShowDetail={setDetailItem}
+                    />
+                  ))}
                 </div>
             }
           </div>
