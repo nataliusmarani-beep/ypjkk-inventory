@@ -135,7 +135,7 @@ export default function Topbar({ user, pendingCount, onLogout, onProfileUpdate }
       {/* ── Profile Modal ───────────────────────────────────────────────── */}
       {showProfile && (
         <div className="modal-overlay" onClick={() => setShowProfile(false)}>
-          <div className="modal" style={{ maxWidth: 460 }} onClick={e => e.stopPropagation()}>
+          <div className="modal" style={{ width: 460, maxWidth: '95vw' }} onClick={e => e.stopPropagation()}>
             <div className="modal-header">
               <h3 className="modal-title">👤 My Profile</h3>
               <button className="modal-close" onClick={() => setShowProfile(false)}>✕</button>

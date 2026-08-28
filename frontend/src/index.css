@@ -26,6 +26,8 @@
 
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
+html, body { overflow-x: hidden; width: 100%; }
+
 body {
   font-family: 'Nunito', sans-serif;
   background: var(--off);
@@ -260,7 +262,7 @@ textarea { resize: vertical; min-height: 80px; }
 .modal-overlay {
   position: fixed; inset: 0; background: rgba(15,23,42,.45);
   z-index: 200; display: flex; align-items: center; justify-content: center;
-  animation: fadeIn .15s ease;
+  padding: 16px; animation: fadeIn .15s ease;
 }
 .modal {
   background: white; border-radius: var(--radius); padding: 28px;
@@ -269,6 +271,10 @@ textarea { resize: vertical; min-height: 80px; }
 }
 .modal-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 22px; }
 .modal-title  { font-size: 18px; font-weight: 900; color: var(--navy); }
+
+/* ── CART LAYOUT (Requests page: browser + cart) ── */
+.cart-layout { display: grid; grid-template-columns: 1fr 340px; gap: 20px; align-items: start; }
+.cart-panel  { position: sticky; top: 80px; }
 
 /* ── TIMELINE ── */
 .timeline { padding: 8px 0; }
@@ -339,7 +345,15 @@ textarea { resize: vertical; min-height: 80px; }
   .form-grid  { grid-template-columns: 1fr; }
   .two-col    { grid-template-columns: 1fr; }
   .sidebar    { display: none; }
-  .main       { margin-left: 0; }
+  .main       { margin-left: 0; padding-left: 14px; padding-right: 14px; }
+
+  /* ── Cart layout: stack browser above cart, drop sticky ────────────── */
+  .cart-layout { grid-template-columns: 1fr; gap: 16px; }
+  .cart-panel  { position: static; top: auto; }
+
+  /* ── Modal: fit narrow screens without cramped edges ────────────────── */
+  .modal-overlay { padding: 10px; }
+  .modal          { width: 100%; max-width: 100%; padding: 18px; }
 
   /* ── Footer ─────────────────────────────────────────────────────────── */
   .app-footer   { flex-direction: column; align-items: center; text-align: center; gap: 4px; padding-top: 16px; margin-top: 32px; }

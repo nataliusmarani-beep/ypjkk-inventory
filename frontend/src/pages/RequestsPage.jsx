@@ -180,7 +180,7 @@ export default function RequestsPage({ role, user, showToast, refreshPending }) 
 
       {/* ── CART MODE ─────────────────────────────────────────────────── */}
       {cartMode && (
-        <div style={{ display:'grid', gridTemplateColumns:'1fr 340px', gap:20, alignItems:'start' }}>
+        <div className="cart-layout">
 
           {/* LEFT: item browser */}
           <div>
@@ -273,7 +273,7 @@ export default function RequestsPage({ role, user, showToast, refreshPending }) 
           </div>
 
           {/* RIGHT: cart + requester form */}
-          <div style={{ position:'sticky', top:80 }}>
+          <div className="cart-panel">
             <div className="card" style={{ marginBottom:0 }}>
               <div className="card-title" style={{ marginBottom:12 }}>
                 🛒 Cart
@@ -403,7 +403,7 @@ export default function RequestsPage({ role, user, showToast, refreshPending }) 
       {/* ── ITEM DETAIL MODAL ─────────────────────────────────────────── */}
       {detailItem && (
         <div className="modal-overlay" onClick={() => setDetailItem(null)}>
-          <div className="modal" style={{ maxWidth: 420 }} onClick={e => e.stopPropagation()}>
+          <div className="modal" style={{ width: 420, maxWidth: '95vw' }} onClick={e => e.stopPropagation()}>
             <div className="modal-header">
               <h3 className="modal-title">📋 Item Details</h3>
               <button className="modal-close" onClick={() => setDetailItem(null)}>✕</button>
