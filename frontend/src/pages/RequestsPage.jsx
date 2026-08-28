@@ -587,9 +587,9 @@ export default function RequestsPage({ role, user, showToast, refreshPending }) 
                                 <div style={{ display:'flex', flexDirection:'column', gap:3 }}>
                                   {g.items.map(it => (
                                     <div key={it.id} style={{ fontSize:12, fontWeight:600, display:'flex', alignItems:'center', gap:5 }}>
-                                      <span>
+                                      <span style={{ fontSize:20, lineHeight:1, flexShrink:0 }}>
                                         {(it.item_icon || '').startsWith('data:')
-                                          ? <img src={it.item_icon} alt="" style={{ width:16, height:16, objectFit:'contain', borderRadius:2, verticalAlign:'middle' }} />
+                                          ? <img src={it.item_icon} alt="" style={{ width:24, height:24, objectFit:'contain', borderRadius:4, verticalAlign:'middle' }} />
                                           : (it.item_icon || CAT_EMOJI[it.item_category] || CAT_EMOJI[g.category] || '📦')}
                                       </span>
                                       {it.item_name}
