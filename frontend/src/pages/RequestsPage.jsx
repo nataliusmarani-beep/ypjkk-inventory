@@ -34,7 +34,11 @@ const BrowseItemCard = memo(function BrowseItemCard({ item, inCart, onSetQty, on
     >
       <div style={{ display:'flex', justifyContent:'space-between', alignItems:'flex-start', gap:10, marginBottom:5 }}>
         <div style={{ flex:1, minWidth:0 }}>
-          <div style={{ fontWeight:800, fontSize:13, lineHeight:1.3 }}>{item.name}</div>
+          <div style={{
+            fontWeight:800, fontSize:13, lineHeight:1.3,
+            display:'-webkit-box', WebkitLineClamp:2, WebkitBoxOrient:'vertical',
+            overflow:'hidden',
+          }}>{item.name}</div>
           {item.code && <div className="mono" style={{ color:'var(--muted)', marginTop:2, fontSize:11 }}>{item.code}</div>}
         </div>
         <div style={{ position:'relative', flexShrink:0 }}>
