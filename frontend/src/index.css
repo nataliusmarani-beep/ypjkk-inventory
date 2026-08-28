@@ -134,7 +134,7 @@ body {
   background: white; border-radius: var(--radius); padding: 20px;
   border: 1px solid var(--border); box-shadow: var(--shadow);
   cursor: pointer; transition: transform .15s, box-shadow .15s;
-  min-width: 0;
+  min-width: 0; overflow: hidden;
 }
 .stat-card:hover { transform: translateY(-2px); box-shadow: var(--shadow-lg); }
 .stat-label { font-size: 12px; font-weight: 700; color: var(--muted); text-transform: uppercase; letter-spacing: .5px; }
@@ -345,6 +345,8 @@ textarea { resize: vertical; min-height: 80px; }
 
 @media (max-width: 768px) {
   .stat-grid  { grid-template-columns: 1fr 1fr; }
+  .stat-card  { padding: 14px; }
+  .stat-value { font-size: 24px; }
   .quick-grid { grid-template-columns: 1fr 1fr; }
   .form-grid  { grid-template-columns: 1fr; }
   .two-col    { grid-template-columns: 1fr; }
