@@ -51,7 +51,7 @@ const BrowseItemCard = memo(function BrowseItemCard({ item, inCart, onSetQty, on
       </div>
 
       {inCart > 0 ? (
-        <div style={{ display:'flex', alignItems:'center', gap:6 }}>
+        <div style={{ display:'flex', alignItems:'center', gap:6, maxWidth:'100%' }}>
           <button className="btn btn-outline btn-sm" style={{ padding:'4px 10px', minWidth:28 }} onClick={() => onSetQty(item.id, inCart-1)}>−</button>
           <span style={{ fontWeight:800, minWidth:22, textAlign:'center', fontSize:13 }}>{inCart}</span>
           <button

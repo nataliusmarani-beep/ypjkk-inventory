@@ -282,6 +282,7 @@ textarea { resize: vertical; min-height: 80px; }
 .cart-layout { display: grid; grid-template-columns: 1fr 340px; gap: 20px; align-items: start; }
 .cart-panel  { position: sticky; top: 80px; }
 .browse-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(190px, 1fr)); gap: 12px; }
+.browse-grid > * { min-width: 0; }
 
 /* ── TIMELINE ── */
 .timeline { padding: 8px 0; }
