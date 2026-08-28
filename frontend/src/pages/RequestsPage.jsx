@@ -25,11 +25,11 @@ const BrowseItemCard = memo(function BrowseItemCard({ item, inCart, onSetQty, on
         borderRadius: 'var(--radius)',
         padding: 14,
         opacity: outOfStock ? .5 : 1,
-        transition: 'border-color .15s',
         minWidth: 0,
         maxWidth: '100%',
         boxSizing: 'border-box',
         overflow: 'hidden',
+        contain: 'layout',
       }}
     >
       <div style={{ display:'flex', justifyContent:'space-between', alignItems:'flex-start', gap:10, marginBottom:5 }}>
