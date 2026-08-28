@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback, memo } from 'react';
+import React, { useState, useEffect, useCallback, useRef, memo } from 'react';
 import { api } from '../api.js';
 import CategoryBadge from '../components/shared/CategoryBadge.jsx';
 
@@ -126,6 +126,8 @@ export default function RequestsPage({ role, user, showToast, refreshPending }) 
 
   /* cart: [{ item, quantity }] — any category mix allowed */
   const [cart, setCart] = useState([]);
+  const cartPanelRef = useRef(null);
+  const scrollToCart = () => cartPanelRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
 
   /* requester form — pre-fill from logged-in user */
   const [form, setForm] = useState({
@@ -287,7 +289,7 @@ export default function RequestsPage({ role, user, showToast, refreshPending }) 
           </div>
 
           {/* RIGHT: cart + requester form */}
-          <div className="cart-panel">
+          <div className="cart-panel" ref={cartPanelRef}>
             <div className="card" style={{ marginBottom:0 }}>
               <div className="card-title" style={{ marginBottom:12 }}>
                 🛒 Cart
@@ -412,6 +414,16 @@ export default function RequestsPage({ role, user, showToast, refreshPending }) 
             </div>
           </div>
         </div>
+      )}
+
+      {/* ── Mobile-only floating "go to cart" bar — the cart/submit form sits
+           below the (often long) item grid once stacked to one column, so
+           give a shortcut straight to it instead of relying on scrolling ── */}
+      {cartMode && cart.length > 0 && (
+        <button type="button" className="mobile-cart-bar" onClick={scrollToCart}>
+          🛒 View Cart · {cartTotal} item{cartTotal !== 1 ? 's' : ''}
+          <span style={{ marginLeft:'auto' }}>↓</span>
+        </button>
       )}
 
       {/* ── ITEM DETAIL MODAL ─────────────────────────────────────────── */}
