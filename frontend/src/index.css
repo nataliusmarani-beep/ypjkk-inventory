@@ -281,6 +281,7 @@ textarea { resize: vertical; min-height: 80px; }
 /* ── CART LAYOUT (Requests page: browser + cart) ── */
 .cart-layout { display: grid; grid-template-columns: 1fr 340px; gap: 20px; align-items: start; }
 .cart-panel  { position: sticky; top: 80px; }
+.browse-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(190px, 1fr)); gap: 12px; }
 
 /* ── TIMELINE ── */
 .timeline { padding: 8px 0; }
@@ -362,6 +363,7 @@ textarea { resize: vertical; min-height: 80px; }
   /* ── Cart layout: stack browser above cart, drop sticky ────────────── */
   .cart-layout { grid-template-columns: 1fr; gap: 16px; }
   .cart-panel  { position: static; top: auto; }
+  .browse-grid { grid-template-columns: 1fr; }
 
   /* ── Modal: fit narrow screens without cramped edges ────────────────── */
   .modal-overlay { padding: 10px; }

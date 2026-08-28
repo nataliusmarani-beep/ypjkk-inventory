@@ -276,7 +276,7 @@ export default function RequestsPage({ role, user, showToast, refreshPending }) 
             {/* item grid */}
             {browseItems.length === 0
               ? <p className="empty-state">No items found.</p>
-              : <div style={{ display:'grid', gridTemplateColumns:'repeat(auto-fill,minmax(190px,1fr))', gap:12 }}>
+              : <div className="browse-grid">
                   {browseItems.map(item => (
                     <BrowseItemCard
                       key={item.id}
