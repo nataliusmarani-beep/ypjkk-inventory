@@ -553,8 +553,11 @@ export default function RequestsPage({ role, user, showToast, refreshPending }) 
       {!cartMode && (
         <>
           <div className="alert alert-info">
-            💡 You can add items from <strong>any category</strong> into one cart and submit as a single request.
-            All requests need storekeeper approval.
+            <span>💡</span>
+            <span>
+              You can add items from <strong>any category</strong> into one cart and submit as a single request.
+              All requests need storekeeper approval.
+            </span>
           </div>
 
           <div className="card history-card-wrap" style={{ padding:0, overflow:'hidden' }}>
@@ -600,14 +603,16 @@ export default function RequestsPage({ role, user, showToast, refreshPending }) 
                               <td data-th="Items">
                                 <div style={{ display:'flex', flexDirection:'column', gap:3 }}>
                                   {g.items.map(it => (
-                                    <div key={it.id} style={{ fontSize:12, fontWeight:600, display:'flex', alignItems:'center', gap:5 }}>
+                                    <div key={it.id} style={{ fontSize:12, fontWeight:600, display:'flex', alignItems:'center', justifyContent:'space-between', gap:8 }}>
+                                      <span style={{ minWidth:0, overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>
+                                        {it.item_name}
+                                        <span style={{ color:'var(--muted)' }}> × {it.quantity} {it.unit_name}</span>
+                                      </span>
                                       <span style={{ fontSize:20, lineHeight:1, flexShrink:0 }}>
                                         {(it.item_icon || '').startsWith('data:')
                                           ? <img src={it.item_icon} alt="" style={{ width:24, height:24, objectFit:'contain', borderRadius:4, verticalAlign:'middle' }} />
                                           : (it.item_icon || CAT_EMOJI[it.item_category] || CAT_EMOJI[g.category] || '📦')}
                                       </span>
-                                      {it.item_name}
-                                      <span style={{ color:'var(--muted)' }}>× {it.quantity} {it.unit_name}</span>
                                     </div>
                                   ))}
                                 </div>
