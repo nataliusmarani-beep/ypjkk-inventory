@@ -45,6 +45,7 @@ function storekeeperCategory(user) {
 function validate(body) {
   const errors = [];
   if (!body.name || !body.name.trim()) errors.push('Name is required.');
+  else if (body.name.trim().length > 25) errors.push('Name must be 25 characters or fewer.');
   if (!body.category) errors.push('Category is required.');
   if (body.quantity === undefined || body.quantity < 0) errors.push('Quantity must be >= 0.');
   if (body.min_threshold === undefined || body.min_threshold < 1) errors.push('Min threshold must be >= 1.');

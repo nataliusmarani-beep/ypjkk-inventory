@@ -69,6 +69,7 @@ const BrowseItemCard = memo(function BrowseItemCard({ item, inCart, onSetQty, on
               background:'white', border:'1px solid var(--border)', borderRadius:'50%',
               display:'flex', alignItems:'center', justifyContent:'center',
               cursor:'pointer', fontSize:11, padding:0, lineHeight:1,
+              touchAction:'manipulation',
             }}
           >ℹ️</button>
         </div>

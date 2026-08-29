@@ -61,7 +61,8 @@ export default function ItemForm({ initial, meta, user, onSubmit, onClose }) {
         </div>
         <div className="form-group full">
           <label className="form-label">Item Name <span className="req">*</span></label>
-          <input type="text" value={form.name} onChange={set('name')} required />
+          <input type="text" value={form.name} onChange={set('name')} maxLength={25} required />
+          <div style={{ fontSize:10, color:'var(--muted)', marginTop:3, textAlign:'right' }}>{form.name.length}/25</div>
         </div>
         <div className="form-group">
           <label className="form-label">Store Category <span className="req">*</span></label>
