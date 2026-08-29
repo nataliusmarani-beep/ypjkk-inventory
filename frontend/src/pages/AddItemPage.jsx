@@ -11,7 +11,7 @@ const CAT_BY_STORE = {
 };
 
 const EMPTY = {
-  name: '', code: '', icon: '',
+  name: '', code: '', barcode: '', icon: '',
   category: 'Stationery', store_category: 'Supplies',
   location: 'SD SMP YPJ KK', unit_school: 'All',
   quantity: 0, max_quantity: 0, unit_name: 'pcs',
@@ -106,14 +106,15 @@ export default function AddItemPage({ showToast, user }) {
 
     try {
       // ── Step 1: Check local inventory database first ──────────────────────
-      const localMatches = await api.getItems({ code: barcode });
+      const localMatches = await api.getItems({ barcode });
       if (localMatches.length > 0) {
         const item = localMatches[0];
         setExistingItem(item);
         // Pull ALL fields from existing item into the form
         setForm({
           name:           item.name           || '',
-          code:           item.code           || barcode,
+          code:           item.code           || '',
+          barcode:        item.barcode        || barcode,
           icon:           item.icon           || '',
           category:       item.category       || 'Stationery',
           store_category: item.store_category || 'Supplies',
@@ -131,7 +132,7 @@ export default function AddItemPage({ showToast, user }) {
       }
 
       // ── Step 2: Not in local DB — try external product databases ──────────
-      setForm(f => ({ ...f, code: barcode }));
+      setForm(f => ({ ...f, barcode }));
       let name = '';
 
       // Source 1: UPC Item DB (broad product database)
@@ -364,13 +365,23 @@ export default function AddItemPage({ showToast, user }) {
             </div>
 
             <div className="form-group">
-              <label className="form-label">Item Code / Barcode</label>
+              <label className="form-label">Item Code</label>
+              <input
+                type="text"
+                value={form.code}
+                onChange={set('code')}
+                placeholder="e.g. STA-001"
+              />
+            </div>
+
+            <div className="form-group">
+              <label className="form-label">Barcode Number</label>
               <div style={{ display: 'flex', gap: 8 }}>
                 <input
                   type="text"
-                  value={form.code}
-                  onChange={set('code')}
-                  placeholder="e.g. STA-001 or scan barcode"
+                  value={form.barcode}
+                  onChange={set('barcode')}
+                  placeholder="Scan or type the barcode"
                   style={{ flex: 1 }}
                 />
                 <button

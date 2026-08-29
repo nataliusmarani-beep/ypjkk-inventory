@@ -54,7 +54,7 @@ function validate(body) {
 
 // GET /api/items
 router.get('/', (req, res) => {
-  const { search, category, store_category, location, unit_school, status, code } = req.query;
+  const { search, category, store_category, location, unit_school, status, code, barcode } = req.query;
 
   const rows = db.prepare(`
     WITH enriched AS (
@@ -68,22 +68,24 @@ router.get('/', (req, res) => {
     )
     SELECT * FROM enriched
     WHERE
-      (? IS NULL OR LOWER(name) LIKE '%' || LOWER(?) || '%' OR LOWER(COALESCE(code,'')) LIKE '%' || LOWER(?) || '%')
+      (? IS NULL OR LOWER(name) LIKE '%' || LOWER(?) || '%' OR LOWER(COALESCE(code,'')) LIKE '%' || LOWER(?) || '%' OR LOWER(COALESCE(barcode,'')) LIKE '%' || LOWER(?) || '%')
       AND (? IS NULL OR category = ?)
       AND (? IS NULL OR store_category = ?)
       AND (? IS NULL OR location = ?)
       AND (? IS NULL OR unit_school = ? OR unit_school = 'All')
       AND (? IS NULL OR status = ?)
       AND (? IS NULL OR LOWER(COALESCE(code,'')) = LOWER(?))
+      AND (? IS NULL OR LOWER(COALESCE(barcode,'')) = LOWER(?))
     ORDER BY name ASC
   `).all(
-    search||null, search||null, search||null,
+    search||null, search||null, search||null, search||null,
     category||null, category||null,
     store_category||null, store_category||null,
     location||null, location||null,
     unit_school||null, unit_school||null,
     status||null, status||null,
     code||null, code||null,
+    barcode||null, barcode||null,
   );
 
   res.json(rows);
@@ -117,13 +119,13 @@ router.post('/', staffOnly, (req, res) => {
   const errors = validate(req.body);
   if (errors.length) return res.status(400).json({ error: errors.join(' ') });
 
-  const { name, code, category, store_category, location, unit_school, quantity, max_quantity, unit_name, description, min_threshold, condition, icon, po_number } = req.body;
+  const { name, code, category, store_category, location, unit_school, quantity, max_quantity, unit_name, description, min_threshold, condition, icon, po_number, barcode } = req.body;
   const result = db.prepare(`
-    INSERT INTO items (name, code, category, store_category, location, unit_school, quantity, max_quantity, unit_name, description, min_threshold, condition, icon, po_number)
-    VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?)
+    INSERT INTO items (name, code, category, store_category, location, unit_school, quantity, max_quantity, unit_name, description, min_threshold, condition, icon, po_number, barcode)
+    VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)
   `).run(
     name.trim(), code||null, category, store_category, location, unit_school,
-    quantity, max_quantity||quantity, unit_name||'pcs', description||null, min_threshold, condition||'Good', icon||null, po_number||null
+    quantity, max_quantity||quantity, unit_name||'pcs', description||null, min_threshold, condition||'Good', icon||null, po_number||null, barcode||null
   );
 
   const item = db.prepare('SELECT * FROM items WHERE id=?').get(result.lastInsertRowid);
@@ -150,13 +152,13 @@ router.put('/:id', staffOnly, (req, res) => {
   const errors = validate(req.body);
   if (errors.length) return res.status(400).json({ error: errors.join(' ') });
 
-  const { name, code, category, store_category, location, unit_school, quantity, max_quantity, unit_name, description, min_threshold, condition, icon, po_number } = req.body;
+  const { name, code, category, store_category, location, unit_school, quantity, max_quantity, unit_name, description, min_threshold, condition, icon, po_number, barcode } = req.body;
   db.prepare(`
-    UPDATE items SET name=?,code=?,category=?,store_category=?,location=?,unit_school=?,quantity=?,max_quantity=?,unit_name=?,description=?,min_threshold=?,condition=?,icon=?,po_number=?,updated_at=datetime('now')
+    UPDATE items SET name=?,code=?,category=?,store_category=?,location=?,unit_school=?,quantity=?,max_quantity=?,unit_name=?,description=?,min_threshold=?,condition=?,icon=?,po_number=?,barcode=?,updated_at=datetime('now')
     WHERE id=?
   `).run(
     name.trim(), code||null, category, store_category, location, unit_school,
-    quantity, max_quantity||quantity, unit_name||'pcs', description||null, min_threshold, condition||'Good', icon||null, po_number||null,
+    quantity, max_quantity||quantity, unit_name||'pcs', description||null, min_threshold, condition||'Good', icon||null, po_number||null, barcode||null,
     req.params.id
   );
 
@@ -177,8 +179,8 @@ router.post('/import', staffOnly, (req, res) => {
 
   const insert = db.prepare(`
     INSERT OR IGNORE INTO items
-      (name, code, category, store_category, location, unit_school, quantity, max_quantity, unit_name, min_threshold, condition, description)
-    VALUES (?,?,?,?,?,?,?,?,?,?,?,?)
+      (name, code, category, store_category, location, unit_school, quantity, max_quantity, unit_name, min_threshold, condition, description, barcode)
+    VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?)
   `);
 
   let imported = 0, skipped = 0;
@@ -208,7 +210,7 @@ router.post('/import', staffOnly, (req, res) => {
       const result = insert.run(
         r.name.trim(), r.code?.trim() || null, r.category,
         cat, loc, unit, qty, maxQty, uname, minThr, cond,
-        r.description?.trim() || null
+        r.description?.trim() || null, r.barcode?.trim() || null
       );
       result.changes ? imported++ : skipped++;
     });

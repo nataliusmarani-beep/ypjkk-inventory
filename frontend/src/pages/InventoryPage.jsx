@@ -54,8 +54,8 @@ export default function InventoryPage({ role, user, showToast }) {
   const importRef = useRef();
   const [importing, setImporting] = useState(false);
 
-  const ITEM_HEADERS = ['name','code','category','store_category','location','unit_school','quantity','max_quantity','unit_name','min_threshold','condition','description'];
-  const ITEM_SAMPLE  = { name:'Spidol Whiteboard', code:'STN-001', category:'Stationery', store_category:'Supplies', location:'SD SMP YPJ KK', unit_school:'All', quantity:'20', max_quantity:'50', unit_name:'pcs', min_threshold:'5', condition:'Good', description:'Optional note' };
+  const ITEM_HEADERS = ['name','code','barcode','category','store_category','location','unit_school','quantity','max_quantity','unit_name','min_threshold','condition','description'];
+  const ITEM_SAMPLE  = { name:'Spidol Whiteboard', code:'STN-001', barcode:'8991234567890', category:'Stationery', store_category:'Supplies', location:'SD SMP YPJ KK', unit_school:'All', quantity:'20', max_quantity:'50', unit_name:'pcs', min_threshold:'5', condition:'Good', description:'Optional note' };
 
   const handleImportFile = async (e) => {
     const file = e.target.files?.[0];
@@ -150,7 +150,7 @@ export default function InventoryPage({ role, user, showToast }) {
       <div className="filter-bar">
         <div className="search-box">
           <span className="search-icon">🔍</span>
-          <input type="text" placeholder="Search items or code..." value={search} onChange={e => setSearch(e.target.value)} />
+          <input type="text" placeholder="Search items, code, or barcode..." value={search} onChange={e => setSearch(e.target.value)} />
         </div>
         <select value={category} onChange={e => setCategory(e.target.value)}>
           <option value="">All Categories</option>
@@ -214,7 +214,7 @@ export default function InventoryPage({ role, user, showToast }) {
                                 ) : (
                                   <div style={{ fontWeight: 700 }}>{item.name}</div>
                                 )}
-                                {item.code && <div className="mono" style={{ color: 'var(--muted)' }}>{item.code}</div>}
+                                {(item.barcode || item.code) && <div className="mono" style={{ color: 'var(--muted)' }}>{item.barcode || item.code}</div>}
                               </div>
                             </div>
                             {stockStatus !== 'ok' && (

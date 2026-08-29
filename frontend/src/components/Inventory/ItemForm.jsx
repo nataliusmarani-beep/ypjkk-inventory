@@ -19,7 +19,7 @@ export default function ItemForm({ initial, meta, user, onSubmit, onClose }) {
 
   const [form, setForm] = useState(() => {
     const base = initial ?? {
-      name:'', code:'', icon:'', category:'Stationery', store_category:'Supplies',
+      name:'', code:'', barcode:'', icon:'', category:'Stationery', store_category:'Supplies',
       location:'SD SMP YPJ KK', unit_school:'All',
       quantity:0, unit_name:'pcs', description:'', min_threshold:10, condition:'Good',
     };
@@ -124,6 +124,15 @@ export default function ItemForm({ initial, meta, user, onSubmit, onClose }) {
             onChange={set('po_number')}
             placeholder="e.g. PO-2026-001 or PR-2026-042"
             required
+          />
+        </div>
+        <div className="form-group full">
+          <label className="form-label">Barcode Number</label>
+          <input
+            type="text"
+            value={form.barcode || ''}
+            onChange={set('barcode')}
+            placeholder="Scan or type the item's barcode number"
           />
         </div>
         <div className="form-group full">
