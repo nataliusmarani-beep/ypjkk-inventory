@@ -557,15 +557,15 @@ export default function RequestsPage({ role, user, showToast, refreshPending }) 
             All requests need storekeeper approval.
           </div>
 
-          <div className="card" style={{ padding:0, overflow:'hidden' }}>
+          <div className="card history-card-wrap" style={{ padding:0, overflow:'hidden' }}>
             {histLoading ? <p className="loading">Loading...</p> : groups.length === 0
               ? <p className="empty-state">No requests yet. Click <strong>🛒 New Request</strong> to start!</p>
               : <div className="table-wrap">
-                  <table className="responsive-table">
+                  <table className="responsive-table history-table">
                     <thead>
                       <tr>
-                        <th>Request ID</th><th>Items in Request</th>
-                        <th>Type</th><th>Requester</th><th>Status</th><th>Date</th>
+                        <th>Request</th><th>Items in Request</th>
+                        <th>Type</th><th>Requester</th>
                       </tr>
                     </thead>
                     <tbody>
@@ -576,12 +576,25 @@ export default function RequestsPage({ role, user, showToast, refreshPending }) 
                           <React.Fragment key={gid}>
                             <tr
                               onClick={() => setExpandedGroup(isExpanded ? null : gid)}
+                              className={`history-row${isExpanded ? ' is-expanded' : ''}`}
+                              data-status={g.status}
                               style={{ cursor:'pointer', background: isExpanded ? 'var(--off)' : undefined }}
                             >
                               <td>
-                                <div style={{ display:'flex', alignItems:'center', gap:6 }}>
-                                  <span style={{ fontSize:10, color:'var(--muted)', transition:'transform .15s', display:'inline-block', transform: isExpanded ? 'rotate(90deg)' : 'rotate(0deg)' }}>▶</span>
-                                  <span className="mono">{GRP_ID(gid, g.created_at)}</span>
+                                <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', gap:8 }}>
+                                  <div style={{ display:'flex', alignItems:'center', gap:6, minWidth:0 }}>
+                                    <span style={{ fontSize:10, color:'var(--muted)', transition:'transform .15s', display:'inline-block', transform: isExpanded ? 'rotate(90deg)' : 'rotate(0deg)', flexShrink:0 }}>▶</span>
+                                    <span className="mono" style={{ fontWeight:800 }}>{GRP_ID(gid, g.created_at)}</span>
+                                  </div>
+                                  <div style={{ display:'flex', alignItems:'center', gap:4, flexShrink:0 }}>
+                                    <span className={`badge ${STATUS_BADGE[g.status]}`}>{STATUS_LABEL[g.status]}</span>
+                                    {g.status === 'pending' && g.needs_info === 1 && (
+                                      <span className="badge badge-orange" title="Info needed">✏️</span>
+                                    )}
+                                  </div>
+                                </div>
+                                <div style={{ fontSize:11, color:'var(--muted)', fontWeight:600, marginTop:4, marginLeft:16 }}>
+                                  📅 {g.created_at?.slice(0,10)}
                                 </div>
                               </td>
                               <td data-th="Items">
@@ -601,20 +614,24 @@ export default function RequestsPage({ role, user, showToast, refreshPending }) 
                               </td>
                               <td data-th="Type"><span className={`badge ${TYPE_BADGE[g.type]}`}>{g.type}</span></td>
                               <td data-th="Requester">
-                                {g.requester_name}
-                                <br /><span style={{ fontSize:11, color:'var(--muted)' }}>{g.requester_email}</span>
+                                <div style={{ display:'flex', alignItems:'center', gap:8 }}>
+                                  <div style={{
+                                    width:26, height:26, borderRadius:'50%', background:'var(--navy)', color:'white',
+                                    display:'flex', alignItems:'center', justifyContent:'center',
+                                    fontSize:11, fontWeight:800, flexShrink:0,
+                                  }}>
+                                    {(g.requester_name || '?').charAt(0).toUpperCase()}
+                                  </div>
+                                  <div style={{ minWidth:0 }}>
+                                    <div style={{ fontWeight:700, overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>{g.requester_name}</div>
+                                    <div style={{ fontSize:11, color:'var(--muted)', overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>{g.requester_email}</div>
+                                  </div>
+                                </div>
                               </td>
-                              <td data-th="Status">
-                                <span className={`badge ${STATUS_BADGE[g.status]}`}>{STATUS_LABEL[g.status]}</span>
-                                {g.status === 'pending' && g.needs_info === 1 && (
-                                  <span className="badge badge-orange" style={{ marginLeft:4 }}>✏️ Info needed</span>
-                                )}
-                              </td>
-                              <td data-th="Date">{g.created_at?.slice(0,10)}</td>
                             </tr>
                             {isExpanded && (
-                              <tr style={{ background:'var(--off)' }}>
-                                <td colSpan={6} style={{ padding:'0 16px 14px 40px' }}>
+                              <tr className="history-detail" style={{ background:'var(--off)' }}>
+                                <td colSpan={4} style={{ padding:'0 16px 14px 40px' }}>
                                   <div style={{ display:'flex', flexDirection:'column', gap:8 }}>
                                     {g.purpose && (
                                       <div style={{ fontSize:13, color:'var(--text)' }}>

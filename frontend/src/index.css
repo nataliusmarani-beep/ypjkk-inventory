@@ -418,6 +418,34 @@ textarea { resize: vertical; min-height: 80px; }
     padding-bottom: 10px; margin-bottom: 4px; border-bottom: 1px solid var(--border);
   }
 
+  /* ── Request history: card-style rows with a status-colored accent ──── */
+  .history-card-wrap { overflow: visible; background: transparent; border: none; box-shadow: none; }
+  .history-card-wrap .table-wrap { overflow: visible; padding: 2px; }
+  .history-table { border-spacing: 0 12px; margin-top: -12px; }
+  .history-table tbody { display: block; }
+  .history-table tr.history-row {
+    background: white; border: 1px solid var(--border); border-left: 4px solid var(--muted);
+    border-radius: var(--radius-sm); box-shadow: var(--shadow); margin-bottom: 12px;
+    padding: 14px 16px;
+  }
+  .history-table tr.history-row[data-status="pending"]                       { border-left-color: var(--orange); }
+  .history-table tr.history-row[data-status="approved"],
+  .history-table tr.history-row[data-status="returned"]                      { border-left-color: var(--green); }
+  .history-table tr.history-row[data-status="rejected"]                      { border-left-color: var(--red); }
+  .history-table tr.history-row.is-expanded {
+    margin-bottom: 0; border-bottom-left-radius: 0; border-bottom-right-radius: 0; box-shadow: none;
+  }
+  .history-table tr.history-detail {
+    background: var(--off); border: 1px solid var(--border); border-top: none;
+    border-radius: 0 0 var(--radius-sm) var(--radius-sm); margin-bottom: 12px; margin-top: -1px;
+  }
+  .history-table td:first-child { border-bottom: none; margin-bottom: 0; padding-bottom: 0; }
+  .history-table td[data-th="Items"],
+  .history-table td[data-th="Type"],
+  .history-table td[data-th="Requester"] {
+    padding-top: 10px; margin-top: 10px; border-top: 1px solid var(--border);
+  }
+
   /* ── Footer ─────────────────────────────────────────────────────────── */
   .app-footer   { flex-direction: column; align-items: center; text-align: center; gap: 4px; padding-top: 16px; margin-top: 32px; }
   .footer-links { white-space: normal; }
