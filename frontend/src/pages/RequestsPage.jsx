@@ -53,7 +53,7 @@ const BrowseItemCard = memo(function BrowseItemCard({ item, inCart, onSetQty, on
               </div>
             );
           })()}
-          {item.code && <div className="mono" style={{ color:'var(--muted)', marginTop:2, fontSize:11 }}>{item.code}</div>}
+          {(item.barcode || item.code) && <div className="mono" style={{ color:'var(--muted)', marginTop:2, fontSize:11 }}>{item.barcode || item.code}</div>}
         </div>
         <div style={{ position:'relative', flexShrink:0 }}>
           <div style={{ fontSize:58, lineHeight:1, width:78, height:78, display:'flex', alignItems:'center', justifyContent:'center' }}>
@@ -495,7 +495,7 @@ export default function RequestsPage({ role, user, showToast, refreshPending }) 
                 </div>
                 <div>
                   <div style={{ fontWeight:800, fontSize:16, color:'var(--navy)' }}>{detailItem.name}</div>
-                  {detailItem.code && <div className="mono" style={{ fontSize:12, color:'var(--muted)', marginTop:2 }}>{detailItem.code}</div>}
+                  {(detailItem.barcode || detailItem.code) && <div className="mono" style={{ fontSize:12, color:'var(--muted)', marginTop:2 }}>{detailItem.barcode || detailItem.code}</div>}
                   <div style={{ marginTop:6, display:'flex', gap:6, flexWrap:'wrap', justifyContent:'center' }}>
                     <CategoryBadge category={detailItem.category} />
                     <span className="badge badge-grey" style={{ fontSize:11 }}>{detailItem.store_category}</span>
