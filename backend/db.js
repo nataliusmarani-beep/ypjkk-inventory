@@ -151,6 +151,7 @@ const migrations = {
   po_number:      `ALTER TABLE items ADD COLUMN po_number TEXT`,
   barcode:        `ALTER TABLE items ADD COLUMN barcode TEXT`,
   item_type:      `ALTER TABLE items ADD COLUMN item_type TEXT NOT NULL DEFAULT 'used-up'`,
+  subtitle:       `ALTER TABLE items ADD COLUMN subtitle TEXT`,
 };
 for (const [col, sql] of Object.entries(migrations)) {
   if (!itemCols.includes(col)) db.exec(sql);

@@ -11,7 +11,7 @@ const CAT_BY_STORE = {
 };
 
 const EMPTY = {
-  name: '', code: '', barcode: '', icon: '',
+  name: '', code: '', barcode: '', subtitle: '', icon: '',
   category: 'Stationery', store_category: 'Supplies', item_type: 'used-up',
   location: 'SD SMP YPJ KK', unit_school: 'All',
   quantity: 0, max_quantity: 0, unit_name: 'pcs',
@@ -116,6 +116,7 @@ export default function AddItemPage({ showToast, user }) {
           name:           item.name           || '',
           code:           item.code           || '',
           barcode:        item.barcode        || barcode,
+          subtitle:       item.subtitle        || '',
           icon:           item.icon           || '',
           category:       item.category       || 'Stationery',
           store_category: item.store_category || 'Supplies',
@@ -395,6 +396,19 @@ export default function AddItemPage({ showToast, user }) {
                 >
                   📷 Scan
                 </button>
+              </div>
+            </div>
+
+            <div className="form-group">
+              <label className="form-label">Subtitle</label>
+              <input
+                type="text"
+                value={form.subtitle}
+                onChange={set('subtitle')}
+                placeholder="e.g. Size M, Blue"
+              />
+              <div style={{ fontSize: 10, color: 'var(--muted)', marginTop: 3 }}>
+                Shown next to the barcode number, separated by "|" — use it for size, color, etc.
               </div>
             </div>
 

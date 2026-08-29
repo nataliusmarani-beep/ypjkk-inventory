@@ -120,13 +120,13 @@ router.post('/', staffOnly, (req, res) => {
   const errors = validate(req.body);
   if (errors.length) return res.status(400).json({ error: errors.join(' ') });
 
-  const { name, code, category, store_category, location, unit_school, quantity, max_quantity, unit_name, description, min_threshold, condition, icon, po_number, barcode, item_type } = req.body;
+  const { name, code, category, store_category, location, unit_school, quantity, max_quantity, unit_name, description, min_threshold, condition, icon, po_number, barcode, item_type, subtitle } = req.body;
   const result = db.prepare(`
-    INSERT INTO items (name, code, category, store_category, location, unit_school, quantity, max_quantity, unit_name, description, min_threshold, condition, icon, po_number, barcode, item_type)
-    VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)
+    INSERT INTO items (name, code, category, store_category, location, unit_school, quantity, max_quantity, unit_name, description, min_threshold, condition, icon, po_number, barcode, item_type, subtitle)
+    VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)
   `).run(
     name.trim(), code||null, category, store_category, location, unit_school,
-    quantity, max_quantity||quantity, unit_name||'pcs', description||null, min_threshold, condition||'Good', icon||null, po_number||null, barcode||null, item_type
+    quantity, max_quantity||quantity, unit_name||'pcs', description||null, min_threshold, condition||'Good', icon||null, po_number||null, barcode||null, item_type, subtitle?.trim()||null
   );
 
   const item = db.prepare('SELECT * FROM items WHERE id=?').get(result.lastInsertRowid);
@@ -153,13 +153,13 @@ router.put('/:id', staffOnly, (req, res) => {
   const errors = validate(req.body);
   if (errors.length) return res.status(400).json({ error: errors.join(' ') });
 
-  const { name, code, category, store_category, location, unit_school, quantity, max_quantity, unit_name, description, min_threshold, condition, icon, po_number, barcode, item_type } = req.body;
+  const { name, code, category, store_category, location, unit_school, quantity, max_quantity, unit_name, description, min_threshold, condition, icon, po_number, barcode, item_type, subtitle } = req.body;
   db.prepare(`
-    UPDATE items SET name=?,code=?,category=?,store_category=?,location=?,unit_school=?,quantity=?,max_quantity=?,unit_name=?,description=?,min_threshold=?,condition=?,icon=?,po_number=?,barcode=?,item_type=?,updated_at=datetime('now')
+    UPDATE items SET name=?,code=?,category=?,store_category=?,location=?,unit_school=?,quantity=?,max_quantity=?,unit_name=?,description=?,min_threshold=?,condition=?,icon=?,po_number=?,barcode=?,item_type=?,subtitle=?,updated_at=datetime('now')
     WHERE id=?
   `).run(
     name.trim(), code||null, category, store_category, location, unit_school,
-    quantity, max_quantity||quantity, unit_name||'pcs', description||null, min_threshold, condition||'Good', icon||null, po_number||null, barcode||null, item_type,
+    quantity, max_quantity||quantity, unit_name||'pcs', description||null, min_threshold, condition||'Good', icon||null, po_number||null, barcode||null, item_type, subtitle?.trim()||null,
     req.params.id
   );
 
@@ -180,8 +180,8 @@ router.post('/import', staffOnly, (req, res) => {
 
   const insert = db.prepare(`
     INSERT OR IGNORE INTO items
-      (name, code, category, store_category, location, unit_school, quantity, max_quantity, unit_name, min_threshold, condition, description, barcode, item_type)
-    VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?)
+      (name, code, category, store_category, location, unit_school, quantity, max_quantity, unit_name, min_threshold, condition, description, barcode, item_type, subtitle)
+    VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)
   `);
 
   let imported = 0, skipped = 0;
@@ -212,7 +212,7 @@ router.post('/import', staffOnly, (req, res) => {
       const result = insert.run(
         r.name.trim(), r.code?.trim() || null, r.category,
         cat, loc, unit, qty, maxQty, uname, minThr, cond,
-        r.description?.trim() || null, r.barcode?.trim() || null, itype
+        r.description?.trim() || null, r.barcode?.trim() || null, itype, r.subtitle?.trim() || null
       );
       result.changes ? imported++ : skipped++;
     });

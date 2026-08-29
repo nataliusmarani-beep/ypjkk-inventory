@@ -19,7 +19,7 @@ export default function ItemForm({ initial, meta, user, onSubmit, onClose }) {
 
   const [form, setForm] = useState(() => {
     const base = initial ?? {
-      name:'', code:'', barcode:'', icon:'', category:'Stationery', store_category:'Supplies',
+      name:'', code:'', barcode:'', subtitle:'', icon:'', category:'Stationery', store_category:'Supplies',
       location:'SD SMP YPJ KK', unit_school:'All', item_type:'used-up',
       quantity:0, unit_name:'pcs', description:'', min_threshold:10, condition:'Good',
     };
@@ -141,6 +141,18 @@ export default function ItemForm({ initial, meta, user, onSubmit, onClose }) {
             onChange={set('barcode')}
             placeholder="Scan or type the item's barcode number"
           />
+        </div>
+        <div className="form-group full">
+          <label className="form-label">Subtitle</label>
+          <input
+            type="text"
+            value={form.subtitle || ''}
+            onChange={set('subtitle')}
+            placeholder="e.g. Size M, Blue"
+          />
+          <div style={{ fontSize:10, color:'var(--muted)', marginTop:3 }}>
+            Shown next to the barcode number, separated by "|" — use it for size, color, etc.
+          </div>
         </div>
         <div className="form-group full">
           <label className="form-label">Description</label>

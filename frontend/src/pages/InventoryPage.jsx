@@ -54,8 +54,8 @@ export default function InventoryPage({ role, user, showToast }) {
   const importRef = useRef();
   const [importing, setImporting] = useState(false);
 
-  const ITEM_HEADERS = ['name','code','barcode','category','store_category','item_type','location','unit_school','quantity','max_quantity','unit_name','min_threshold','condition','description'];
-  const ITEM_SAMPLE  = { name:'Spidol Whiteboard', code:'STN-001', barcode:'8991234567890', category:'Stationery', store_category:'Supplies', item_type:'used-up', location:'SD SMP YPJ KK', unit_school:'All', quantity:'20', max_quantity:'50', unit_name:'pcs', min_threshold:'5', condition:'Good', description:'Optional note' };
+  const ITEM_HEADERS = ['name','code','barcode','subtitle','category','store_category','item_type','location','unit_school','quantity','max_quantity','unit_name','min_threshold','condition','description'];
+  const ITEM_SAMPLE  = { name:'Spidol Whiteboard', code:'STN-001', barcode:'8991234567890', subtitle:'Blue', category:'Stationery', store_category:'Supplies', item_type:'used-up', location:'SD SMP YPJ KK', unit_school:'All', quantity:'20', max_quantity:'50', unit_name:'pcs', min_threshold:'5', condition:'Good', description:'Optional note' };
 
   const handleImportFile = async (e) => {
     const file = e.target.files?.[0];
@@ -214,7 +214,11 @@ export default function InventoryPage({ role, user, showToast }) {
                                 ) : (
                                   <div style={{ fontWeight: 700 }}>{item.name}</div>
                                 )}
-                                {(item.barcode || item.code) && <div className="mono" style={{ color: 'var(--muted)' }}>{item.barcode || item.code}</div>}
+                                {[item.barcode || item.code, item.subtitle].filter(Boolean).length > 0 && (
+                                  <div className="mono" style={{ color: 'var(--muted)' }}>
+                                    {[item.barcode || item.code, item.subtitle].filter(Boolean).join(' | ')}
+                                  </div>
+                                )}
                               </div>
                             </div>
                             {stockStatus !== 'ok' && (
