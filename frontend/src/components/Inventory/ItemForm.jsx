@@ -64,6 +64,18 @@ export default function ItemForm({ initial, meta, user, onSubmit, onClose }) {
           <input type="text" value={form.name} onChange={set('name')} maxLength={25} required />
           <div style={{ fontSize:10, color:'var(--muted)', marginTop:3, textAlign:'right' }}>{form.name.length}/25</div>
         </div>
+        <div className="form-group full">
+          <label className="form-label">Subtitle</label>
+          <input
+            type="text"
+            value={form.subtitle || ''}
+            onChange={set('subtitle')}
+            placeholder="e.g. Size M, Blue"
+          />
+          <div style={{ fontSize:10, color:'var(--muted)', marginTop:3 }}>
+            Shown next to the barcode number, separated by "|" — use it for size, color, etc.
+          </div>
+        </div>
         <div className="form-group">
           <label className="form-label">Store Category <span className="req">*</span></label>
           <select className="filter-select" style={{ width:'100%' }} value={form.store_category} onChange={set('store_category')}>
@@ -141,18 +153,6 @@ export default function ItemForm({ initial, meta, user, onSubmit, onClose }) {
             onChange={set('barcode')}
             placeholder="Scan or type the item's barcode number"
           />
-        </div>
-        <div className="form-group full">
-          <label className="form-label">Subtitle</label>
-          <input
-            type="text"
-            value={form.subtitle || ''}
-            onChange={set('subtitle')}
-            placeholder="e.g. Size M, Blue"
-          />
-          <div style={{ fontSize:10, color:'var(--muted)', marginTop:3 }}>
-            Shown next to the barcode number, separated by "|" — use it for size, color, etc.
-          </div>
         </div>
         <div className="form-group full">
           <label className="form-label">Description</label>

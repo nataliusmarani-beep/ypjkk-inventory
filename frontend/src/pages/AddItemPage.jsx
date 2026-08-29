@@ -367,6 +367,19 @@ export default function AddItemPage({ showToast, user }) {
               <input type="text" value={form.name} onChange={set('name')} placeholder="e.g. Whiteboard Marker" required />
             </div>
 
+            <div className="form-group full">
+              <label className="form-label">Subtitle</label>
+              <input
+                type="text"
+                value={form.subtitle}
+                onChange={set('subtitle')}
+                placeholder="e.g. Size M, Blue"
+              />
+              <div style={{ fontSize: 10, color: 'var(--muted)', marginTop: 3 }}>
+                Shown next to the barcode number, separated by "|" — use it for size, color, etc.
+              </div>
+            </div>
+
             <div className="form-group">
               <label className="form-label">Item Code</label>
               <input
@@ -396,19 +409,6 @@ export default function AddItemPage({ showToast, user }) {
                 >
                   📷 Scan
                 </button>
-              </div>
-            </div>
-
-            <div className="form-group">
-              <label className="form-label">Subtitle</label>
-              <input
-                type="text"
-                value={form.subtitle}
-                onChange={set('subtitle')}
-                placeholder="e.g. Size M, Blue"
-              />
-              <div style={{ fontSize: 10, color: 'var(--muted)', marginTop: 3 }}>
-                Shown next to the barcode number, separated by "|" — use it for size, color, etc.
               </div>
             </div>
 
