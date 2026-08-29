@@ -127,6 +127,8 @@ export default function RequestsPage({ role, user, showToast, refreshPending }) 
   const [groups, setGroups]     = useState([]);
   const [histLoading, setHL]    = useState(true);
   const [expandedGroup, setExpandedGroup] = useState(null);
+  const [historyPage, setHistoryPage] = useState(1);
+  const HISTORY_PAGE_SIZE = 10;
 
   /* "complete request" inline form (requester supplies info an admin asked for) */
   const [completingGroup, setCompletingGroup] = useState(null); // group_id | null
@@ -196,7 +198,7 @@ export default function RequestsPage({ role, user, showToast, refreshPending }) 
   const loadHistory = useCallback(() => {
     setHL(true);
     api.getGroups(histFilter)
-      .then(d => { setGroups(d); setHL(false); })
+      .then(d => { setGroups(d); setHL(false); setHistoryPage(1); })
       .catch(() => setHL(false));
   }, []);
 
@@ -261,6 +263,14 @@ export default function RequestsPage({ role, user, showToast, refreshPending }) 
     } finally {
       setSubmitting(false);
     }
+  };
+
+  /* ── history pagination ─────────────────────────────────────────────── */
+  const historyTotalPages = Math.max(1, Math.ceil(groups.length / HISTORY_PAGE_SIZE));
+  const pagedGroups = groups.slice((historyPage - 1) * HISTORY_PAGE_SIZE, historyPage * HISTORY_PAGE_SIZE);
+  const goToHistoryPage = p => {
+    setHistoryPage(Math.min(Math.max(1, p), historyTotalPages));
+    setExpandedGroup(null);
   };
 
   /* ── render ──────────────────────────────────────────────────────────── */
@@ -572,7 +582,7 @@ export default function RequestsPage({ role, user, showToast, refreshPending }) 
                       </tr>
                     </thead>
                     <tbody>
-                      {groups.map(g => {
+                      {pagedGroups.map(g => {
                         const gid = g.group_id || `solo-${g.items[0]?.id}`;
                         const isExpanded = expandedGroup === gid;
                         return (
@@ -750,6 +760,30 @@ export default function RequestsPage({ role, user, showToast, refreshPending }) 
                 </div>
             }
           </div>
+
+          {!histLoading && groups.length > HISTORY_PAGE_SIZE && (
+            <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', gap:10, marginTop:14 }}>
+              <button
+                type="button"
+                className="btn btn-outline btn-sm"
+                onClick={() => goToHistoryPage(historyPage - 1)}
+                disabled={historyPage <= 1}
+              >
+                ← Prev
+              </button>
+              <span style={{ fontSize:12.5, fontWeight:700, color:'var(--muted)' }}>
+                Page {historyPage} of {historyTotalPages}
+              </span>
+              <button
+                type="button"
+                className="btn btn-outline btn-sm"
+                onClick={() => goToHistoryPage(historyPage + 1)}
+                disabled={historyPage >= historyTotalPages}
+              >
+                Next →
+              </button>
+            </div>
+          )}
         </>
       )}
     </div>
