@@ -446,6 +446,30 @@ textarea { resize: vertical; min-height: 80px; }
     padding-top: 10px; margin-top: 10px; border-top: 1px solid var(--border);
   }
 
+  /* ── Inventory items: card-style rows with a stock-colored accent ────── */
+  .inventory-card-wrap { overflow: visible; background: transparent; border: none; box-shadow: none; }
+  .inventory-card-wrap .table-wrap { overflow: visible; padding: 2px; }
+  .inventory-table { border-spacing: 0 12px; margin-top: -12px; }
+  .inventory-table tbody { display: block; }
+  .inventory-table tr {
+    background: white; border: 1px solid var(--border); border-left: 4px solid transparent;
+    border-radius: var(--radius-sm); box-shadow: var(--shadow); margin-bottom: 12px;
+    padding: 14px 16px;
+  }
+  .inventory-table tr[data-stock="low"] { background: #fff7ed; border-color: #fed7aa; border-left-color: var(--orange); }
+  .inventory-table tr[data-stock="out"] { background: #fef2f2; border-color: #fecaca; border-left-color: var(--red); }
+  .inventory-table td:first-child { border-bottom: 1px solid var(--border); }
+  .inventory-table tr[data-stock="low"] td:first-child { border-bottom-color: #fed7aa; }
+  .inventory-table tr[data-stock="out"] td:first-child { border-bottom-color: #fecaca; }
+  .inventory-table td[data-th]:not(:last-child) {
+    padding-top: 8px; padding-bottom: 8px; border-bottom: 1px dashed var(--border);
+  }
+  .inventory-table tr[data-stock="low"] td[data-th]:not(:last-child) { border-bottom-color: #fed7aa; }
+  .inventory-table tr[data-stock="out"] td[data-th]:not(:last-child) { border-bottom-color: #fecaca; }
+  .inventory-table td:last-child { padding-top: 10px; }
+  .inventory-table .td-actions { gap: 8px; }
+  .inventory-table .td-actions .btn { flex: 1; justify-content: center; }
+
   /* ── Footer ─────────────────────────────────────────────────────────── */
   .app-footer   { flex-direction: column; align-items: center; text-align: center; gap: 4px; padding-top: 16px; margin-top: 32px; }
   .footer-links { white-space: normal; }

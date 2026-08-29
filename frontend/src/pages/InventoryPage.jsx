@@ -171,11 +171,11 @@ export default function InventoryPage({ role, user, showToast }) {
         )}
       </div>
 
-      <div className="card" style={{ padding: 0, overflow: 'hidden' }}>
+      <div className="card inventory-card-wrap" style={{ padding: 0, overflow: 'hidden' }}>
         {loading ? <p className="loading">Loading...</p> : items.length === 0
           ? <p className="empty-state">No items found.</p>
           : <div className="table-wrap">
-              <table className="responsive-table">
+              <table className="responsive-table inventory-table">
                 <thead>
                   <tr>
                     <th>Item</th><th>Category</th><th>Location</th>
@@ -188,32 +188,40 @@ export default function InventoryPage({ role, user, showToast }) {
                     const pct = stockPct(item.quantity, item.max_quantity || item.quantity + 1);
                     const col = stockColor(item.quantity, item.min_threshold);
                     const low = item.quantity <= item.min_threshold;
+                    const stockStatus = item.quantity === 0 ? 'out' : low ? 'low' : 'ok';
                     return (
-                      <tr key={item.id} style={low ? { background: '#fff7ed' } : {}}>
+                      <tr key={item.id} data-stock={stockStatus}>
                         <td>
-                          <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-                            <div className="item-thumb">
-                              {(item.icon || '').startsWith('data:')
-                                ? <img src={item.icon} alt="" style={{ width:32, height:32, objectFit:'contain', borderRadius:4 }} />
-                                : (item.icon || CAT_EMOJI[item.category] || '📦')}
+                          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8 }}>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: 10, minWidth: 0 }}>
+                              <div className="item-thumb">
+                                {(item.icon || '').startsWith('data:')
+                                  ? <img src={item.icon} alt="" style={{ width:32, height:32, objectFit:'contain', borderRadius:4 }} />
+                                  : (item.icon || CAT_EMOJI[item.category] || '📦')}
+                              </div>
+                              <div style={{ minWidth: 0 }}>
+                                {isAdmin && canEdit(item) ? (
+                                  <div
+                                    role="button"
+                                    tabIndex={0}
+                                    onClick={() => setModal({ type: 'edit', data: item })}
+                                    onKeyDown={e => { if (e.key === 'Enter') setModal({ type: 'edit', data: item }); }}
+                                    style={{ fontWeight: 700, color: 'var(--primary)', cursor: 'pointer', textDecoration: 'underline', textUnderlineOffset: 2 }}
+                                    title="Edit item details & description"
+                                  >
+                                    {item.name}
+                                  </div>
+                                ) : (
+                                  <div style={{ fontWeight: 700 }}>{item.name}</div>
+                                )}
+                                {item.code && <div className="mono" style={{ color: 'var(--muted)' }}>{item.code}</div>}
+                              </div>
                             </div>
-                            <div>
-                              {isAdmin && canEdit(item) ? (
-                                <div
-                                  role="button"
-                                  tabIndex={0}
-                                  onClick={() => setModal({ type: 'edit', data: item })}
-                                  onKeyDown={e => { if (e.key === 'Enter') setModal({ type: 'edit', data: item }); }}
-                                  style={{ fontWeight: 700, color: 'var(--primary)', cursor: 'pointer', textDecoration: 'underline', textUnderlineOffset: 2 }}
-                                  title="Edit item details & description"
-                                >
-                                  {item.name}
-                                </div>
-                              ) : (
-                                <div style={{ fontWeight: 700 }}>{item.name}</div>
-                              )}
-                              {item.code && <div className="mono" style={{ color: 'var(--muted)' }}>{item.code}</div>}
-                            </div>
+                            {stockStatus !== 'ok' && (
+                              <span className="badge badge-red" style={{ flexShrink: 0 }}>
+                                {stockStatus === 'out' ? '🔴 Out' : '⚠️ Low'}
+                              </span>
+                            )}
                           </div>
                         </td>
                         <td data-th="Category"><CategoryBadge category={item.category} /></td>
@@ -227,7 +235,6 @@ export default function InventoryPage({ role, user, showToast }) {
                             <span className={low ? (item.quantity === 0 ? 'qty-low' : 'qty-warn') : 'qty-ok'}>
                               {item.quantity} {item.unit_name}
                             </span>
-                            {low && <span className="badge badge-red" style={{ fontSize: 10 }}>{item.quantity === 0 ? 'Out of Stock' : 'Low Stock'}</span>}
                           </div>
                         </td>
                         <td data-th="Condition">
@@ -241,11 +248,11 @@ export default function InventoryPage({ role, user, showToast }) {
                             <div className="td-actions">
                               {canEdit(item) ? (
                                 <>
-                                  <button className="btn btn-outline btn-sm" onClick={() => setModal({ type: 'edit', data: item })}>✏️</button>
-                                  <button className="btn btn-ghost btn-sm" onClick={() => setModal({ type: 'delete', data: item })}>🗑️</button>
+                                  <button className="btn btn-outline btn-sm" onClick={() => setModal({ type: 'edit', data: item })}>✏️ Edit</button>
+                                  <button className="btn btn-ghost btn-sm" onClick={() => setModal({ type: 'delete', data: item })}>🗑️ Delete</button>
                                 </>
                               ) : (
-                                <span style={{ fontSize: 11, color: 'var(--muted)' }} title="You can only edit items in your assigned store">🔒</span>
+                                <span style={{ fontSize: 11, color: 'var(--muted)' }} title="You can only edit items in your assigned store">🔒 Locked</span>
                               )}
                             </div>
                           </td>
