@@ -47,6 +47,7 @@ function validate(body) {
   if (!body.name || !body.name.trim()) errors.push('Name is required.');
   else if (body.name.trim().length > 25) errors.push('Name must be 25 characters or fewer.');
   if (!body.category) errors.push('Category is required.');
+  if (!['used-up', 'borrow'].includes(body.item_type)) errors.push('Type must be Used-up or Borrow.');
   if (body.quantity === undefined || body.quantity < 0) errors.push('Quantity must be >= 0.');
   if (body.min_threshold === undefined || body.min_threshold < 1) errors.push('Min threshold must be >= 1.');
   return errors;
@@ -119,13 +120,13 @@ router.post('/', staffOnly, (req, res) => {
   const errors = validate(req.body);
   if (errors.length) return res.status(400).json({ error: errors.join(' ') });
 
-  const { name, code, category, store_category, location, unit_school, quantity, max_quantity, unit_name, description, min_threshold, condition, icon, po_number, barcode } = req.body;
+  const { name, code, category, store_category, location, unit_school, quantity, max_quantity, unit_name, description, min_threshold, condition, icon, po_number, barcode, item_type } = req.body;
   const result = db.prepare(`
-    INSERT INTO items (name, code, category, store_category, location, unit_school, quantity, max_quantity, unit_name, description, min_threshold, condition, icon, po_number, barcode)
-    VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)
+    INSERT INTO items (name, code, category, store_category, location, unit_school, quantity, max_quantity, unit_name, description, min_threshold, condition, icon, po_number, barcode, item_type)
+    VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)
   `).run(
     name.trim(), code||null, category, store_category, location, unit_school,
-    quantity, max_quantity||quantity, unit_name||'pcs', description||null, min_threshold, condition||'Good', icon||null, po_number||null, barcode||null
+    quantity, max_quantity||quantity, unit_name||'pcs', description||null, min_threshold, condition||'Good', icon||null, po_number||null, barcode||null, item_type
   );
 
   const item = db.prepare('SELECT * FROM items WHERE id=?').get(result.lastInsertRowid);
@@ -152,13 +153,13 @@ router.put('/:id', staffOnly, (req, res) => {
   const errors = validate(req.body);
   if (errors.length) return res.status(400).json({ error: errors.join(' ') });
 
-  const { name, code, category, store_category, location, unit_school, quantity, max_quantity, unit_name, description, min_threshold, condition, icon, po_number, barcode } = req.body;
+  const { name, code, category, store_category, location, unit_school, quantity, max_quantity, unit_name, description, min_threshold, condition, icon, po_number, barcode, item_type } = req.body;
   db.prepare(`
-    UPDATE items SET name=?,code=?,category=?,store_category=?,location=?,unit_school=?,quantity=?,max_quantity=?,unit_name=?,description=?,min_threshold=?,condition=?,icon=?,po_number=?,barcode=?,updated_at=datetime('now')
+    UPDATE items SET name=?,code=?,category=?,store_category=?,location=?,unit_school=?,quantity=?,max_quantity=?,unit_name=?,description=?,min_threshold=?,condition=?,icon=?,po_number=?,barcode=?,item_type=?,updated_at=datetime('now')
     WHERE id=?
   `).run(
     name.trim(), code||null, category, store_category, location, unit_school,
-    quantity, max_quantity||quantity, unit_name||'pcs', description||null, min_threshold, condition||'Good', icon||null, po_number||null, barcode||null,
+    quantity, max_quantity||quantity, unit_name||'pcs', description||null, min_threshold, condition||'Good', icon||null, po_number||null, barcode||null, item_type,
     req.params.id
   );
 
@@ -179,8 +180,8 @@ router.post('/import', staffOnly, (req, res) => {
 
   const insert = db.prepare(`
     INSERT OR IGNORE INTO items
-      (name, code, category, store_category, location, unit_school, quantity, max_quantity, unit_name, min_threshold, condition, description, barcode)
-    VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?)
+      (name, code, category, store_category, location, unit_school, quantity, max_quantity, unit_name, min_threshold, condition, description, barcode, item_type)
+    VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?)
   `);
 
   let imported = 0, skipped = 0;
@@ -203,6 +204,7 @@ router.post('/import', staffOnly, (req, res) => {
       const unit   = UNIT_SCHOOLS.includes(r.unit_school)  ? r.unit_school     : 'All';
       const uname  = UNIT_NAMES.includes(r.unit_name)      ? r.unit_name       : 'pcs';
       const cond   = CONDITIONS.includes(r.condition)      ? r.condition       : 'Good';
+      const itype  = ['used-up','borrow'].includes(r.item_type) ? r.item_type  : 'used-up';
 
       if (myLocation && loc !== myLocation) { errors.push(`Row ${rowNum}: outside your assigned store location.`); return; }
       if (myCategory && cat !== myCategory) { errors.push(`Row ${rowNum}: outside your assigned store category.`); return; }
@@ -210,7 +212,7 @@ router.post('/import', staffOnly, (req, res) => {
       const result = insert.run(
         r.name.trim(), r.code?.trim() || null, r.category,
         cat, loc, unit, qty, maxQty, uname, minThr, cond,
-        r.description?.trim() || null, r.barcode?.trim() || null
+        r.description?.trim() || null, r.barcode?.trim() || null, itype
       );
       result.changes ? imported++ : skipped++;
     });

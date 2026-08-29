@@ -54,8 +54,8 @@ export default function InventoryPage({ role, user, showToast }) {
   const importRef = useRef();
   const [importing, setImporting] = useState(false);
 
-  const ITEM_HEADERS = ['name','code','barcode','category','store_category','location','unit_school','quantity','max_quantity','unit_name','min_threshold','condition','description'];
-  const ITEM_SAMPLE  = { name:'Spidol Whiteboard', code:'STN-001', barcode:'8991234567890', category:'Stationery', store_category:'Supplies', location:'SD SMP YPJ KK', unit_school:'All', quantity:'20', max_quantity:'50', unit_name:'pcs', min_threshold:'5', condition:'Good', description:'Optional note' };
+  const ITEM_HEADERS = ['name','code','barcode','category','store_category','item_type','location','unit_school','quantity','max_quantity','unit_name','min_threshold','condition','description'];
+  const ITEM_SAMPLE  = { name:'Spidol Whiteboard', code:'STN-001', barcode:'8991234567890', category:'Stationery', store_category:'Supplies', item_type:'used-up', location:'SD SMP YPJ KK', unit_school:'All', quantity:'20', max_quantity:'50', unit_name:'pcs', min_threshold:'5', condition:'Good', description:'Optional note' };
 
   const handleImportFile = async (e) => {
     const file = e.target.files?.[0];
@@ -178,7 +178,7 @@ export default function InventoryPage({ role, user, showToast }) {
               <table className="responsive-table inventory-table">
                 <thead>
                   <tr>
-                    <th>Item</th><th>Category</th><th>Location</th>
+                    <th>Item</th><th>Category</th><th>Type</th><th>Location</th>
                     <th>Unit</th><th>Stock</th><th>Condition</th>
                     {isAdmin && <th>Actions</th>}
                   </tr>
@@ -225,6 +225,11 @@ export default function InventoryPage({ role, user, showToast }) {
                           </div>
                         </td>
                         <td data-th="Category"><CategoryBadge category={item.category} /></td>
+                        <td data-th="Type">
+                          <span className={`badge ${item.item_type === 'borrow' ? 'badge-purple' : 'badge-grey'}`}>
+                            {item.item_type === 'borrow' ? '↩️ Borrow' : '🗑️ Used-up'}
+                          </span>
+                        </td>
                         <td data-th="Location"><span style={{ fontSize: 12, fontWeight: 700 }}>📍 {item.location}</span></td>
                         <td data-th="Unit"><span className={`badge ${item.unit_school === 'All' ? 'badge-grey' : 'badge-teal'}`}>{item.unit_school}</span></td>
                         <td data-th="Stock">

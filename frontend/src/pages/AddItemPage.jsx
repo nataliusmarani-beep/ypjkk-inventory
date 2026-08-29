@@ -12,7 +12,7 @@ const CAT_BY_STORE = {
 
 const EMPTY = {
   name: '', code: '', barcode: '', icon: '',
-  category: 'Stationery', store_category: 'Supplies',
+  category: 'Stationery', store_category: 'Supplies', item_type: 'used-up',
   location: 'SD SMP YPJ KK', unit_school: 'All',
   quantity: 0, max_quantity: 0, unit_name: 'pcs',
   min_threshold: 10, condition: 'Good', po_number: '', description: '',
@@ -77,6 +77,7 @@ export default function AddItemPage({ showToast, user }) {
       icon:           item.icon           || '',
       category:       item.category       || 'Stationery',
       store_category: item.store_category || 'Supplies',
+      item_type:      item.item_type      || 'used-up',
       unit_name:      item.unit_name      || 'pcs',
       min_threshold:  item.min_threshold  ?? 10,
       condition:      item.condition      || 'Good',
@@ -118,6 +119,7 @@ export default function AddItemPage({ showToast, user }) {
           icon:           item.icon           || '',
           category:       item.category       || 'Stationery',
           store_category: item.store_category || 'Supplies',
+          item_type:      item.item_type      || 'used-up',
           location:       item.location       || 'SD SMP YPJ KK',
           unit_school:    item.unit_school    || 'All',
           quantity:       item.quantity       ?? 0,
@@ -407,6 +409,14 @@ export default function AddItemPage({ showToast, user }) {
               <label className="form-label">Category <span className="req">*</span></label>
               <select className="filter-select" value={form.category} onChange={set('category')} style={{ width: '100%' }}>
                 {(CAT_BY_STORE[form.store_category] || M.CATEGORIES || ['Stationery']).map(c => <option key={c}>{c}</option>)}
+              </select>
+            </div>
+
+            <div className="form-group">
+              <label className="form-label">Type <span className="req">*</span></label>
+              <select className="filter-select" value={form.item_type} onChange={set('item_type')} style={{ width: '100%' }} required>
+                <option value="used-up">🗑️ Used-up (consumable)</option>
+                <option value="borrow">↩️ Borrow (must be returned)</option>
               </select>
             </div>
 

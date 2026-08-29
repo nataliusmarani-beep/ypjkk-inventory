@@ -20,7 +20,7 @@ export default function ItemForm({ initial, meta, user, onSubmit, onClose }) {
   const [form, setForm] = useState(() => {
     const base = initial ?? {
       name:'', code:'', barcode:'', icon:'', category:'Stationery', store_category:'Supplies',
-      location:'SD SMP YPJ KK', unit_school:'All',
+      location:'SD SMP YPJ KK', unit_school:'All', item_type:'used-up',
       quantity:0, unit_name:'pcs', description:'', min_threshold:10, condition:'Good',
     };
     // Pre-fill locked fields when adding a new item
@@ -74,6 +74,13 @@ export default function ItemForm({ initial, meta, user, onSubmit, onClose }) {
           <label className="form-label">Category <span className="req">*</span></label>
           <select className="filter-select" style={{ width:'100%' }} value={form.category} onChange={set('category')}>
             {(CAT_BY_STORE[form.store_category] || M.CATEGORIES || []).map(c => <option key={c}>{c}</option>)}
+          </select>
+        </div>
+        <div className="form-group">
+          <label className="form-label">Type <span className="req">*</span></label>
+          <select className="filter-select" style={{ width:'100%' }} value={form.item_type} onChange={set('item_type')} required>
+            <option value="used-up">🗑️ Used-up (consumable)</option>
+            <option value="borrow">↩️ Borrow (must be returned)</option>
           </select>
         </div>
         <div className="form-group">

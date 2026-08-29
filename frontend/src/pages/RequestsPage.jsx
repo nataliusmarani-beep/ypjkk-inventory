@@ -78,8 +78,11 @@ const BrowseItemCard = memo(function BrowseItemCard({ item, inCart, onSetQty, on
         {outOfStock ? 'Out of stock' : `${item.quantity} ${item.unit_name} available`}
         {isLow && !outOfStock && ' ⚠️'}
       </div>
-      <div style={{ marginBottom:8 }}>
+      <div style={{ marginBottom:8, display:'flex', gap:5, flexWrap:'wrap' }}>
         <CategoryBadge category={item.category} />
+        <span className={`badge ${item.item_type === 'borrow' ? 'badge-purple' : 'badge-grey'}`}>
+          {item.item_type === 'borrow' ? '↩️ Borrow' : '🗑️ Used-up'}
+        </span>
       </div>
 
       {inCart > 0 ? (
@@ -167,7 +170,6 @@ export default function RequestsPage({ role, user, showToast, refreshPending }) 
   const [form, setForm] = useState({
     requester_name:  user?.name  || '',
     requester_email: user?.email || '',
-    type: 'used-up',
     unit_school: user?.unit_school || 'All',
     purpose: '', return_date: '',
   });
@@ -225,6 +227,7 @@ export default function RequestsPage({ role, user, showToast, refreshPending }) 
   /* ── cart helpers ────────────────────────────────────────────────────── */
   const cartQtyOf  = id => cart.find(c => c.item.id === id)?.quantity || 0;
   const cartTotal  = cart.reduce((s, c) => s + c.quantity, 0);
+  const cartHasBorrow = cart.some(c => c.item.item_type === 'borrow');
 
   const addToCart = useCallback(item => {
     setCart(prev => {
@@ -242,19 +245,42 @@ export default function RequestsPage({ role, user, showToast, refreshPending }) 
   const set = f => e => setForm(p => ({ ...p, [f]: e.target.value }));
 
   /* ── submit ──────────────────────────────────────────────────────────── */
+  // Each item's type is locked from its own catalog entry (set by an admin/
+  // storekeeper), not chosen by the requester — so a mixed cart is split
+  // into up to two requests, one per type, each with its own group_id.
   const handleSubmit = async e => {
     e.preventDefault();
     if (cart.length === 0) { setFormError('Your cart is empty.'); return; }
+
+    const usedUpItems = cart.filter(c => c.item.item_type !== 'borrow');
+    const borrowItems = cart.filter(c => c.item.item_type === 'borrow');
+    if (borrowItems.length > 0 && !form.return_date) {
+      setFormError('Return By date is required for borrowed items.');
+      return;
+    }
+
     setSubmitting(true); setFormError(null);
     try {
-      await api.submitCart({
-        ...form,
-        category: null,          // mixed categories — no lock
-        items: cart.map(c => ({ item_id: c.item.id, quantity: c.quantity })),
-      }, attachment);
+      if (usedUpItems.length > 0) {
+        await api.submitCart({
+          ...form,
+          type: 'used-up',
+          return_date: null,
+          category: null,          // mixed categories — no lock
+          items: usedUpItems.map(c => ({ item_id: c.item.id, quantity: c.quantity })),
+        }, attachment);
+      }
+      if (borrowItems.length > 0) {
+        await api.submitCart({
+          ...form,
+          type: 'borrow',
+          category: null,
+          items: borrowItems.map(c => ({ item_id: c.item.id, quantity: c.quantity })),
+        }, attachment);
+      }
       showToast('✅ Request submitted! Storekeeper will be notified.', 'success');
       setCart([]);
-      setForm({ requester_name: user?.name || '', requester_email: user?.email || '', type:'used-up', unit_school: user?.unit_school || 'All', purpose:'', return_date:'' });
+      setForm({ requester_name: user?.name || '', requester_email: user?.email || '', unit_school: user?.unit_school || 'All', purpose:'', return_date:'' });
       setAttachment(null);
       setCartMode(false);
       loadHistory(); refreshPending();
@@ -357,7 +383,9 @@ export default function RequestsPage({ role, user, showToast, refreshPending }) 
                         </div>
                         <div style={{ flex:1, minWidth:0 }}>
                           <div style={{ fontWeight:700, fontSize:12.5, overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>{item.name}</div>
-                          <div style={{ fontSize:10.5, color:'var(--muted)' }}>{item.category} · {item.unit_name}</div>
+                          <div style={{ fontSize:10.5, color:'var(--muted)' }}>
+                            {item.category} · {item.unit_name}{item.item_type === 'borrow' ? ' · ↩️ Borrow' : ''}
+                          </div>
                         </div>
                         <div style={{ display:'flex', alignItems:'center', gap:3, flexShrink:0 }}>
                           <button className="btn btn-ghost btn-sm" style={{ padding:'2px 7px' }} onClick={() => setQty(item.id, quantity-1)}>−</button>
@@ -390,37 +418,31 @@ export default function RequestsPage({ role, user, showToast, refreshPending }) 
                   <div style={{ color:'var(--muted)' }}>{form.requester_email}</div>
                 </div>
 
-                <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:8 }}>
-                  <label style={{ fontSize:12, fontWeight:800, color:'var(--navy)' }}>
-                    Type <span className="req">*</span>
-                    <select className="filter-select" value={form.type} onChange={set('type')} style={{ width:'100%', marginTop:4 }}>
-                      <option value="used-up">Used-up</option>
-                      <option value="borrow">Borrow</option>
-                    </select>
-                  </label>
-                  <label style={{ fontSize:12, fontWeight:800, color:'var(--navy)' }}>
-                    Unit School
-                    <select
-                      className="filter-select"
-                      value={form.unit_school}
-                      onChange={set('unit_school')}
-                      disabled={!isAdmin}
-                      style={{ width:'100%', marginTop:4, opacity: isAdmin ? 1 : 0.75, cursor: isAdmin ? 'pointer' : 'not-allowed' }}
-                    >
-                      {['All','PAUD','SD','SMP'].map(u => <option key={u}>{u}</option>)}
-                    </select>
-                    {!isAdmin && (
-                      <div style={{ fontSize:10, color:'var(--muted)', marginTop:3 }}>
-                        🔒 Assigned to your unit
-                      </div>
-                    )}
-                  </label>
-                </div>
+                <label style={{ fontSize:12, fontWeight:800, color:'var(--navy)' }}>
+                  Unit School
+                  <select
+                    className="filter-select"
+                    value={form.unit_school}
+                    onChange={set('unit_school')}
+                    disabled={!isAdmin}
+                    style={{ width:'100%', marginTop:4, opacity: isAdmin ? 1 : 0.75, cursor: isAdmin ? 'pointer' : 'not-allowed' }}
+                  >
+                    {['All','PAUD','SD','SMP'].map(u => <option key={u}>{u}</option>)}
+                  </select>
+                  {!isAdmin && (
+                    <div style={{ fontSize:10, color:'var(--muted)', marginTop:3 }}>
+                      🔒 Assigned to your unit
+                    </div>
+                  )}
+                </label>
 
-                {form.type === 'borrow' && (
+                {cartHasBorrow && (
                   <label style={{ fontSize:12, fontWeight:800, color:'var(--navy)' }}>
-                    Return By
-                    <input type="date" min={TODAY()} value={form.return_date} onChange={set('return_date')} style={{ marginTop:4 }} />
+                    Return By <span className="req">*</span>
+                    <input type="date" min={TODAY()} value={form.return_date} onChange={set('return_date')} required style={{ marginTop:4 }} />
+                    <div style={{ fontSize:10, fontWeight:600, color:'var(--muted)', marginTop:3 }}>
+                      ↩️ Your cart has item(s) that must be returned by this date.
+                    </div>
                   </label>
                 )}
 
@@ -499,6 +521,9 @@ export default function RequestsPage({ role, user, showToast, refreshPending }) 
                   <div style={{ marginTop:6, display:'flex', gap:6, flexWrap:'wrap', justifyContent:'center' }}>
                     <CategoryBadge category={detailItem.category} />
                     <span className="badge badge-grey" style={{ fontSize:11 }}>{detailItem.store_category}</span>
+                    <span className={`badge ${detailItem.item_type === 'borrow' ? 'badge-purple' : 'badge-grey'}`} style={{ fontSize:11 }}>
+                      {detailItem.item_type === 'borrow' ? '↩️ Borrow' : '🗑️ Used-up'}
+                    </span>
                   </div>
                 </div>
               </div>
