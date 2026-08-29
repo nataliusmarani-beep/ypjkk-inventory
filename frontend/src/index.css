@@ -391,7 +391,7 @@ textarea { resize: vertical; min-height: 80px; }
   .dash-alert-card > p { padding: 0 16px 20px; margin: 0; }
   .dash-alert-card .table-wrap { padding: 0 16px 16px; }
   .responsive-table tr.low-stock-row {
-    border: 1.5px solid #fed7aa; border-radius: var(--radius-sm);
+    background: #fff7ed; border: 1.5px solid #fed7aa; border-radius: var(--radius-sm);
     margin-bottom: 10px; padding: 12px 14px;
   }
   .responsive-table tr.low-stock-row:last-child { margin-bottom: 0; }
