@@ -89,9 +89,12 @@ export default function HelpPage({ role }) {
           <Step n={2} text='Click the blue "🛒 New Request" button at the top right.' />
           <Step n={3} text="Browse items or use the search bar to find what you need. Click ℹ️ on any item to see its full description." />
           <Step n={4} text='Click "+ Add to Cart" on the items you want. Use − and + to adjust quantities.' />
-          <Step n={5} text="On the right side, confirm your name and email (auto-filled), select Type (Used-up or Borrow), and fill in the Purpose." />
-          <Step n={6} text="If borrowing, set the Return By date." />
+          <Step n={5} text="On the right side, confirm your name and email (auto-filled) and fill in the Purpose." />
+          <Step n={6} text="If your cart contains any Borrow-type item, a Return By date field appears — set it before submitting." />
           <Step n={7} text='Click "📤 Submit" to send your request for approval.' />
+          <Note color="#eff6ff" border="#bfdbfe" text="#1d4ed8">
+            🏷️ Type (Used-up or Borrow) is now set per item by the Storekeeper/Manager and shown as a locked badge — you no longer choose it. If your cart mixes both types, it is automatically split into two separate requests at submit time.
+          </Note>
           <Note>⏳ You will receive an email and/or Telegram notification once the storekeeper reviews your request.</Note>
         </Section>
 
@@ -135,12 +138,25 @@ export default function HelpPage({ role }) {
           <Section icon="➕" title="Adding a New Item">
             <Step n={1} text='Click "Add Item" in the sidebar.' />
             <Step n={2} text='Use the "🔍 Search Existing Items" box at the top to check whether the item was already added by another storekeeper in a different location.' />
-            <Step n={3} text='If a match appears, click "Use as template →" — all item details (name, code, category, icon, unit, threshold) are pre-filled for you. Set your own quantity and save.' />
-            <Step n={4} text="If no match is found, fill in all required fields manually: Name, Store Category, Category, Location, Unit School, Quantity, Unit, Min Threshold, Condition, and PR/PO Number." />
+            <Step n={3} text='If a match appears, click "Use as template →" — all item details (name, code, barcode, category, icon, unit, threshold) are pre-filled for you. Set your own quantity and save.' />
+            <Step n={4} text="If no match is found, fill in all required fields manually: Name, Subtitle (optional), Store Category, Category, Item Type, Location, Unit School, Quantity, Unit, Min Threshold, Condition, and PR/PO Number." />
             <Step n={5} text="Store Category determines which Category options are available." />
             <Step n={6} text='Click "💾 Save Item" to add it to inventory.' />
             <Note color="#eff6ff" border="#bfdbfe" text="#1d4ed8">💡 Use the search template feature to keep item names and categories consistent across locations — it prevents duplicates and saves time.</Note>
             <Note color="#fffbeb" border="#fde68a" text="#92400e">🔒 Location and Unit School are <strong>locked to your assigned store</strong> if you are a Storekeeper assigned to a specific unit.</Note>
+          </Section>
+
+          <Section icon="🏷️" title="Item Type — Used-up vs Borrow">
+            <Step n={1} text='Every item now has a fixed Item Type — "Used-up" or "Borrow" — set by the Storekeeper/Manager on the Add Item / Edit Item form.' />
+            <Step n={2} text="Requesters no longer pick the type at checkout — they see it as a locked badge on the item." />
+            <Step n={3} text="Choose the type based on how the item is normally handled: consumables (paper, ink, stationery) should be Used-up; equipment that must come back (projectors, sports gear) should be Borrow." />
+          </Section>
+
+          <Section icon="🔖" title="Barcode & Subtitle Fields">
+            <Step n={1} text='"Item Code" is for your own manual SKU/reference code; "Barcode" is a separate field meant for the actual scanned barcode number.' />
+            <Step n={2} text="The Barcode field is auto-filled when you use the barcode scanner or a template match — you can also type it in manually." />
+            <Step n={3} text="Item lists and the request browser show the Barcode (falling back to the Item Code if no barcode is set) as the subtitle under the item name." />
+            <Step n={4} text='Use the optional "Subtitle" field for free-text notes like size, colour, or variant (e.g. "Size M, Blue"). It is appended after the barcode, separated by " | ".' />
           </Section>
 
           <Section icon="📷" title="Barcode Scanner (Mobile)">
@@ -149,7 +165,7 @@ export default function HelpPage({ role }) {
             <Step n={3} text="If the item already exists in the inventory, all its details are automatically loaded into the form — you can update the stock quantity or other fields and save." />
             <Step n={4} text="If the item is not in the inventory yet, the system looks up the item name online and auto-fills the Name field. Enter the remaining details and save as a new item." />
             <Note color="#f0fdf4" border="#bbf7d0" text="#15803d">
-              📦 The scanner uses the back camera automatically. Works best in good lighting with the barcode centred in the frame.
+              📦 The scanner uses the back camera automatically. Works best in good lighting with the barcode centred in the frame. The scanned code fills the Barcode field, not the Item Code field.
             </Note>
           </Section>
 
@@ -171,7 +187,7 @@ export default function HelpPage({ role }) {
 
           <Section icon="📂" title="Importing Items via CSV">
             <Step n={1} text='Click "⬇ Template" to download the CSV template.' />
-            <Step n={2} text="Fill in the spreadsheet following the column headers." />
+            <Step n={2} text="Fill in the spreadsheet following the column headers, including the Barcode and Subtitle columns (both optional)." />
             <Step n={3} text='Click "📂 Import CSV" and select your filled file.' />
             <Note>Maximum 500 rows per import. Items with duplicate names will be skipped.</Note>
           </Section>
@@ -258,6 +274,10 @@ export default function HelpPage({ role }) {
             'Use the 🔍 search bar and the Status dropdown on the Inventory page to quickly find items by name, code, or stock status.',
             'Click ℹ️ on any item card in the request browser to see full details before adding to cart.',
             'Items with zero quantity show an "Out of Stock" badge (red). Items below the minimum threshold show a "Low Stock" badge (amber). Condition is shown as N/A for out-of-stock items.',
+            'The Inventory Items list and My Requests history are shown as colour-accented cards — the accent colour reflects stock level or request status at a glance.',
+            'My Requests history is paginated 10 requests per page — use the page controls at the bottom to browse older requests.',
+            'Item Type (Used-up or Borrow) is fixed per item by the Storekeeper/Manager — a mixed cart is automatically split into separate requests by type when you submit.',
+            'The item subtitle line shows the Barcode (or Item Code if no barcode is set), plus any free-text Subtitle notes like size or colour.',
             'Borrowed items must be returned physically to the storeroom — the storekeeper will then mark them as returned in the system.',
             'You will receive automatic email reminders 2 days and 1 day before your borrow due date — check your inbox.',
             'If your set-password link has expired, ask your Manager to click 📧 Invite on your user account to send a fresh link.',
