@@ -184,6 +184,7 @@ async function sendLowStockAlert({ itemName, itemCode, category, location, quant
 // ── 5. New Request Alert (to relevant Storekeepers + Managers) ────────────
 async function sendNewRequestAlert({ requesterName, requesterUnit, items, type, purpose, groupId, recipients }) {
   if (!recipients || recipients.length === 0) return;
+  const appUrl     = process.env.FRONTEND_URL || 'https://kkinventory.ypj.sch.id';
   const typeLabel  = type === 'borrow' ? 'Borrow (must be returned)' : 'Used-up';
   const totalQty   = items.reduce((s, i) => s + i.quantity, 0);
   const html = wrap(`
@@ -204,6 +205,11 @@ async function sendNewRequestAlert({ requesterName, requesterUnit, items, type, 
     <div style="background:#eff6ff;border-left:4px solid #2563eb;padding:12px 16px;border-radius:4px;font-size:13px;color:#1e40af">
       👉 Please log in to the inventory system to review and approve or reject this request.
     </div>
+    <p style="text-align:center;margin-top:20px">
+      <a href="${appUrl}/requests" style="background:#1a2f5e;color:white;padding:10px 24px;border-radius:8px;text-decoration:none;font-weight:700;font-size:14px;display:inline-block">
+        Review Request
+      </a>
+    </p>
   `);
   await Promise.all(
     recipients.map(r => send({
@@ -217,6 +223,7 @@ async function sendNewRequestAlert({ requesterName, requesterUnit, items, type, 
 // ── 6. Request Forwarded ───────────────────────────────────────────────────
 async function sendRequestForwarded({ storekeepName, requesterName, items, purpose, forwardedNote, recipients }) {
   if (!recipients || recipients.length === 0) return;
+  const appUrl    = process.env.FRONTEND_URL || 'https://kkinventory.ypj.sch.id';
   const itemList2 = items.map(i => `${i.item_name} × ${i.quantity} ${i.unit_name || ''}`).join(', ');
   const html = wrap(`
     <p>Dear Manager,</p>
@@ -231,6 +238,11 @@ async function sendRequestForwarded({ storekeepName, requesterName, items, purpo
     <div style="background:#f5f3ff;border-left:4px solid #7c3aed;padding:12px 16px;border-radius:4px;font-size:13px;color:#6d28d9">
       📨 Please log in to the inventory system to review and approve or reject this request.
     </div>
+    <p style="text-align:center;margin-top:20px">
+      <a href="${appUrl}/requests" style="background:#1a2f5e;color:white;padding:10px 24px;border-radius:8px;text-decoration:none;font-weight:700;font-size:14px;display:inline-block">
+        Review Request
+      </a>
+    </p>
   `);
   await Promise.all(
     recipients.map(r => send({
@@ -273,6 +285,7 @@ async function sendInfoRequested({ requesterName, requesterEmail, items, note, g
 // ── 6c. Info Provided (back to relevant Storekeepers + Managers) ──────────
 async function sendRequestInfoProvided({ requesterName, requesterUnit, items, note, groupId, recipients }) {
   if (!recipients || recipients.length === 0) return;
+  const appUrl = process.env.FRONTEND_URL || 'https://kkinventory.ypj.sch.id';
   const html = wrap(`
     <p>Dear Storekeeper / Manager,</p>
     <p><strong>${requesterName}</strong> has provided the additional information you requested — the request is ready for another look.</p>
@@ -286,6 +299,11 @@ async function sendRequestInfoProvided({ requesterName, requesterUnit, items, no
     <div style="background:#eff6ff;border-left:4px solid #2563eb;padding:12px 16px;border-radius:4px;font-size:13px;color:#1e40af">
       👉 Please log in to the inventory system to review and approve or reject this request.
     </div>
+    <p style="text-align:center;margin-top:20px">
+      <a href="${appUrl}/requests" style="background:#1a2f5e;color:white;padding:10px 24px;border-radius:8px;text-decoration:none;font-weight:700;font-size:14px;display:inline-block">
+        Review Request
+      </a>
+    </p>
   `);
   await Promise.all(
     recipients.map(r => send({
