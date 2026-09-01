@@ -122,14 +122,59 @@ const router = express.Router();
 const withItem = `SELECT r.*, i.name AS item_name, i.category, i.unit_name, i.location, i.code, i.icon AS item_icon
                   FROM requests r JOIN items i ON i.id = r.item_id`;
 
+// Resolves the single store location a Storekeeper is confined to, if any.
+// Mirrors storekeeperLocation() in routes/items.js.
+function storekeeperLocation(user) {
+  if (!user || user.role !== 'Storekeeper') return null;
+  if (user.location) return user.location;
+  if (user.unit_school === 'PAUD') return 'PAUD YPJ KK';
+  if (user.unit_school === 'SD' || user.unit_school === 'SMP') return 'SD SMP YPJ KK';
+  return null;
+}
+
 // ── Storekeeper location SQL fragment ─────────────────────────────────────
 // Returns an extra WHERE clause to restrict requests to the storekeeper's store.
+// Matched two ways, either is enough to show the request:
+//   - the requester's own declared unit_school (legacy behaviour)
+//   - the item's actual store location (i.location, from the `withItem` join)
+// The second match matters for requesters whose profile isn't tied to a
+// single school level (role 'Other', or unit_school 'All') — their requests
+// still belong to whichever physical store stocks the requested item, so a
+// storekeeper must see and approve those too, not just PAUD/SD/SMP staff.
 // Safe to interpolate — value comes from server-issued JWT, not user input.
 function storekeepWhere(user) {
   if (!user || user.role !== 'Storekeeper') return '';
-  if (user.unit_school === 'PAUD')                             return `AND r.unit_school = 'PAUD'`;
-  if (user.unit_school === 'SD' || user.unit_school === 'SMP') return `AND r.unit_school IN ('SD','SMP')`;
-  return '';
+  const loc = storekeeperLocation(user);
+  if (user.unit_school === 'PAUD')                             return `AND (r.unit_school = 'PAUD' OR i.location = '${loc}')`;
+  if (user.unit_school === 'SD' || user.unit_school === 'SMP') return `AND (r.unit_school IN ('SD','SMP') OR i.location = '${loc}')`;
+  return loc ? `AND i.location = '${loc}'` : '';
+}
+
+// Only Manager and Storekeeper can review requests. req.user comes from the
+// JWT cookie (up to 8h old), so re-read the authoritative role/location from
+// the DB rather than trusting stale token claims — mirrors staffOnly() in
+// routes/items.js.
+function staffOnly(req, res, next) {
+  if (!req.user?.id) return res.status(403).json({ error: 'Not authenticated.' });
+  const current = db.prepare('SELECT role, unit_school, location, store_category FROM users WHERE id = ? AND is_active = 1').get(req.user.id);
+  if (!current || (current.role !== 'Manager' && current.role !== 'Storekeeper')) {
+    return res.status(403).json({ error: 'Only Managers and Storekeepers can review requests.' });
+  }
+  Object.assign(req.user, current);
+  next();
+}
+
+// Storekeepers may only act on a group whose item is stocked at their own
+// assigned location; Managers can act on anything. Call after loading the
+// group's rows (each row carries i.location via the `withItem` join).
+function assertGroupInScope(req, res, rows) {
+  if (req.user.role !== 'Storekeeper') return true;
+  const loc = storekeeperLocation(req.user);
+  if (loc && rows[0].location !== loc) {
+    res.status(403).json({ error: 'You can only review requests for your assigned store.' });
+    return false;
+  }
+  return true;
 }
 
 // ── GET /api/requests ──────────────────────────────────────────────────────
@@ -152,12 +197,12 @@ router.get('/stats', (req, res) => {
   const lowStock   = db.prepare('SELECT COUNT(*) AS n FROM items WHERE quantity < min_threshold').get().n;
   const pending    = db.prepare(`
     SELECT COUNT(DISTINCT COALESCE(r.group_id, CAST(r.id AS TEXT))) AS n
-    FROM requests r
+    FROM requests r JOIN items i ON i.id = r.item_id
     WHERE r.status = 'pending' ${sw}
   `).get().n;
   const thisMonth  = db.prepare(`
     SELECT COUNT(*) AS n
-    FROM requests r
+    FROM requests r JOIN items i ON i.id = r.item_id
     WHERE strftime('%Y-%m', r.created_at) = strftime('%Y-%m', 'now') ${sw}
   `).get().n;
   res.json({ totalItems, lowStock, pending, thisMonth });
@@ -391,7 +436,7 @@ router.post('/', (req, res) => {
 });
 
 // ── PUT /api/requests/groups/:groupId/approve ──────────────────────────────
-router.put('/groups/:groupId/approve', (req, res) => {
+router.put('/groups/:groupId/approve', staffOnly, (req, res) => {
   const { notes } = req.body || {};
   const { groupId } = req.params;
 
@@ -400,6 +445,7 @@ router.put('/groups/:groupId/approve', (req, res) => {
 
     const rows = db.prepare(`${withItem} WHERE r.group_id = ? AND r.status = 'pending'`).all(groupId);
     if (rows.length === 0) { db.exec('ROLLBACK'); return res.status(404).json({ error: 'No pending items in this group.' }); }
+    if (!assertGroupInScope(req, res, rows)) { db.exec('ROLLBACK'); return; }
 
     for (const row of rows) {
       const stock = db.prepare('SELECT quantity FROM items WHERE id = ?').get(row.item_id);
@@ -460,12 +506,13 @@ router.put('/groups/:groupId/approve', (req, res) => {
 });
 
 // ── PUT /api/requests/groups/:groupId/reject ───────────────────────────────
-router.put('/groups/:groupId/reject', (req, res) => {
+router.put('/groups/:groupId/reject', staffOnly, (req, res) => {
   const { notes } = req.body || {};
   const { groupId } = req.params;
 
   const rows = db.prepare(`${withItem} WHERE r.group_id = ? AND r.status = 'pending'`).all(groupId);
   if (rows.length === 0) return res.status(404).json({ error: 'No pending items in this group.' });
+  if (!assertGroupInScope(req, res, rows)) return;
 
   db.prepare(`UPDATE requests SET status = 'rejected', notes = COALESCE(?, notes) WHERE group_id = ? AND status = 'pending'`).run(notes || null, groupId);
 
@@ -506,12 +553,13 @@ router.put('/groups/:groupId/reject', (req, res) => {
 });
 
 // ── PUT /api/requests/groups/:groupId/forward ──────────────────────────────
-router.put('/groups/:groupId/forward', (req, res) => {
+router.put('/groups/:groupId/forward', staffOnly, (req, res) => {
   const { forwarded_note } = req.body || {};
   const { groupId } = req.params;
 
   const fullRows = db.prepare(`${withItem} WHERE r.group_id = ? AND r.status = 'pending'`).all(groupId);
   if (fullRows.length === 0) return res.status(404).json({ error: 'No pending items in this group.' });
+  if (!assertGroupInScope(req, res, fullRows)) return;
 
   db.prepare(`UPDATE requests SET forwarded = 1, forwarded_note = ? WHERE group_id = ? AND status = 'pending'`)
     .run(forwarded_note || null, groupId);
@@ -545,7 +593,7 @@ router.put('/groups/:groupId/forward', (req, res) => {
 // ── PUT /api/requests/groups/:groupId/request-info ─────────────────────────
 // Storekeeper/Manager asks the requester for more justification (note and/or
 // an attachment) before the request can be reviewed. Status stays 'pending'.
-router.put('/groups/:groupId/request-info', (req, res) => {
+router.put('/groups/:groupId/request-info', staffOnly, (req, res) => {
   const { note } = req.body || {};
   const { groupId } = req.params;
 
@@ -553,6 +601,7 @@ router.put('/groups/:groupId/request-info', (req, res) => {
 
   const rows = db.prepare(`${withItem} WHERE r.group_id = ? AND r.status = 'pending'`).all(groupId);
   if (rows.length === 0) return res.status(404).json({ error: 'No pending items in this group.' });
+  if (!assertGroupInScope(req, res, rows)) return;
 
   db.prepare(`UPDATE requests SET needs_info = 1, info_request_note = ? WHERE group_id = ? AND status = 'pending'`)
     .run(note.trim(), groupId);
