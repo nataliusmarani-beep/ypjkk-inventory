@@ -18,10 +18,20 @@ const UNIT_NAMES = ['pcs','ea','box','pack','set','cm','mtr','roll','carton','bu
 const CONDITIONS = ['Good','Fair','Damaged','Expired'];
 
 // Only Manager and Storekeeper can create/update/delete items
+//
+// req.user comes from the JWT cookie, which is only reissued at login (up to
+// 8h old). If an admin changes a Storekeeper's assigned location/store
+// category/role after they've already logged in, that change must take
+// effect immediately — not after their session happens to expire — so we
+// re-read the authoritative row from the DB here rather than trusting the
+// stale token claims for these fields.
 function staffOnly(req, res, next) {
-  if (req.user?.role !== 'Manager' && req.user?.role !== 'Storekeeper') {
+  if (!req.user?.id) return res.status(403).json({ error: 'Not authenticated.' });
+  const current = db.prepare('SELECT role, unit_school, location, store_category FROM users WHERE id = ? AND is_active = 1').get(req.user.id);
+  if (!current || (current.role !== 'Manager' && current.role !== 'Storekeeper')) {
     return res.status(403).json({ error: 'Only Managers and Storekeepers can modify inventory items.' });
   }
+  Object.assign(req.user, current);
   next();
 }
 
@@ -76,7 +86,7 @@ router.get('/', (req, res) => {
       AND (? IS NULL OR unit_school = ? OR unit_school = 'All')
       AND (? IS NULL OR status = ?)
       AND (? IS NULL OR LOWER(COALESCE(code,'')) = LOWER(?))
-      AND (? IS NULL OR LOWER(COALESCE(barcode,'')) = LOWER(?))
+      AND (? IS NULL OR LOWER(COALESCE(barcode,'')) = LOWER(?) OR LOWER(COALESCE(code,'')) = LOWER(?))
     ORDER BY name ASC
   `).all(
     search||null, search||null, search||null, search||null,
@@ -86,7 +96,7 @@ router.get('/', (req, res) => {
     unit_school||null, unit_school||null,
     status||null, status||null,
     code||null, code||null,
-    barcode||null, barcode||null,
+    barcode||null, barcode||null, barcode||null,
   );
 
   res.json(rows);

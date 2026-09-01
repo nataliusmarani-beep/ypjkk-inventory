@@ -34,6 +34,20 @@ export default function App() {
       .catch(() => setAuthChecked(true));
   }, []);
 
+  // Re-sync the profile (role/location/store_category) whenever the tab
+  // regains focus, so an admin's change to a storekeeper's assigned store
+  // takes effect without them having to log out — tablets left open all
+  // day for stock work would otherwise keep showing stale lock badges.
+  useEffect(() => {
+    const resync = () => { if (document.visibilityState === 'visible') api.me().then(setUser).catch(() => {}); };
+    window.addEventListener('focus', resync);
+    document.addEventListener('visibilitychange', resync);
+    return () => {
+      window.removeEventListener('focus', resync);
+      document.removeEventListener('visibilitychange', resync);
+    };
+  }, []);
+
   // Listen for any 401 that api.js fires
   useEffect(() => {
     const handler = () => setUser(null);

@@ -154,7 +154,20 @@ const migrations = {
   subtitle:       `ALTER TABLE items ADD COLUMN subtitle TEXT`,
 };
 for (const [col, sql] of Object.entries(migrations)) {
-  if (!itemCols.includes(col)) db.exec(sql);
+  if (!itemCols.includes(col)) {
+    db.exec(sql);
+    // One-time backfill: before the `barcode` column existed, scanned
+    // barcodes and manual SKUs both landed in `code`. Move anything that
+    // looks like a real barcode (digits only, 8+ chars — UPC/EAN length)
+    // into the new column so barcode-scan lookups keep finding items that
+    // were catalogued before this column was added.
+    if (col === 'barcode') {
+      db.exec(`
+        UPDATE items SET barcode = code, code = NULL
+        WHERE barcode IS NULL AND code IS NOT NULL AND code GLOB '[0-9]*' AND length(code) >= 8
+      `);
+    }
+  }
 }
 
 // ── First-run seed ────────────────────────────────────────────────────────
