@@ -79,7 +79,7 @@ router.get('/', (req, res) => {
     )
     SELECT * FROM enriched
     WHERE
-      (? IS NULL OR LOWER(name) LIKE '%' || LOWER(?) || '%' OR LOWER(COALESCE(code,'')) LIKE '%' || LOWER(?) || '%' OR LOWER(COALESCE(barcode,'')) LIKE '%' || LOWER(?) || '%')
+      (? IS NULL OR LOWER(name) LIKE '%' || LOWER(?) || '%' OR LOWER(COALESCE(code,'')) LIKE '%' || LOWER(?) || '%' OR LOWER(COALESCE(barcode,'')) LIKE '%' || LOWER(?) || '%' OR LOWER(COALESCE(subtitle,'')) LIKE '%' || LOWER(?) || '%')
       AND (? IS NULL OR category = ?)
       AND (? IS NULL OR store_category = ?)
       AND (? IS NULL OR location = ?)
@@ -89,7 +89,7 @@ router.get('/', (req, res) => {
       AND (? IS NULL OR LOWER(COALESCE(barcode,'')) = LOWER(?) OR LOWER(COALESCE(code,'')) = LOWER(?))
     ORDER BY name ASC
   `).all(
-    search||null, search||null, search||null, search||null,
+    search||null, search||null, search||null, search||null, search||null,
     category||null, category||null,
     store_category||null, store_category||null,
     location||null, location||null,

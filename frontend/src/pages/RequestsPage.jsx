@@ -224,7 +224,11 @@ export default function RequestsPage({ role, user, showToast, refreshPending }) 
   const categories   = [...new Set(allItems.map(i => i.category))].sort();
   const browseItems  = allItems.filter(it => {
     if (filterCat && it.category !== filterCat) return false;
-    if (search && !it.name.toLowerCase().includes(search.toLowerCase())) return false;
+    if (search) {
+      const q = search.toLowerCase();
+      const matches = it.name.toLowerCase().includes(q) || (it.subtitle || '').toLowerCase().includes(q);
+      if (!matches) return false;
+    }
     return true;
   });
 
