@@ -281,7 +281,7 @@ textarea { resize: vertical; min-height: 80px; }
 
 /* ── CART LAYOUT (Requests page: browser + cart) ── */
 .cart-layout { display: grid; grid-template-columns: 1fr 340px; gap: 20px; align-items: start; }
-.cart-panel  { position: sticky; top: 80px; }
+.cart-panel  { position: sticky; top: 80px; max-height: calc(100vh - 100px); overflow-y: auto; }
 .browse-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(190px, 1fr)); gap: 12px; contain: layout; }
 .browse-grid > * { min-width: 0; }
 
@@ -378,7 +378,7 @@ textarea { resize: vertical; min-height: 80px; }
 
   /* ── Cart layout: stack browser above cart, drop sticky ────────────── */
   .cart-layout { grid-template-columns: 1fr; gap: 16px; }
-  .cart-panel  { position: static; top: auto; }
+  .cart-panel  { position: static; top: auto; max-height: none; overflow-y: visible; }
   .browse-grid { grid-template-columns: 1fr; }
 
   /* ── Modal: fit narrow screens without cramped edges ────────────────── */
