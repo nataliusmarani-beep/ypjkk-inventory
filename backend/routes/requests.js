@@ -42,24 +42,28 @@ function uploadAttachment(req, res, next) {
   });
 }
 
-// Fetch active Manager + Storekeeper records
+// Only Natalius Marani should ever receive Manager-facing notifications, even if
+// additional Manager accounts exist — other Managers must not be emailed/Telegrammed.
+const SOLE_MANAGER_EMAIL = 'nmarani@fmi.com';
+
+// Fetch active Storekeeper records, plus the sole notified Manager
 function getStockAlertRecipients() {
-  return db.prepare(`SELECT name, email, telegram_chat_id FROM users WHERE role IN ('Manager','Storekeeper') AND is_active = 1`).all();
+  return db.prepare(`SELECT name, email, telegram_chat_id FROM users WHERE ((role = 'Manager' AND email = ?) OR role = 'Storekeeper') AND is_active = 1`).all(SOLE_MANAGER_EMAIL);
 }
 
-// Fetch active Managers only (for forwarding notifications)
+// Fetch the sole notified Manager (for forwarding notifications)
 function getManagerRecipients() {
-  return db.prepare(`SELECT name, email, telegram_chat_id FROM users WHERE role = 'Manager' AND is_active = 1`).all();
+  return db.prepare(`SELECT name, email, telegram_chat_id FROM users WHERE role = 'Manager' AND email = ? AND is_active = 1`).all(SOLE_MANAGER_EMAIL);
 }
 
 // Fetch approvers relevant to a requester's unit_school:
-// - Always all active Managers
+// - Always the sole notified Manager
 // - Storekeepers assigned to the matching store location:
 //     PAUD requester        → Storekeepers with unit_school = 'PAUD'
 //     SD / SMP requester    → Storekeepers with unit_school IN ('SD','SMP')
 //     Other / unknown       → all Storekeepers (fallback)
 function getApproverRecipients(unit_school) {
-  const managers = db.prepare(`SELECT name, email, telegram_chat_id FROM users WHERE role = 'Manager' AND is_active = 1`).all();
+  const managers = db.prepare(`SELECT name, email, telegram_chat_id FROM users WHERE role = 'Manager' AND email = ? AND is_active = 1`).all(SOLE_MANAGER_EMAIL);
   let storekeepers;
   if (unit_school === 'PAUD') {
     storekeepers = db.prepare(`SELECT name, email, telegram_chat_id FROM users WHERE role = 'Storekeeper' AND unit_school = 'PAUD' AND is_active = 1`).all();
