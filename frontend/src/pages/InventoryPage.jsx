@@ -194,9 +194,9 @@ export default function InventoryPage({ role, user, showToast }) {
                         <td>
                           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8 }}>
                             <div style={{ display: 'flex', alignItems: 'center', gap: 10, minWidth: 0 }}>
-                              <div className="item-thumb">
+                              <div className={`item-thumb${(item.icon || '').startsWith('data:') ? ' has-photo' : ''}`}>
                                 {(item.icon || '').startsWith('data:')
-                                  ? <img src={item.icon} alt="" style={{ width:32, height:32, objectFit:'contain', borderRadius:4 }} />
+                                  ? <img src={item.icon} alt="" style={{ width:'100%', height:'100%', objectFit:'contain', borderRadius:4 }} />
                                   : (item.icon || CAT_EMOJI[item.category] || '📦')}
                               </div>
                               <div style={{ minWidth: 0 }}>
