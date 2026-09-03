@@ -23,9 +23,10 @@ function breakFirstLine(name, maxFirstLine = 20) {
    whole (potentially 400+ item) grid — on slow mobile devices, re-rendering
    every card on every +/- tap was heavy enough to feel like the page had
    frozen mid-scroll. */
-const BrowseItemCard = memo(function BrowseItemCard({ item, inCart, onSetQty, onAddToCart, onShowDetail }) {
-  const outOfStock = item.quantity === 0;
-  const isLow      = item.quantity > 0 && item.quantity <= item.min_threshold;
+const BrowseItemCard = memo(function BrowseItemCard({ item, inCart, cartItemType, onSetQty, onAddToCart, onShowDetail }) {
+  const outOfStock   = item.quantity === 0;
+  const isLow        = item.quantity > 0 && item.quantity <= item.min_threshold;
+  const typeMismatch = !inCart && cartItemType && item.item_type !== cartItemType;
 
   return (
     <div
@@ -111,10 +112,11 @@ const BrowseItemCard = memo(function BrowseItemCard({ item, inCart, onSetQty, on
         <button
           className="btn btn-primary btn-sm"
           style={{ width:'100%' }}
-          disabled={outOfStock}
+          disabled={outOfStock || typeMismatch}
+          title={typeMismatch ? `Your cart already has ${cartItemType === 'borrow' ? 'borrow' : 'used-up'} item(s) — submit or clear it first.` : undefined}
           onClick={() => onAddToCart(item)}
         >
-          {outOfStock ? 'Out of Stock' : '+ Add to Cart'}
+          {outOfStock ? 'Out of Stock' : typeMismatch ? 'Different Item Type' : '+ Add to Cart'}
         </button>
       )}
     </div>
@@ -247,13 +249,20 @@ export default function RequestsPage({ role, user, showToast, refreshPending }) 
   const cartTotal  = cart.reduce((s, c) => s + c.quantity, 0);
   const cartHasBorrow = cart.some(c => c.item.item_type === 'borrow');
 
+  // A cart can only hold one item type at a time — used-up and borrow items
+  // can't be mixed into a single request.
   const addToCart = useCallback(item => {
     setCart(prev => {
       const ex = prev.find(c => c.item.id === item.id);
       if (ex) return prev.map(c => c.item.id === item.id ? { ...c, quantity: c.quantity + 1 } : c);
+      const existingType = prev[0]?.item.item_type;
+      if (existingType && existingType !== item.item_type) {
+        showToast(`Your cart already has ${existingType === 'borrow' ? 'borrow' : 'used-up'} item(s). Submit or clear the cart before adding a different item type.`, 'error');
+        return prev;
+      }
       return [...prev, { item, quantity: 1 }];
     });
-  }, []);
+  }, [showToast]);
 
   const setQty = useCallback((id, qty) => {
     if (qty < 1) { setCart(prev => prev.filter(c => c.item.id !== id)); return; }
@@ -264,39 +273,28 @@ export default function RequestsPage({ role, user, showToast, refreshPending }) 
 
   /* ── submit ──────────────────────────────────────────────────────────── */
   // Each item's type is locked from its own catalog entry (set by an admin/
-  // storekeeper), not chosen by the requester — so a mixed cart is split
-  // into up to two requests, one per type, each with its own group_id.
+  // storekeeper). The cart itself is kept homogeneous (see addToCart), so
+  // by the time we get here every item shares the same type.
   const handleSubmit = async e => {
     e.preventDefault();
     if (cart.length === 0) { setFormError('Your cart is empty.'); return; }
     if (!form.purpose.trim()) { setFormError('Purpose / Notes is required.'); return; }
 
-    const usedUpItems = cart.filter(c => c.item.item_type !== 'borrow');
-    const borrowItems = cart.filter(c => c.item.item_type === 'borrow');
-    if (borrowItems.length > 0 && !form.return_date) {
+    const cartType = cartHasBorrow ? 'borrow' : 'used-up';
+    if (cartHasBorrow && !form.return_date) {
       setFormError('Return By date is required for borrowed items.');
       return;
     }
 
     setSubmitting(true); setFormError(null);
     try {
-      if (usedUpItems.length > 0) {
-        await api.submitCart({
-          ...form,
-          type: 'used-up',
-          return_date: null,
-          category: null,          // mixed categories — no lock
-          items: usedUpItems.map(c => ({ item_id: c.item.id, quantity: c.quantity })),
-        }, attachment);
-      }
-      if (borrowItems.length > 0) {
-        await api.submitCart({
-          ...form,
-          type: 'borrow',
-          category: null,
-          items: borrowItems.map(c => ({ item_id: c.item.id, quantity: c.quantity })),
-        }, attachment);
-      }
+      await api.submitCart({
+        ...form,
+        type: cartType,
+        return_date: cartHasBorrow ? form.return_date : null,
+        category: null,          // mixed categories — no lock
+        items: cart.map(c => ({ item_id: c.item.id, quantity: c.quantity })),
+      }, attachment);
       showToast('✅ Request submitted! Storekeeper will be notified.', 'success');
       setCart([]);
       setForm({ requester_name: user?.name || '', requester_email: user?.email || '', unit_school: user?.unit_school || 'All', purpose:'', return_date:'' });
@@ -369,6 +367,7 @@ export default function RequestsPage({ role, user, showToast, refreshPending }) 
                       key={item.id}
                       item={item}
                       inCart={cartQtyOf(item.id)}
+                      cartItemType={cart[0]?.item.item_type}
                       onSetQty={setQty}
                       onAddToCart={addToCart}
                       onShowDetail={setDetailItem}
