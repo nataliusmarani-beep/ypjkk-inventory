@@ -53,13 +53,6 @@ const BrowseItemCard = memo(function BrowseItemCard({ item, inCart, onSetQty, on
               </div>
             );
           })()}
-          {(item.barcode || item.code || item.subtitle) && (
-            <div style={{ color:'var(--muted)', marginTop:4, wordBreak:'break-word' }}>
-              {(item.barcode || item.code) && <span className="item-subtitle" style={{ wordBreak:'break-all' }}>{item.barcode || item.code}</span>}
-              {(item.barcode || item.code) && item.subtitle && <span className="item-subtitle"> | </span>}
-              {item.subtitle && <span className="item-subtitle">{item.subtitle}</span>}
-            </div>
-          )}
         </div>
         <div style={{ position:'relative', flexShrink:0 }}>
           <div style={{ fontSize:58, lineHeight:1, width:78, height:78, display:'flex', alignItems:'center', justifyContent:'center' }}>
@@ -80,6 +73,13 @@ const BrowseItemCard = memo(function BrowseItemCard({ item, inCart, onSetQty, on
           >ℹ️</button>
         </div>
       </div>
+      {(item.barcode || item.code || item.subtitle) && (
+        <div style={{ color:'var(--muted)', marginTop:-2, marginBottom:5, lineHeight:1.15, wordBreak:'break-word' }}>
+          {(item.barcode || item.code) && <span className="item-subtitle" style={{ fontSize:10, wordBreak:'break-all' }}>{item.barcode || item.code}</span>}
+          {(item.barcode || item.code) && item.subtitle && <span className="item-subtitle" style={{ fontSize:10 }}> | </span>}
+          {item.subtitle && <span className="item-subtitle" style={{ fontSize:10 }}>{item.subtitle}</span>}
+        </div>
+      )}
       <div style={{ fontSize:11, fontWeight:700, marginBottom:8, color: outOfStock ? 'var(--red)' : isLow ? 'var(--amber)' : 'var(--green)' }}>
         {outOfStock ? 'Out of stock' : `${item.quantity} ${item.unit_name} available`}
         {isLow && !outOfStock && ' ⚠️'}
