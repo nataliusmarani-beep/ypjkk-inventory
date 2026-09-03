@@ -278,6 +278,7 @@ router.post('/cart', uploadAttachment, (req, res) => {
 
   if (!requester_name?.trim())  return res.status(400).json({ error: 'Requester name is required.' });
   if (!requester_email?.trim()) return res.status(400).json({ error: 'Requester email is required.' });
+  if (!purpose?.trim())         return res.status(400).json({ error: 'Purpose / Notes is required.' });
   if (!['used-up', 'borrow'].includes(type)) return res.status(400).json({ error: 'Type must be used-up or borrow.' });
   if (!Array.isArray(items) || items.length === 0) return res.status(400).json({ error: 'Cart is empty.' });
 

@@ -259,6 +259,7 @@ export default function RequestsPage({ role, user, showToast, refreshPending }) 
   const handleSubmit = async e => {
     e.preventDefault();
     if (cart.length === 0) { setFormError('Your cart is empty.'); return; }
+    if (!form.purpose.trim()) { setFormError('Purpose / Notes is required.'); return; }
 
     const usedUpItems = cart.filter(c => c.item.item_type !== 'borrow');
     const borrowItems = cart.filter(c => c.item.item_type === 'borrow');
@@ -456,7 +457,7 @@ export default function RequestsPage({ role, user, showToast, refreshPending }) 
 
                 <label style={{ fontSize:12, fontWeight:800, color:'var(--navy)' }}>
                   Purpose / Notes
-                  <textarea value={form.purpose} onChange={set('purpose')} rows={2} placeholder="Reason for request..." style={{ marginTop:4 }} />
+                  <textarea value={form.purpose} onChange={set('purpose')} rows={2} required placeholder="Reason for request..." style={{ marginTop:4 }} />
                 </label>
 
                 <label style={{ fontSize:12, fontWeight:800, color:'var(--navy)' }}>
