@@ -215,9 +215,9 @@ export default function InventoryPage({ role, user, showToast }) {
                                   <div style={{ fontWeight: 700 }}>{item.name}</div>
                                 )}
                                 {(item.barcode || item.code || item.subtitle) && (
-                                  <div style={{ display: 'flex', alignItems: 'baseline', gap: 4, color: 'var(--muted)', marginTop: 4 }}>
-                                    {(item.barcode || item.code) && <span className="item-subtitle">{item.barcode || item.code}</span>}
-                                    {(item.barcode || item.code) && item.subtitle && <span className="item-subtitle">|</span>}
+                                  <div style={{ color: 'var(--muted)', marginTop: 4, wordBreak: 'break-word' }}>
+                                    {(item.barcode || item.code) && <span className="item-subtitle" style={{ wordBreak:'break-all' }}>{item.barcode || item.code}</span>}
+                                    {(item.barcode || item.code) && item.subtitle && <span className="item-subtitle"> | </span>}
                                     {item.subtitle && <span className="item-subtitle">{item.subtitle}</span>}
                                   </div>
                                 )}
