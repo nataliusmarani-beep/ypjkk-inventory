@@ -55,8 +55,8 @@ const BrowseItemCard = memo(function BrowseItemCard({ item, inCart, onSetQty, on
           })()}
           {(item.barcode || item.code || item.subtitle) && (
             <div style={{ display:'flex', flexWrap:'wrap', alignItems:'baseline', gap:4, color:'var(--muted)', marginTop:2, maxWidth:'100%' }}>
-              {(item.barcode || item.code) && <span className="mono" style={{ wordBreak:'break-all' }}>{item.barcode || item.code}</span>}
-              {(item.barcode || item.code) && item.subtitle && <span className="mono">|</span>}
+              {(item.barcode || item.code) && <span className="item-subtitle" style={{ wordBreak:'break-all' }}>{item.barcode || item.code}</span>}
+              {(item.barcode || item.code) && item.subtitle && <span className="item-subtitle">|</span>}
               {item.subtitle && <span className="item-subtitle" style={{ wordBreak:'break-word' }}>{item.subtitle}</span>}
             </div>
           )}
