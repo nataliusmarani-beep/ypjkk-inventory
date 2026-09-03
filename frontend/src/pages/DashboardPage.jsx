@@ -126,7 +126,10 @@ export default function DashboardPage({ role, user, showToast }) {
                   <tbody>
                     {lowItems.map(item => (
                       <tr key={item.id} className="low-stock-row">
-                        <td><strong>{item.name}</strong></td>
+                        <td>
+                          <strong>{item.name}</strong>
+                          {item.subtitle && <div style={{ fontSize:11, color:'var(--muted)' }}>{item.subtitle}</div>}
+                        </td>
                         <td data-th="Location">{item.location}</td>
                         <td data-th="Qty" className={item.quantity === 0 ? 'qty-low' : 'qty-warn'}>
                           {item.quantity === 0 ? <span className="badge badge-red" style={{fontSize:10}}>Out of Stock</span> : `${item.quantity} ${item.unit_name}`}
@@ -157,7 +160,7 @@ export default function DashboardPage({ role, user, showToast }) {
                     <div className="tl-dot" style={{ background: dotColor[r.status] }}></div>
                     <div className="tl-content">
                       <div className="tl-title">
-                        {r.item_name} × {r.quantity} —{' '}
+                        {r.item_name}{r.item_subtitle ? ` (${r.item_subtitle})` : ''} × {r.quantity} —{' '}
                         <span className={`badge ${statusBadge[r.status]}`}>{statusLabel[r.status]}</span>
                       </div>
                       <div className="tl-meta">{r.requester_name} · {r.type} · {timeAgo(r.created_at)}</div>

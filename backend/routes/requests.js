@@ -123,7 +123,7 @@ function checkAndAlertLowStock(itemId) {
 
 const router = express.Router();
 
-const withItem = `SELECT r.*, i.name AS item_name, i.category, i.unit_name, i.location, i.code, i.icon AS item_icon
+const withItem = `SELECT r.*, i.name AS item_name, i.subtitle AS item_subtitle, i.category, i.unit_name, i.location, i.code, i.icon AS item_icon
                   FROM requests r JOIN items i ON i.id = r.item_id`;
 
 // Resolves the single store location a Storekeeper is confined to, if any.
