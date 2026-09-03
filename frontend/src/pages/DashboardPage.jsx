@@ -160,7 +160,10 @@ export default function DashboardPage({ role, user, showToast }) {
                     <div className="tl-dot" style={{ background: dotColor[r.status] }}></div>
                     <div className="tl-content">
                       <div className="tl-title">
-                        {r.item_name}{r.item_subtitle ? ` (${r.item_subtitle})` : ''} × {r.quantity} —{' '}
+                        {r.item_name}
+                        {r.item_subtitle && (
+                          <span style={{ fontSize:11, fontWeight:400, color:'var(--muted)' }}> {r.item_subtitle}</span>
+                        )} × {r.quantity} —{' '}
                         <span className={`badge ${statusBadge[r.status]}`}>{statusLabel[r.status]}</span>
                       </div>
                       <div className="tl-meta">{r.requester_name} · {r.type} · {timeAgo(r.created_at)}</div>
