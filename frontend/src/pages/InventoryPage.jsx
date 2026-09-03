@@ -214,9 +214,11 @@ export default function InventoryPage({ role, user, showToast }) {
                                 ) : (
                                   <div style={{ fontWeight: 700 }}>{item.name}</div>
                                 )}
-                                {[item.barcode || item.code, item.subtitle].filter(Boolean).length > 0 && (
-                                  <div className="mono" style={{ color: 'var(--muted)' }}>
-                                    {[item.barcode || item.code, item.subtitle].filter(Boolean).join(' | ')}
+                                {(item.barcode || item.code || item.subtitle) && (
+                                  <div style={{ display: 'flex', alignItems: 'baseline', gap: 4, color: 'var(--muted)' }}>
+                                    {(item.barcode || item.code) && <span className="mono">{item.barcode || item.code}</span>}
+                                    {(item.barcode || item.code) && item.subtitle && <span className="mono">|</span>}
+                                    {item.subtitle && <span className="item-subtitle">{item.subtitle}</span>}
                                   </div>
                                 )}
                               </div>
