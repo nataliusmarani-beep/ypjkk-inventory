@@ -146,6 +146,8 @@ export const api = {
   createEventRequest:  (b)    => request('/event-requests', { method: 'POST', body: JSON.stringify(b) }),
   decideEventRequest:  (id, b) =>
     request(`/event-requests/${id}/decision`, { method: 'POST', body: JSON.stringify(b) }),
+  reviseEventRequest:  (id, b) =>
+    request(`/event-requests/${id}/revise`, { method: 'POST', body: JSON.stringify(b) }),
 
   // Trip status — the no-GPS "has the bus left yet?" for parents
   tripStatus: () => request('/meta/trip-status'),

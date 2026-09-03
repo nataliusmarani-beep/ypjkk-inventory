@@ -644,11 +644,17 @@ db.exec(`
     attachment_file      TEXT,
     attachment_mime_type TEXT,
     status           TEXT    NOT NULL DEFAULT 'submitted'
-                       CHECK (status IN ('submitted', 'approved', 'rejected')),
+                       CHECK (status IN ('submitted', 'approved', 'rejected', 'cancelled')),
     assigned_bus_id  INTEGER REFERENCES buses(id),
     reviewed_by      INTEGER REFERENCES users(id),
     reviewed_at      TEXT,
     rejection_reason TEXT,
+    -- Most recent post-approval edit (bus reassignment or cancellation) —
+    -- see the event_bus_requests migration further down for why this is
+    -- separate from reviewed_by/reviewed_at (the original decision).
+    edited_by        INTEGER REFERENCES users(id),
+    edited_at        TEXT,
+    edit_note        TEXT,
     created_at       TEXT    NOT NULL DEFAULT (datetime('now'))
   );
 
@@ -1419,6 +1425,74 @@ db.exec(`
     const columns = db.prepare(`PRAGMA table_info(${table})`).all().map((c) => c.name);
     if (!columns.includes('label')) {
       db.exec(`ALTER TABLE ${table} ADD COLUMN label TEXT`);
+    }
+  }
+}
+
+// ── Migration: event_bus_requests gains 'cancelled' + post-approval edit trail
+// Tim Transportasi needs to fix an approved request after the fact — wrong
+// bus type assigned, or a duplicate approval that needs undoing — rather
+// than the one-shot approve/reject decision below. 'cancelled' is a new
+// terminal status (distinct from 'rejected', which only ever applies before
+// a decision is made); edited_by/edited_at/edit_note record the most recent
+// change for display, same shape as reviewed_by/reviewed_at/rejection_reason.
+// Widening the status CHECK needs the same rebuild-required treatment as the
+// users.role migrations above.
+{
+  const sql = db.prepare(`
+    SELECT sql FROM sqlite_master WHERE type = 'table' AND name = 'event_bus_requests'
+  `).get()?.sql || '';
+
+  if (!sql.includes("'cancelled'")) {
+    db.exec('PRAGMA foreign_keys = OFF');
+    db.exec('BEGIN');
+    try {
+      db.exec(`
+        CREATE TABLE event_bus_requests_new (
+          id               INTEGER PRIMARY KEY AUTOINCREMENT,
+          requested_by     INTEGER NOT NULL REFERENCES users(id),
+          event_name       TEXT    NOT NULL,
+          event_date       TEXT    NOT NULL,
+          departure_time   TEXT,
+          return_time      TEXT,
+          destination      TEXT    NOT NULL,
+          passenger_count  INTEGER,
+          notes            TEXT,
+          attachment_file      TEXT,
+          attachment_mime_type TEXT,
+          status           TEXT    NOT NULL DEFAULT 'submitted'
+                             CHECK (status IN ('submitted', 'approved', 'rejected', 'cancelled')),
+          assigned_bus_id  INTEGER REFERENCES buses(id),
+          assigned_bus_ids TEXT    NOT NULL DEFAULT '[]',
+          reviewed_by      INTEGER REFERENCES users(id),
+          reviewed_at      TEXT,
+          rejection_reason TEXT,
+          edited_by        INTEGER REFERENCES users(id),
+          edited_at        TEXT,
+          edit_note        TEXT,
+          created_at       TEXT    NOT NULL DEFAULT (datetime('now'))
+        );
+        INSERT INTO event_bus_requests_new
+          (id, requested_by, event_name, event_date, departure_time, return_time,
+           destination, passenger_count, notes, attachment_file, attachment_mime_type,
+           status, assigned_bus_id, assigned_bus_ids, reviewed_by, reviewed_at,
+           rejection_reason, created_at)
+        SELECT
+          id, requested_by, event_name, event_date, departure_time, return_time,
+          destination, passenger_count, notes, attachment_file, attachment_mime_type,
+          status, assigned_bus_id, assigned_bus_ids, reviewed_by, reviewed_at,
+          rejection_reason, created_at
+        FROM event_bus_requests;
+        DROP TABLE event_bus_requests;
+        ALTER TABLE event_bus_requests_new RENAME TO event_bus_requests;
+        CREATE INDEX IF NOT EXISTS event_bus_requests_status_idx ON event_bus_requests (status, event_date);
+      `);
+      db.exec('COMMIT');
+    } catch (e) {
+      db.exec('ROLLBACK');
+      throw e;
+    } finally {
+      db.exec('PRAGMA foreign_keys = ON');
     }
   }
 }

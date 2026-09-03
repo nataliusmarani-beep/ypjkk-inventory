@@ -12,6 +12,7 @@ const STATUS = {
   submitted: { label: 'Menunggu Persetujuan', chip: 'warn' },
   approved:  { label: 'Disetujui',            chip: 'ok' },
   rejected:  { label: 'Ditolak',               chip: 'danger' },
+  cancelled: { label: 'Dibatalkan',            chip: 'danger' },
 };
 
 const PAGE_SIZE = 5;
@@ -100,6 +101,19 @@ export default function EventRequestsSection({ user }) {
     }
   }
 
+  async function revise(row, action, extra = {}) {
+    setBusy(row.id);
+    setError(null);
+    try {
+      await api.reviseEventRequest(row.id, { action, ...extra });
+      load();
+    } catch (err) {
+      setError(err.message);
+    } finally {
+      setBusy(null);
+    }
+  }
+
   if (!rows) return null;
 
   const pending = rows.filter((r) => r.status === 'submitted').length;
@@ -148,14 +162,14 @@ export default function EventRequestsSection({ user }) {
               </label>
               <label className="grow">
                 <span className="lbl">Jumlah Peserta</span>
-                <input type="number" min="1" value={form.passenger_count}
+                <input type="number" min="1" required value={form.passenger_count}
                        onChange={(e) => setForm({ ...form, passenger_count: e.target.value })} />
               </label>
             </div>
             <div className="row" style={{ gap: 8 }}>
               <label className="grow">
                 <span className="lbl">Jam Berangkat</span>
-                <input type="time" value={form.departure_time}
+                <input type="time" required value={form.departure_time}
                        onChange={(e) => setForm({ ...form, departure_time: e.target.value })} />
               </label>
               <label className="grow">
@@ -197,7 +211,7 @@ export default function EventRequestsSection({ user }) {
 
       {pageRows.map((r) => (
         <EventRequestRow key={r.id} row={r} buses={buses} canDecide={canDecide}
-                          busy={busy === r.id} onDecide={decide} />
+                          busy={busy === r.id} onDecide={decide} onRevise={revise} />
       ))}
 
       {rows.length > PAGE_SIZE && (
@@ -213,14 +227,27 @@ export default function EventRequestsSection({ user }) {
   );
 }
 
-function EventRequestRow({ row, buses, canDecide, busy, onDecide }) {
+function EventRequestRow({ row, buses, canDecide, busy, onDecide, onRevise }) {
   const [busIds, setBusIds] = useState([]);
   const [reason, setReason] = useState('');
   const [rejecting, setRejecting] = useState(false);
+  const [editing, setEditing] = useState(null); // null | 'reassign' | 'cancel'
+  const [reviseBusIds, setReviseBusIds] = useState(row.assigned_buses?.map((b) => b.id) || []);
+  const [reviseNote, setReviseNote] = useState('');
   const status = STATUS[row.status];
 
   function toggleBus(id) {
     setBusIds((prev) => (prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id]));
+  }
+
+  function toggleReviseBus(id) {
+    setReviseBusIds((prev) => (prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id]));
+  }
+
+  function openEditing(mode) {
+    setEditing(mode);
+    setReviseBusIds(row.assigned_buses?.map((b) => b.id) || []);
+    setReviseNote('');
   }
 
   return (
@@ -272,6 +299,24 @@ function EventRequestRow({ row, buses, canDecide, busy, onDecide }) {
           <span>⚠</span><div>{row.rejection_reason}</div>
         </div>
       )}
+      {row.status === 'cancelled' && row.edited_by_name && (
+        <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--danger)' }}>
+          Dibatalkan oleh {row.edited_by_name}
+          {fullWIT(row.edited_at) && ` · ${fullWIT(row.edited_at)}`}
+        </div>
+      )}
+      {row.status === 'cancelled' && row.edit_note && (
+        <div className="banner danger" style={{ marginTop: 8, marginBottom: 0 }}>
+          <span>⚠</span><div>{row.edit_note}</div>
+        </div>
+      )}
+      {row.status === 'approved' && row.edited_by_name && (
+        <div className="muted" style={{ fontSize: 13 }}>
+          Unit diubah oleh {row.edited_by_name}
+          {fullWIT(row.edited_at) && ` · ${fullWIT(row.edited_at)}`}
+          {row.edit_note && ` — ${row.edit_note}`}
+        </div>
+      )}
 
       {canDecide && row.status === 'submitted' && (
         <div style={{ marginTop: 10, borderTop: '1px solid var(--outline)', paddingTop: 10 }}>
@@ -315,6 +360,65 @@ function EventRequestRow({ row, buses, canDecide, busy, onDecide }) {
                   {busy ? 'Menyimpan…' : 'Kirim Penolakan'}
                 </button>
                 <button className="ghost" disabled={busy} onClick={() => setRejecting(false)}>Batal</button>
+              </div>
+            </div>
+          )}
+        </div>
+      )}
+
+      {canDecide && row.status === 'approved' && (
+        <div style={{ marginTop: 10, borderTop: '1px solid var(--outline)', paddingTop: 10 }}>
+          {!editing ? (
+            <div className="row" style={{ gap: 8, flexWrap: 'wrap' }}>
+              <button className="ghost" disabled={busy} onClick={() => openEditing('reassign')}>
+                Ubah Unit Bis
+              </button>
+              <button className="ghost" disabled={busy} onClick={() => openEditing('cancel')}>
+                Batalkan Persetujuan
+              </button>
+            </div>
+          ) : editing === 'reassign' ? (
+            <div className="col" style={{ gap: 8 }}>
+              <div>
+                <span className="lbl">Unit bis ditugaskan (wajib, bisa pilih lebih dari satu)</span>
+                <div className="col" style={{ gap: 4, marginTop: 4, maxHeight: 160, overflowY: 'auto' }}>
+                  {buses.map((b) => (
+                    <label key={b.id} className="row" style={{ gap: 6, alignItems: 'center', fontWeight: 400 }}>
+                      <input type="checkbox" checked={reviseBusIds.includes(b.id)}
+                             onChange={() => toggleReviseBus(b.id)} />
+                      <span style={{
+                        background: dutyColor(b.duty_number), color: '#fff',
+                        borderRadius: 4, padding: '1px 8px',
+                      }}>
+                        {b.plate_number}{b.label ? ` (${b.label})` : ''}
+                      </span>
+                    </label>
+                  ))}
+                </div>
+                {reviseBusIds.length === 0 && (
+                  <div className="hint">Pilih minimal satu unit.</div>
+                )}
+              </div>
+              <textarea rows={2} placeholder="Catatan (opsional)" value={reviseNote}
+                        onChange={(e) => setReviseNote(e.target.value)} />
+              <div className="row" style={{ gap: 8, flexWrap: 'wrap' }}>
+                <button disabled={busy || reviseBusIds.length === 0}
+                        onClick={() => onRevise(row, 'reassign', { bus_ids: reviseBusIds, note: reviseNote })}>
+                  {busy ? 'Menyimpan…' : 'Simpan Perubahan Unit'}
+                </button>
+                <button type="button" className="ghost" disabled={busy} onClick={() => setEditing(null)}>Batal</button>
+              </div>
+            </div>
+          ) : (
+            <div className="col" style={{ gap: 8 }}>
+              <textarea rows={2} placeholder="Alasan pembatalan (wajib)" value={reviseNote}
+                        onChange={(e) => setReviseNote(e.target.value)} />
+              <div className="row" style={{ gap: 8, flexWrap: 'wrap' }}>
+                <button className="danger" disabled={busy || !reviseNote.trim()}
+                        onClick={() => onRevise(row, 'cancel', { note: reviseNote })}>
+                  {busy ? 'Menyimpan…' : 'Batalkan Persetujuan'}
+                </button>
+                <button type="button" className="ghost" disabled={busy} onClick={() => setEditing(null)}>Batal</button>
               </div>
             </div>
           )}

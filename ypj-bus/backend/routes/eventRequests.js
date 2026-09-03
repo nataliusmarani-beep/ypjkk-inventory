@@ -36,10 +36,11 @@ router.get('/', (req, res) => {
   // having to scroll past everything already settled.
   const rows = db.prepare(`
     SELECT r.*, u.name AS requested_by_name, u.role AS requested_by_role,
-           rev.name AS reviewed_by_name
+           rev.name AS reviewed_by_name, ed.name AS edited_by_name
     FROM event_bus_requests r
     JOIN users u ON u.id = r.requested_by
     LEFT JOIN users rev ON rev.id = r.reviewed_by
+    LEFT JOIN users ed ON ed.id = r.edited_by
     WHERE (:mine IS NULL OR r.requested_by = :mine)
     ORDER BY CASE r.status WHEN 'submitted' THEN 0 ELSE 1 END, r.id DESC
   `).all({ mine: seesAll ? null : req.user.id });
@@ -85,9 +86,12 @@ router.post('/', requireRole('admin', 'leader'), (req, res, next) => {
 
     const passengerCount = b.passenger_count === '' || b.passenger_count == null
       ? null : Number(b.passenger_count);
-    if (passengerCount !== null && (!Number.isInteger(passengerCount) || passengerCount <= 0)) {
-      throw fail(400, 'Jumlah peserta tidak valid.');
+    if (!Number.isInteger(passengerCount) || passengerCount <= 0) {
+      throw fail(400, 'Jumlah peserta wajib diisi.');
     }
+
+    const departureTime = normaliseTime(b.departure_time);
+    if (!departureTime) throw fail(400, 'Jam berangkat wajib diisi.');
 
     let attachment = null;
     if (b.attachment) {
@@ -101,7 +105,7 @@ router.post('/', requireRole('admin', 'leader'), (req, res, next) => {
       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     `).run(
       req.user.id, eventName, eventDate,
-      normaliseTime(b.departure_time), normaliseTime(b.return_time),
+      departureTime, normaliseTime(b.return_time),
       destination, passengerCount, (b.notes || '').trim() || null,
       attachment?.fileName || null, attachment?.mimeType || null,
     );
@@ -187,6 +191,95 @@ router.post('/:id/decision', requireRole('transport_admin'), (req, res, next) =>
     });
 
     logActivity(req, `event_request.${decision}d`, 'event_bus_requests', request.id, { reason });
+    res.json({ ok: true });
+  } catch (err) {
+    next(err);
+  }
+});
+
+/**
+ * POST /api/event-requests/:id/revise — Tim Transportasi only, on an already
+ * *approved* request. Covers the two things a one-shot decision can't fix
+ * after the fact: the wrong bus type/unit got assigned, or the request turns
+ * out to be a duplicate that was approved before the duplicate was noticed.
+ * Body: { action: 'reassign'|'cancel', bus_ids?, note? }
+ *  - 'reassign' replaces assigned_bus_ids (same validation as approval).
+ *  - 'cancel' moves the request to a terminal 'cancelled' status, distinct
+ *    from 'rejected' (which only ever applies to a pending request).
+ * `note` is required for 'cancel' (shown to the requester, same as a
+ * rejection reason) and optional for 'reassign' (e.g. "unit sebelumnya penuh").
+ */
+router.post('/:id/revise', requireRole('transport_admin'), (req, res, next) => {
+  try {
+    const request = db.prepare(`SELECT * FROM event_bus_requests WHERE id = ?`).get(req.params.id);
+    if (!request) throw fail(404, 'Permintaan tidak ditemukan.');
+    if (request.status !== 'approved') {
+      throw fail(409, 'Hanya permintaan yang sudah disetujui yang dapat diubah.');
+    }
+
+    const action = req.body?.action;
+    if (!['reassign', 'cancel'].includes(action)) throw fail(400, 'Tindakan tidak dikenal.');
+
+    const note = (req.body?.note || '').trim();
+    if (action === 'cancel' && !note) throw fail(400, 'Alasan pembatalan wajib diisi.');
+
+    let busIds = JSON.parse(request.assigned_bus_ids || '[]');
+    if (action === 'reassign') {
+      if (!Array.isArray(req.body?.bus_ids) || !req.body.bus_ids.length) {
+        throw fail(400, 'Unit bis ditugaskan wajib dipilih.');
+      }
+      const placeholders = req.body.bus_ids.map(() => '?').join(',');
+      const found = db.prepare(
+        `SELECT id FROM buses WHERE is_active = 1 AND id IN (${placeholders})`,
+      ).all(...req.body.bus_ids);
+      if (found.length !== req.body.bus_ids.length) throw fail(400, 'Salah satu unit bis tidak ditemukan.');
+      busIds = found.map((b) => b.id);
+    }
+
+    // Cancellation leaves the last-assigned bus(es) on the row untouched —
+    // it's still useful context for "what was assigned before this got
+    // cancelled" — and only flips status plus the edit trail.
+    db.prepare(`
+      UPDATE event_bus_requests
+      SET status = ?, assigned_bus_id = ?, assigned_bus_ids = ?,
+          edited_by = ?, edited_at = datetime('now'), edit_note = ?
+      WHERE id = ?
+    `).run(
+      action === 'cancel' ? 'cancelled' : 'approved',
+      action === 'cancel' ? request.assigned_bus_id : busIds[0],
+      action === 'cancel' ? request.assigned_bus_ids : JSON.stringify(busIds),
+      req.user.id, note || null, request.id,
+    );
+
+    // Sopir/Helper need to know their trip changed (reassigned bus or the
+    // whole thing cancelled), the requester needs to know their approved
+    // request changed under them, and the rest of Tim Transportasi needs to
+    // stay in sync since any of them can act on the next request.
+    const crew = db.prepare(`
+      SELECT id, email FROM users WHERE role IN ('driver', 'helper') AND is_active = 1
+    `).all();
+    const otherAdmins = db.prepare(`
+      SELECT id, email FROM users WHERE role IN ('transport_admin', 'super_admin')
+        AND is_active = 1 AND id != ?
+    `).all(req.user.id);
+    const requester = db.prepare(`SELECT id, email FROM users WHERE id = ?`).get(request.requested_by);
+
+    const title = action === 'cancel' ? 'Permintaan bis acara dibatalkan' : 'Unit bis acara diubah';
+    const body = action === 'cancel'
+      ? `Permintaan bis untuk "${request.event_name}" pada ${request.event_date} yang sebelumnya `
+        + `DISETUJUI telah DIBATALKAN oleh ${req.user.name}.\n\nAlasan: ${note}`
+      : `Unit bis untuk "${request.event_name}" pada ${request.event_date} telah diubah oleh ${req.user.name}.`
+        + (note ? `\n\nCatatan: ${note}` : '');
+
+    for (const u of [...crew, ...otherAdmins, requester]) {
+      notify({
+        userId: u.id, email: u.email,
+        template: action === 'cancel' ? 'event_request.cancelled' : 'event_request.revised',
+        title, body,
+      });
+    }
+
+    logActivity(req, `event_request.${action}`, 'event_bus_requests', request.id, { note });
     res.json({ ok: true });
   } catch (err) {
     next(err);
