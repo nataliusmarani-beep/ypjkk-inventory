@@ -65,12 +65,13 @@ export default function ItemForm({ initial, meta, user, onSubmit, onClose }) {
           <div style={{ fontSize:10, color:'var(--muted)', marginTop:3, textAlign:'right' }}>{form.name.length}/25</div>
         </div>
         <div className="form-group full">
-          <label className="form-label">Subtitle</label>
+          <label className="form-label">Subtitle <span className="req">*</span></label>
           <input
             type="text"
             value={form.subtitle || ''}
             onChange={set('subtitle')}
             placeholder="e.g. Size M, Blue"
+            required
           />
           <div style={{ fontSize:10, color:'var(--muted)', marginTop:3 }}>
             Shown next to the barcode number, separated by "|" — use it for size, color, etc.

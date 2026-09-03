@@ -208,21 +208,24 @@ export default function RequestsPage({ role, user, showToast, refreshPending }) 
       .catch(() => setHL(false));
   }, []);
 
-  // Map user's unit_school to a store location filter (non-admins only)
-  const storeLocation = (() => {
-    if (isAdmin) return undefined;                          // admins see everything
-    if (!user || user.unit_school === 'All') return undefined; // All → both stores
-    return user.unit_school === 'PAUD' ? 'PAUD YPJ KK' : 'SD SMP YPJ KK'; // PAUD → PAUD store; SD/SMP → SD SMP store
-  })();
-
   useEffect(() => { loadHistory(); }, [loadHistory]);
+  // Fetch the full catalog once; the store-location split below is applied
+  // client-side so it can react to the (admin-editable) Unit School field
+  // instead of being frozen to the value at page load.
   useEffect(() => {
-    api.getItems({ location: storeLocation }).then(setAllItems).catch(() => {});
+    api.getItems({}).then(setAllItems).catch(() => {});
   }, []);
+
+  // Map the selected Unit School to a store location filter.
+  const storeLocation = (() => {
+    if (form.unit_school === 'All') return undefined; // All → both stores
+    return form.unit_school === 'PAUD' ? 'PAUD YPJ KK' : 'SD SMP YPJ KK'; // PAUD → PAUD store; SD/SMP → SD SMP store
+  })();
 
   /* ── filtered browse list ────────────────────────────────────────────── */
   const categories   = [...new Set(allItems.map(i => i.category))].sort();
   const browseItems  = allItems.filter(it => {
+    if (storeLocation && it.location !== storeLocation) return false;
     if (filterCat && it.category !== filterCat) return false;
     if (search) {
       const q = search.toLowerCase();
@@ -456,7 +459,7 @@ export default function RequestsPage({ role, user, showToast, refreshPending }) 
                 )}
 
                 <label style={{ fontSize:12, fontWeight:800, color:'var(--navy)' }}>
-                  Purpose / Notes
+                  Purpose / Notes <span className="req">*</span>
                   <textarea value={form.purpose} onChange={set('purpose')} rows={2} required placeholder="Reason for request..." style={{ marginTop:4 }} />
                 </label>
 

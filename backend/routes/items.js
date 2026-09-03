@@ -56,6 +56,7 @@ function validate(body) {
   const errors = [];
   if (!body.name || !body.name.trim()) errors.push('Name is required.');
   else if (body.name.trim().length > 25) errors.push('Name must be 25 characters or fewer.');
+  if (!body.subtitle || !body.subtitle.trim()) errors.push('Subtitle is required.');
   if (!body.category) errors.push('Category is required.');
   if (!['used-up', 'borrow'].includes(body.item_type)) errors.push('Type must be Used-up or Borrow.');
   if (body.quantity === undefined || body.quantity < 0) errors.push('Quantity must be >= 0.');
