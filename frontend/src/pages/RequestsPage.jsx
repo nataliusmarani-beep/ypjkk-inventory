@@ -82,11 +82,16 @@ const BrowseItemCard = memo(function BrowseItemCard({ item, inCart, onSetQty, on
         {outOfStock ? 'Out of stock' : `${item.quantity} ${item.unit_name} available`}
         {isLow && !outOfStock && ' ⚠️'}
       </div>
-      <div style={{ marginBottom:8, display:'flex', gap:5, flexWrap:'wrap' }}>
+      <div style={{ marginBottom:8, display:'flex', gap:5, flexWrap:'wrap', alignItems:'center' }}>
         <CategoryBadge category={item.category} />
         <span className={`badge ${item.item_type === 'borrow' ? 'badge-purple' : 'badge-grey'}`}>
           {item.item_type === 'borrow' ? '↩️ Borrow' : '🗑️ Used-up'}
         </span>
+        {item.unit_school && (
+          <span style={{ marginLeft:'auto', fontSize:10, fontWeight:700, color:'var(--muted)' }}>
+            🏫 {item.unit_school}
+          </span>
+        )}
       </div>
 
       {inCart > 0 ? (
