@@ -536,9 +536,11 @@ export default function RequestsPage({ role, user, showToast, refreshPending }) 
                 </div>
                 <div>
                   <div style={{ fontWeight:800, fontSize:16, color:'var(--navy)' }}>{detailItem.name}</div>
-                  {[detailItem.barcode || detailItem.code, detailItem.subtitle].filter(Boolean).length > 0 && (
-                    <div className="mono" style={{ fontSize:12, color:'var(--muted)', marginTop:2 }}>
-                      {[detailItem.barcode || detailItem.code, detailItem.subtitle].filter(Boolean).join(' | ')}
+                  {(detailItem.barcode || detailItem.code || detailItem.subtitle) && (
+                    <div style={{ color:'var(--muted)', marginTop:2, lineHeight:1.15, wordBreak:'break-word' }}>
+                      {(detailItem.barcode || detailItem.code) && <span className="item-subtitle" style={{ fontSize:10, wordBreak:'break-all' }}>{detailItem.barcode || detailItem.code}</span>}
+                      {(detailItem.barcode || detailItem.code) && detailItem.subtitle && <span className="item-subtitle" style={{ fontSize:10 }}> | </span>}
+                      {detailItem.subtitle && <span className="item-subtitle" style={{ fontSize:10 }}>{detailItem.subtitle}</span>}
                     </div>
                   )}
                   <div style={{ marginTop:6, display:'flex', gap:6, flexWrap:'wrap', justifyContent:'center' }}>
