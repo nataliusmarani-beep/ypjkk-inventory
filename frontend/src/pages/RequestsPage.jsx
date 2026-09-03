@@ -89,7 +89,7 @@ const BrowseItemCard = memo(function BrowseItemCard({ item, inCart, onSetQty, on
         </span>
         {item.unit_school && (
           <span style={{ marginLeft:'auto', fontSize:10, fontWeight:700, color:'var(--muted)' }}>
-            🏫 {item.unit_school}
+            🏫 {item.unit_school === 'All' ? 'ADMIN' : item.unit_school}
           </span>
         )}
       </div>
