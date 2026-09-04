@@ -713,7 +713,7 @@ router.put('/:id/approve', (req, res) => {
     if (stock.quantity < row.quantity) { db.exec('ROLLBACK'); return res.status(400).json({ error: `Only ${stock.quantity} unit(s) in stock.` }); }
 
     db.prepare(`UPDATE items SET quantity = quantity - ?, updated_at = datetime('now') WHERE id = ?`).run(row.quantity, row.item_id);
-    db.prepare(`UPDATE requests SET status = 'approved', approved_at = datetime('now'), approval_notes = ?, notes = COALESCE(?, notes) WHERE id = ?`).run(notes || null, notes || null, row.id);
+    db.prepare(`UPDATE requests SET status = 'approved', approved_at = datetime('now'), approved_by_name = ?, approved_by_email = ?, approval_notes = ?, notes = COALESCE(?, notes) WHERE id = ?`).run(req.user.name, req.user.email, notes || null, notes || null, row.id);
 
     db.exec('COMMIT');
 
