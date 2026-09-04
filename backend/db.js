@@ -137,6 +137,8 @@ if (!reqCols.includes('attachment_path')) db.exec(`ALTER TABLE requests ADD COLU
 if (!reqCols.includes('attachment_name')) db.exec(`ALTER TABLE requests ADD COLUMN attachment_name TEXT`);
 if (!reqCols.includes('needs_info'))        db.exec(`ALTER TABLE requests ADD COLUMN needs_info INTEGER NOT NULL DEFAULT 0`);
 if (!reqCols.includes('info_request_note')) db.exec(`ALTER TABLE requests ADD COLUMN info_request_note TEXT`);
+if (!reqCols.includes('approved_by_name'))  db.exec(`ALTER TABLE requests ADD COLUMN approved_by_name TEXT`);
+if (!reqCols.includes('approved_by_email')) db.exec(`ALTER TABLE requests ADD COLUMN approved_by_email TEXT`);
 
 const itemCols = db.prepare(`PRAGMA table_info(items)`).all().map(c => c.name);
 const migrations = {

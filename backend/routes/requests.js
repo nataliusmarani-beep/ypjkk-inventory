@@ -243,7 +243,8 @@ router.get('/groups', (req, res) => {
         purpose:        row.purpose,
         return_date:    row.return_date,
         created_at:     row.created_at,
-        approved_at:    row.approved_at,
+        approved_at:      row.approved_at,
+        approved_by_name: row.approved_by_name || null,
         attachment_path: row.attachment_path || null,
         attachment_name: row.attachment_name || null,
         needs_info:        row.needs_info || 0,
@@ -457,7 +458,7 @@ router.put('/groups/:groupId/approve', staffOnly, (req, res) => {
       if (stock.quantity < row.quantity) throw Object.assign(new Error(`Not enough stock for "${row.item_name}" (${stock.quantity} available).`), { status: 400 });
 
       db.prepare(`UPDATE items SET quantity = quantity - ?, updated_at = datetime('now') WHERE id = ?`).run(row.quantity, row.item_id);
-      db.prepare(`UPDATE requests SET status = 'approved', approved_at = datetime('now'), approval_notes = ?, notes = COALESCE(?, notes) WHERE id = ?`).run(notes || null, notes || null, row.id);
+      db.prepare(`UPDATE requests SET status = 'approved', approved_at = datetime('now'), approved_by_name = ?, approved_by_email = ?, approval_notes = ?, notes = COALESCE(?, notes) WHERE id = ?`).run(req.user.name, req.user.email, notes || null, notes || null, row.id);
     }
 
     db.exec('COMMIT');

@@ -135,6 +135,16 @@ const GRP_ID = (gid, date) => {
 };
 const TODAY = () => new Date().toISOString().slice(0,10);
 
+// SQLite's datetime('now') returns UTC with no timezone marker — treat it
+// as such before formatting, or the browser parses it as local time.
+const fmtDateTime = raw => {
+  if (!raw) return '';
+  const iso = raw.includes('T') ? raw : raw.replace(' ', 'T') + 'Z';
+  const d = new Date(iso);
+  if (isNaN(d)) return raw;
+  return d.toLocaleString(undefined, { year:'numeric', month:'short', day:'numeric', hour:'2-digit', minute:'2-digit' });
+};
+
 /* ── component ─────────────────────────────────────────────────────────── */
 export default function RequestsPage({ role, user, showToast, refreshPending }) {
   const isAdmin = role === 'Manager' || role === 'Storekeeper';
@@ -720,7 +730,8 @@ export default function RequestsPage({ role, user, showToast, refreshPending }) 
                                         borderRadius:8, padding:'10px 14px', fontSize:13, color:'#15803d',
                                       }}>
                                         <strong>✅ Approved</strong>
-                                        {g.approved_at && <span style={{ fontWeight:400, marginLeft:8, color:'#166534', fontSize:12 }}>{g.approved_at?.slice(0,10)}</span>}
+                                        {g.approved_at && <span style={{ fontWeight:400, marginLeft:8, color:'#166534', fontSize:12 }}>{fmtDateTime(g.approved_at)}</span>}
+                                        {g.approved_by_name && <div style={{ marginTop:4, color:'#166534', fontSize:12 }}>👤 Approved by {g.approved_by_name}</div>}
                                         {g.approval_notes && <div style={{ marginTop:5, color:'#166534' }}>📝 {g.approval_notes}</div>}
                                         {!g.approval_notes && <div style={{ marginTop:5, color:'#86efac', fontSize:12 }}>No additional notes from storekeeper.</div>}
                                       </div>
